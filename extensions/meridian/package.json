@@ -1,0 +1,11 @@
+{
+  "name": "meridian-extension",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Meridian Neutralino.js extension backend",
+  "main": "main.js",
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "keytar": "^7.9.0"
+  }
+}

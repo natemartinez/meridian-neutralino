@@ -1,0 +1,23 @@
+# Developer tools' files
+.lite_workspace.lua
+
+# Neutralinojs binaries and builds
+/bin
+/dist
+
+# Neutralinojs client (minified)
+neutralino.js
+
+# Neutralinojs related files
+.storage
+*.log
+
+# Dependencies
+node_modules/
+
+# Built frontend (copied from dist/ during build)
+/resources
+
+# Build artifacts
+*.app
+*.dmg
