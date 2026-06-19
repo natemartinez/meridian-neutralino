@@ -170,26 +170,19 @@ function NOVAProgramPanel({
           onClick={onBack}
           style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:6, color:T.text, cursor:'pointer', fontSize:14, padding:'2px 10px', fontFamily:"'IBM Plex Mono',monospace", lineHeight:1.6 }}
         >← Back</button>
-        <div style={{ flex:1 }}>
-          <div className="wp-badge">
-            <span style={{ width:5, height:5, borderRadius:'50%', background:meta.color, display:'inline-block' }} />
-            <span style={{ color:meta.color }}>NOVA</span>
+        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div className="wp-ttl" style={{ color:meta.color }}>{meta.label}</div>
+          <div style={{ display:'flex', gap:4 }}>
+            <button
+              onClick={() => setShowContext(s => !s)}
+              style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color: showContext ? meta.color : T.muted, cursor:'pointer', fontSize:9, padding:'2px 6px', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.05em' }}
+              title="Toggle system prompt debug view"
+            >{showContext ? 'HIDE CTX' : 'SHOW CTX'}</button>
+            <button
+              onClick={() => onNewSession(progId)}
+              style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color:T.muted, cursor:'pointer', fontSize:9, padding:'2px 6px', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.05em' }}
+            >NEW SESSION</button>
           </div>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <div className="wp-ttl" style={{ color:meta.color }}>{meta.label}</div>
-            <div style={{ display:'flex', gap:4 }}>
-              <button
-                onClick={() => setShowContext(s => !s)}
-                style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color: showContext ? meta.color : T.muted, cursor:'pointer', fontSize:9, padding:'2px 6px', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.05em' }}
-                title="Toggle system prompt debug view"
-              >{showContext ? 'HIDE CTX' : 'SHOW CTX'}</button>
-              <button
-                onClick={() => onNewSession(progId)}
-                style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color:T.muted, cursor:'pointer', fontSize:9, padding:'2px 6px', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.05em' }}
-              >NEW SESSION</button>
-            </div>
-          </div>
-          <div className="wp-dsc">{meta.desc}</div>
         </div>
       </div>
 
@@ -573,7 +566,11 @@ function NOVAProgramPanel({
                   fontFamily:"'IBM Plex Mono',monospace",
                   fontSize:9, color: T.text,
                   lineHeight:1.4,
-                }}>{insight.text || insight.label || insight.content}</span>
+                }}>
+                  {insight.type === 'knowledge'
+                    ? (insight.content?.text || insight.content)
+                    : (insight.text || insight.label || insight.content)}
+                </span>
                 <button
                   onClick={() => confirmInsight && confirmInsight(insight.id)}
                   title="Accept insight"
