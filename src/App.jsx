@@ -53,6 +53,7 @@ import NovaToast from './components/nova/NovaToast.jsx';
       const [dragging, setDragging]     = useState(null);
       const [loaded, setLoaded]         = useState(false);
       const [apiKey, setApiKey]         = useState(() => localStorage.getItem('meridian_api_key') || null);
+      const [model, setModel]           = useState(() => localStorage.getItem('meridian_model') || '');
       const [, setPlanningDay]          = useState(false);
       const [addInput, setAddInput]     = useState('');
       const [confirmDelete, setConfirmDelete] = useState(null);
@@ -176,7 +177,7 @@ import NovaToast from './components/nova/NovaToast.jsx';
         confirmInsight,
         dismissInsight,
         recordPlanAccuracy,
-      } = useNOVA({ apiKey, projects, focus, waypointContext, loaded });
+      } = useNOVA({ apiKey, model, projects, focus, waypointContext, loaded });
 
       // ── NOVA Active Interactions ──
       const novaInteractions = useNovaInteractions();
@@ -299,49 +300,74 @@ import NovaToast from './components/nova/NovaToast.jsx';
         calcStreak, getWeeklyData,
       } = useTracking({
         projects, sessions, activeSession,
-        setSessions, setActiveSession, apiKey,
+        setSessions, setActiveSession, apiKey, model,
         setFocus, setPlanningDay,
       });
 
       // Load persisted state + API key + settings on mount
       useEffect(() => {
-        Promise.all([
-          window.electronAPI?.loadState() ?? Promise.resolve(null),
-          window.electronAPI?.getApiKey() ?? Promise.resolve(null),
-        ]).then(([saved, key]) => {
-          if (saved) {
-            // projects and onwardItems are already loaded from localStorage synchronously.
-            // Only override from Electron IPC if localStorage was empty (first run migration).
-            const lsProjects = localStorage.getItem('meridian_projects_v2');
-            const lsOnward   = localStorage.getItem('meridian_onward_v2');
-            if (!lsProjects && saved.projects)    setProjects(saved.projects);
-            if (!lsOnward   && saved.onwardItems) setOnwardItems(saved.onwardItems);
-            if (saved.focus)        setFocus(saved.focus);
-            if (saved.skills)       setSkills(saved.skills);
-            else                    setSkills(DEFAULT_SKILLS);
-            if (saved.intensity)    setIntensity(saved.intensity);
-            if (saved.routines)     setRoutines(saved.routines);
-            if (saved.sessions)     setSessions(saved.sessions);
-          } else {
-            setSkills(DEFAULT_SKILLS);
-          }
-          if (key) setApiKey(key);
-          setLoaded(true);
-          
-          // Fire app_opened event for NOVA interactions
-          setTimeout(() => {
-            useNovaInteractionStore.getState().fireEvent('app_opened', {});
-          }, 1000);
+        // Wrap extension IPC calls with a timeout so they don't hang forever
+        // when the Neutralino WebSocket isn't connected (e.g. dev mode).
+        const withTimeout = (promise, ms = 3000) =>
+          Promise.race([
+            promise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
+          ]);
 
-          // Calculate deadline alerts after loading
-          setTimeout(() => {
-            const alerts = calculateDeadlineAlerts(projects);
-            if (alerts.length > 0) {
-              setDeadlineAlerts(alerts);
-              setShowDeadlineNotifier(true);
+        const loadStatePromise = window.electronAPI?.loadState()
+          ? withTimeout(window.electronAPI.loadState(), 3000)
+          : Promise.resolve(null);
+
+        const getApiKeyPromise = window.electronAPI?.getApiKey()
+          ? withTimeout(window.electronAPI.getApiKey(), 3000)
+          : Promise.resolve(null);
+
+        const getModelPromise = window.electronAPI?.getModel()
+          ? withTimeout(window.electronAPI.getModel(), 3000)
+          : Promise.resolve(null);
+
+        Promise.all([loadStatePromise, getApiKeyPromise, getModelPromise])
+          .then(([saved, key, savedModel]) => {
+            if (saved) {
+              // projects and onwardItems are already loaded from localStorage synchronously.
+              // Only override from Electron IPC if localStorage was empty (first run migration).
+              const lsProjects = localStorage.getItem('meridian_projects_v2');
+              const lsOnward   = localStorage.getItem('meridian_onward_v2');
+              if (!lsProjects && saved.projects)    setProjects(saved.projects);
+              if (!lsOnward   && saved.onwardItems) setOnwardItems(saved.onwardItems);
+              if (saved.focus)        setFocus(saved.focus);
+              if (saved.skills)       setSkills(saved.skills);
+              else                    setSkills(DEFAULT_SKILLS);
+              if (saved.intensity)    setIntensity(saved.intensity);
+              if (saved.routines)     setRoutines(saved.routines);
+              if (saved.sessions)     setSessions(saved.sessions);
+            } else {
+              setSkills(DEFAULT_SKILLS);
             }
-          }, 500);
-        });
+            // Extension IPC key takes precedence, but localStorage is the fallback
+            if (key) setApiKey(key);
+            // Extension IPC model takes precedence, but localStorage is the fallback
+            if (savedModel) setModel(savedModel);
+            setLoaded(true);
+            
+            // Fire app_opened event for NOVA interactions
+            setTimeout(() => {
+              useNovaInteractionStore.getState().fireEvent('app_opened', {});
+            }, 1000);
+
+            // Calculate deadline alerts after loading
+            setTimeout(() => {
+              const alerts = calculateDeadlineAlerts(projects);
+              if (alerts.length > 0) {
+                setDeadlineAlerts(alerts);
+                setShowDeadlineNotifier(true);
+              }
+            }, 500);
+          }).catch(err => {
+            console.error('[DEBUG] App loading failed (falling back to localStorage):', err);
+            // Still set loaded to true so the UI renders
+            setLoaded(true);
+          });
       // eslint-disable-next-line react-hooks/exhaustive-deps
       }, []);
 
@@ -365,6 +391,7 @@ import NovaToast from './components/nova/NovaToast.jsx';
         [backlogItems, 'meridian_backlog'],
         [brainDumpEntries, 'meridian_brain_dump'],
         [journalEntries, 'meridian_journal'],
+        [topGoals, 'meridian_top_goals'],
       ], loaded);
 
       // Escape key exits focus mode
@@ -417,6 +444,7 @@ import NovaToast from './components/nova/NovaToast.jsx';
       useEffect(() => { projectsRef.current   = projects;      }, [projects]);
       useEffect(() => { apiKeyRef.current     = apiKey;        }, [apiKey]);
       useEffect(() => { if (apiKey) localStorage.setItem('meridian_api_key', apiKey); }, [apiKey]);
+      useEffect(() => { if (model) localStorage.setItem('meridian_model', model); }, [model]);
       useEffect(() => { selectedIdRef.current = selectedId;    }, [selectedId]);
       useEffect(() => { panRef.current        = pan;           }, [pan]);
       useEffect(() => { draggingRef.current   = dragging;      }, [dragging]);
@@ -431,6 +459,7 @@ import NovaToast from './components/nova/NovaToast.jsx';
       useEffect(() => { hoveredWeekRef.current = hoveredWeek;  }, [hoveredWeek]);
       useEffect(() => { selectedSkillRef.current = selectedSkillId; }, [selectedSkillId]);
       useEffect(() => { sunIdRef.current = sunId; if (sunId) localStorage.setItem('meridian_sun_id', sunId); }, [sunId]);
+      useEffect(() => { topGoalsRef.current = topGoals; }, [topGoals]);
       
       // Scroll to current time + resize canvas when waypoint opens (extracted hook)
       useOnwardScroll(activePage, canvasRef, resizeRef);
@@ -523,6 +552,7 @@ import NovaToast from './components/nova/NovaToast.jsx';
           emptyAlpha, starsRef, animT,
           resizeDragRef,
           onwardDragRef,
+          goalHitAreasRef, topGoalsRef, goalDragRef,
         };
 
         function frame() {
@@ -926,7 +956,7 @@ import NovaToast from './components/nova/NovaToast.jsx';
           const cpDone = checkpoints.filter((c) => c.done).length;
           const lightCtx = buildLightKnowledgeContext(knowledgePool);
           const system = (`You are a thoughtful, non-pushy productivity companion named ${companionName}. Keep check-ins brief (2–3 sentences), warm, and psychologically honest. No toxic positivity. Focus on reflection and clarity, not pressure.${lightCtx ? ' ' + lightCtx : ''}`).trim();
-          const msg = await askAI(system, `Goal: "${selected.title}". Progress: ${done}/${total} subtasks done, ${cpDone}/${checkpoints.length} checkpoints reached. Do a brief check-in.`, apiKey);
+          const msg = await askAI(system, `Goal: "${selected.title}". Progress: ${done}/${total} subtasks done, ${cpDone}/${checkpoints.length} checkpoints reached. Do a brief check-in.`, apiKey, { model });
           setAiMsg(msg || 'No response from AI. Check your API key in Settings.');
         } finally {
           setCompanionLoading(false);
@@ -942,7 +972,7 @@ import NovaToast from './components/nova/NovaToast.jsx';
           const existing = subtasks.map((s) => s.title).join(", ");
           const lightCtx = buildLightKnowledgeContext(knowledgePool);
           const system = (`You are a JSON API. Respond with ONLY a raw JSON object and nothing else. No markdown, no code fences, no explanation. Example: {"title":"Buy groceries"}${lightCtx ? ' ' + lightCtx : ''}`).trim();
-          const raw = await askAI(system, `Goal: "${selected.title}". Existing subtasks: ${existing || "none"}. Reply with exactly one JSON object {"title":"<next subtask>"}.`, apiKey);
+          const raw = await askAI(system, `Goal: "${selected.title}". Existing subtasks: ${existing || "none"}. Reply with exactly one JSON object {"title":"<next subtask>"}.`, apiKey, { model });
           try {
             const cleaned = raw.replace(/```[\w]*\n?/g, '').replace(/```/g, '').trim();
             const jsonMatch = cleaned.match(/\{[\s\S]*?\}/);
@@ -1742,6 +1772,7 @@ import NovaToast from './components/nova/NovaToast.jsx';
                     getSessionsForMonth={getSessionsForMonth}
                     todayStr={todayStr}
                     apiKey={apiKey}
+                    model={model}
                     geminiInput={geminiInput}
                     setGeminiInput={setGeminiInput}
                     geminiResponse={geminiResponse}
@@ -1758,6 +1789,8 @@ import NovaToast from './components/nova/NovaToast.jsx';
                   <SettingsPage
                     apiKey={apiKey}
                     setApiKey={setApiKey}
+                    model={model}
+                    setModel={setModel}
                     intensity={intensity}
                     setIntensity={setIntensity}
                     showApiKey={showApiKey}
@@ -2069,6 +2102,7 @@ import NovaToast from './components/nova/NovaToast.jsx';
           {modal && (
             <GoalModal
               apiKey={apiKey}
+              model={model}
               onClose={() => { setModal(false); setForm({ title:'', desc:'', measurable:'', achievable:'', relevant:'', deadline:'', priority:'low', scale:'short' }); }}
               onCreate={createGoalFromModal}
             />

@@ -120,7 +120,12 @@ async function parseApiError(response) {
  * @param {Object} [options.retryOptions] - passed through to withRetry
  * @returns {Promise<string>} response text
  */
-export async function askAI(systemPrompt, userMsg, apiKey, retryOptions = {}) {
+export async function askAI(systemPrompt, userMsg, apiKey, options = {}) {
+  // Pre-flight validation — prevents wasted API calls on invalid keys
+  validateApiKeyOrThrow(apiKey);
+
+  const { model, retryOptions = {} } = options;
+
   const result = await withRetry(async (attempt) => {
     const response = await window.electronAPI?.queryAI({ systemPrompt, userMsg, apiKey, model });
     
