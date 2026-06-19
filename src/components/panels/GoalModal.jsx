@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { TAGGABLE_SKILLS } from '../../constants/skills';
 import { askAI } from '../../utils/api';
 
-export default function GoalModal({ onClose, onCreate, apiKey }) {
+export default function GoalModal({ onClose, onCreate, apiKey, model }) {
   const [step,    setStep]    = useState('choose'); // 'choose' | 'form'
   const [goalType, setGoalType] = useState(null);
 
@@ -36,7 +36,7 @@ Target date: ${smart.timeBound}`
       : `Goal: ${title}\nDescription: ${desc}`;
 
     try {
-      const raw    = await askAI(systemPrompt, userPrompt, apiKey);
+      const raw    = await askAI(systemPrompt, userPrompt, apiKey, { model });
       const text   = raw.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(text);
 

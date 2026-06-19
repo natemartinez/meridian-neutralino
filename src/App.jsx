@@ -32,6 +32,7 @@ import { computePlanningConfidence } from './utils/nova.js';
 import NOVAProgramPanel from './components/nova/NOVAProgramPanel.jsx';
 import { useNOVA } from './hooks/useNOVA.js';
 import { drawOnwardPage, drawMapPage, drawPathsPage, drawSkillsPage, drawGoalsPage } from './utils/drawPages.js';
+import { autoOrganizeGoals } from './utils/layout.js';
 import useTracking from './hooks/useTracking.js';
 import useLocalStorageSync from './hooks/useLocalStorageSync.js';
 import { useOnwardScroll } from './hooks/useOnwardScroll.js';
@@ -187,6 +188,9 @@ import NovaToast from './components/nova/NovaToast.jsx';
 
       const [renamingGoalId, setRenamingGoalId] = useState(null);
       const [renameValue, setRenameValue] = useState('');
+      const [topGoals, setTopGoals] = useState(() => {
+        try { const s = localStorage.getItem('meridian_top_goals'); return s ? JSON.parse(s) : []; } catch { return []; }
+      });
       // Deadline notifier
       const [showDeadlineNotifier, setShowDeadlineNotifier] = useState(false);
       const [deadlineAlerts, setDeadlineAlerts] = useState([]);
@@ -273,6 +277,10 @@ import NovaToast from './components/nova/NovaToast.jsx';
       const sunIdRef         = useRef(null);
       const solarHitAreasRef  = useRef([]);
       const solarSunPosRef    = useRef({ x: 0, y: 0, R: 0, id: null });
+      // Goals page refs (used by drawGoalsPage)
+      const goalHitAreasRef  = useRef([]);
+      const topGoalsRef      = useRef([]);
+      const goalDragRef      = useRef(null);
       // Drag/drop refs for canvas access
       const draggedTaskRef    = useRef(null);
       const pendingDropRef    = useRef(null);
@@ -868,6 +876,10 @@ import NovaToast from './components/nova/NovaToast.jsx';
         setConfirmDelete(null);
       };
 
+      const toggleTopGoal = (id) => {
+        setTopGoals(prev => prev.includes(id) ? prev.filter(gid => gid !== id) : [...prev, id]);
+      };
+
       const completeGoal = (id) => {
         setProjects(prev => prev.map(p => p.id !== id ? p : { ...p, completedAt: new Date().toISOString() }));
         if (sunId === id) setSunId(null);
@@ -1267,13 +1279,13 @@ import NovaToast from './components/nova/NovaToast.jsx';
               return;
             }
 
-            // Check planet clicks
-            const hitPlanet = solarHitAreasRef.current.find(a => Math.hypot(cx - a.x, cy - a.y) < a.R);
-            if (hitPlanet) {
-              if (selectedIdRef.current === hitPlanet.id) {
+            // Check goal planet clicks (from drawGoalsPage hit areas)
+            const hitGoal = goalHitAreasRef.current.find(a => Math.hypot(cx - a.x, cy - a.y) < a.R);
+            if (hitGoal) {
+              if (selectedIdRef.current === hitGoal.id) {
                 setSelectedId(null); closeWaypoint();
               } else {
-                setSelectedId(hitPlanet.id); openWaypoint({ type: 'goal', id: hitPlanet.id });
+                setSelectedId(hitGoal.id); openWaypoint({ type: 'goal', id: hitGoal.id });
               }
               draggingRef.current = null; mouseDownPos.current = null; setDragging(null);
               return;
@@ -1627,11 +1639,19 @@ import NovaToast from './components/nova/NovaToast.jsx';
                     {mainPage === 'hq' ? (activePage === 'onward' ? 'ONWARD' : activePage === 'map' ? 'MAP' : activePage === 'paths' ? 'PATHS' : activePage === 'skills' ? 'SKILLS' : activePage === 'worklogs' ? 'WORK LOGS' : 'GOALS') : mainPage === 'tracking' ? 'TRACKING' : mainPage === 'settings' ? 'SETTINGS' : mainPage === 'knowledge-pool' ? 'KNOWLEDGE POOL' : mainPage === 'mindcheck' ? 'MIND CHECK' : mainPage === 'nova-insights' ? 'PRODUCTIVITY INSIGHTS' : mainPage === 'program-briefing' ? 'BRIEFING' : mainPage === 'program-focus' ? 'FOCUS' : mainPage === 'program-regroup' ? 'RE-GROUP' : mainPage === 'program-preview' ? 'PREVIEW' : 'MIND CHECK'}
                   </div>
                   <div className="cdt">
-                    {new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })} · {mainPage === 'knowledge-pool' ? 'KNOWLEDGE POOL' : mainPage === 'nova-insights' ? 'PRODUCTIVITY INSIGHTS' : mainPage.startsWith('program-') ? mainPage.replace('program-', '').toUpperCase() : mainPage.toUpperCase()}
+                    {new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })}
                   </div>
                 </div>
                 {mainPage === 'hq' && activePage === 'goals' && (
-                  <button className="cbtn" onClick={() => setModal(true)}>+ New Goal</button>
+                  <div style={{ display:'flex', gap:6 }}>
+                    <button className="cbtn" onClick={() => {
+                      const canvas = canvasRef.current;
+                      if (!canvas) return;
+                      const rect = canvas.getBoundingClientRect();
+                      setProjects(prev => autoOrganizeGoals(prev, rect.width, rect.height));
+                    }}>⟐ Organize</button>
+                    <button className="cbtn" onClick={() => setModal(true)}>+ New Goal</button>
+                  </div>
                 )}
               </div>
 
@@ -1950,6 +1970,8 @@ import NovaToast from './components/nova/NovaToast.jsx';
                       companionName={companionName}
                       checkIn={checkIn}
                       suggestSubtask={suggestSubtask}
+                      topGoals={topGoals}
+                      onToggleTopGoal={toggleTopGoal}
                     />
                   );
                 })()}
