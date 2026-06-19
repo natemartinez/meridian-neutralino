@@ -21,3 +21,6 @@ node_modules/
 # Build artifacts
 *.app
 *.dmg
+
+# Temporary / local development files
+.tmp/
