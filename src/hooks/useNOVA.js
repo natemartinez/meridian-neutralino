@@ -5,7 +5,7 @@ import { buildFullKnowledgeBlock, buildLightKnowledgeContext, buildStructuredKno
 import { computePlanningConfidence, NOVA_DEFAULT, validateNOVAResponse, updatePlanAccuracyHistory } from '../utils/nova.js';
 import { useNovaRetry } from './useNovaRetry.js';
 
-export function useNOVA({ apiKey, projects, focus, waypointContext, loaded }) {
+export function useNOVA({ apiKey, model, projects, focus, waypointContext, loaded }) {
   const [novaState, setNovaState] = useState(() => {
     try {
       const s = localStorage.getItem('meridian_nova_v1');
@@ -238,7 +238,7 @@ export function useNOVA({ apiKey, projects, focus, waypointContext, loaded }) {
       chatWithNOVA([
         { role: 'system', content: systemPrompt },
         { role: 'user',   content: 'Hello' },
-      ], apiKey)
+      ], apiKey, { model })
     ).then(reply => {
       const data = typeof reply === 'object' && reply.data ? reply.data : reply;
       const cleanReply = data.replace('[READY]', '').trim();
@@ -255,7 +255,7 @@ export function useNOVA({ apiKey, projects, focus, waypointContext, loaded }) {
     const raw = await chatWithNOVA([
       { role: 'system', content: 'You are a JSON API. Respond with ONLY a raw JSON object and nothing else. No markdown, no code fences.' },
       { role: 'user', content: `Analyze this productivity coaching conversation and extract:\n1. routine_update: one sentence describing the user's work patterns revealed in this chat\n2. suggested_tasks: array of 2–4 specific actionable task strings\n3. knowledge_entries: array of 0–4 objects, each { "cat": "work"|"goals"|"prefs"|"context", "text": string (max 120 chars, factual present-tense), "conf": number 0–1 }\n   - Only include entries you are confident about\n   - "work" = habits/style; "goals" = objectives/motivations; "prefs" = tool/process preferences; "context" = personal/situational facts\n   - Leave empty if nothing clear was revealed\n\nConversation:\n${transcript}\n\nRespond with exactly: {"routine_update":"...","suggested_tasks":["..."],"knowledge_entries":[{"cat":"work","text":"...","conf":0.85}]}` },
-    ], apiKey);
+    ], apiKey, { model });
     try {
       const cleaned = raw.replace(/```[\w]*\n?/g, '').replace(/```/g, '').trim();
       const parsed  = JSON.parse(cleaned);
@@ -379,7 +379,7 @@ export function useNOVA({ apiKey, projects, focus, waypointContext, loaded }) {
       const result = await chatWithNOVA([
         { role: 'system', content: system },
         { role: 'user', content: `Extract any new knowledge from this message: "${userText}"` },
-      ], apiKey);
+      ], apiKey, { model });
       const cleaned = result.replace(/```[\w]*\n?/g, '').replace(/```/g, '').trim();
       const entries = JSON.parse(cleaned);
       if (Array.isArray(entries) && entries.length > 0) {
@@ -417,7 +417,7 @@ export function useNOVA({ apiKey, projects, focus, waypointContext, loaded }) {
       setNovaLoading(true);
       try {
         const reply = await novaRetry.executeWithRetry(
-          () => chatWithNOVA([{ role: 'system', content: systemPrompt }, userMsg], apiKey)
+          () => chatWithNOVA([{ role: 'system', content: systemPrompt }, userMsg], apiKey, { model })
         ).then(r => r.data);
         // Validate response
         const validation = validateNOVAResponse(reply, programId);
@@ -450,7 +450,7 @@ export function useNOVA({ apiKey, projects, focus, waypointContext, loaded }) {
         : updatedHistory;
       const messages = [{ role: 'system', content: systemPrompt }, ...apiHistory];
       const reply    = await novaRetry.executeWithRetry(
-        () => chatWithNOVA(messages, apiKey)
+        () => chatWithNOVA(messages, apiKey, { model })
       ).then(r => r.data);
       // Validate response
       const validation = validateNOVAResponse(reply, programId);
@@ -606,7 +606,7 @@ Return a JSON array of 5-7 tasks for ${isPlanningForTomorrow ? 'tomorrow' : 'tod
     setNovaState(prev => ({ ...prev, planGenLoading: true, planError: null }));
     try {
       const result  = await novaRetry.executeWithRetry(
-        () => askAI(system, userMsg, apiKey)
+        () => askAI(system, userMsg, apiKey, { model })
       );
       const raw     = result.data;
       const cleaned = raw.replace(/```[\w]*\n?/g, '').replace(/```/g, '').trim();
@@ -705,7 +705,7 @@ Return a JSON array of 5-7 tasks for ${isPlanningForTomorrow ? 'tomorrow' : 'tod
 
     try {
       const result = await novaRetry.executeWithRetry(
-        () => askAI(system, userMsg, apiKey)
+        () => askAI(system, userMsg, apiKey, { model })
       );
       const reply  = result.data;
       setNovaState(prev => ({

@@ -4,7 +4,7 @@ import { uid } from '../utils/helpers.js';
 /**
  * Provides session tracking, streak calculation, and performance data helpers.
  */
-export default function useTracking({ projects, sessions, activeSession, setSessions, setActiveSession, apiKey, setFocus, setPlanningDay }) {
+export default function useTracking({ projects, sessions, activeSession, setSessions, setActiveSession, apiKey, model, setFocus, setPlanningDay }) {
   const todayStr = useCallback(() => new Date().toISOString().slice(0, 10), []);
 
   const sessionDurationMin = useCallback((s) => {
@@ -115,7 +115,7 @@ export default function useTracking({ projects, sessions, activeSession, setSess
     const { progress } = await import('../utils/helpers.js');
     const summary = projects.map(p => `"${p.title}" (${progress(p)}% done)`).join(', ');
     const system  = 'Return ONLY a JSON array of exactly 3 short strings (max 28 chars each) as focus areas for today. No explanation, no markdown.';
-    const raw     = await askAI(system, `Goals: ${summary}. Suggest 3 focus areas for today.`, apiKey);
+    const raw     = await askAI(system, `Goals: ${summary}. Suggest 3 focus areas for today.`, apiKey, { model });
     try {
       const areas = JSON.parse(raw.replace(/```json|```/g, '').trim());
       if (Array.isArray(areas) && areas.length >= 3)

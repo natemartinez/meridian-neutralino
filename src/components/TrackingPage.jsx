@@ -21,7 +21,7 @@ export default function TrackingPage({
   projects, onwardItems, sessions, activeSession, trackingPeriod, setTrackingPeriod,
   startSession, stopSession, sessionDurationMin, getTodayStats, getSessionsForDay,
   getSessionsForWeek, getSessionsForMonth, todayStr,
-  apiKey, geminiInput, setGeminiInput, geminiResponse, setGeminiResponse, geminiLoading, setGeminiLoading,
+  apiKey, model, geminiInput, setGeminiInput, geminiResponse, setGeminiResponse, geminiLoading, setGeminiLoading,
   focus, knowledgePool,
   pomodoroPreselect, onClearPomodoroPreselect,
 }) {
@@ -135,7 +135,7 @@ export default function TrackingPage({
     const ctx = `Today: ${fmtDur(stats.totalMin)} worked across ${todaySessions.length} session(s). Productive: ${fmtDur(stats.productiveMin)}, Focused: ${fmtDur(stats.focusedMin)}. Focus areas: ${focusAreas}. Active goals: ${goalList}. Onward tasks: ${onwardItems.filter(i=>i.done).length}/${onwardItems.length} done.`;
     const lightCtx = buildLightKnowledgeContext(knowledgePool);
     const system = (`You are a concise time-blocking coach. Give actionable advice in 2-3 sentences. Be direct and practical.${lightCtx ? ' ' + lightCtx : ''}`).trim();
-    const response = await askAI(system, userMsg ? `${ctx}\n\nUser: ${userMsg}` : ctx, apiKey);
+    const response = await askAI(system, userMsg ? `${ctx}\n\nUser: ${userMsg}` : ctx, apiKey, { model });
     setGeminiResponse(response);
     setGeminiLoading(false);
   };

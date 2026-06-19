@@ -92,7 +92,7 @@ class MeridianExtension {
 
       // ── AI (reused from main.js fetch logic) ──
       case 'aiQuery': {
-        const { systemPrompt, userMsg, apiKey } = params;
+        const { systemPrompt, userMsg, apiKey, model } = params;
         const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -100,7 +100,7 @@ class MeridianExtension {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'openai/gpt-4o-mini',
+            model: model || 'openai/gpt-4o-mini',
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userMsg },
@@ -113,7 +113,7 @@ class MeridianExtension {
         return { success: true, data: data.choices?.[0]?.message?.content || '' };
       }
       case 'aiChat': {
-        const { messages, apiKey } = params;
+        const { messages, apiKey, model } = params;
         const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -121,7 +121,7 @@ class MeridianExtension {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'openai/gpt-4o-mini',
+            model: model || 'openai/gpt-4o-mini',
             messages,
             max_tokens: 1200,
           }),

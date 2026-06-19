@@ -115,12 +115,14 @@ async function parseApiError(response) {
  * @param {string} systemPrompt - system prompt text
  * @param {string} userMsg - user message text
  * @param {string} apiKey - OpenRouter API key
- * @param {Object} [retryOptions] - passed through to withRetry
+ * @param {Object} [options]
+ * @param {string} [options.model] - OpenRouter model ID (e.g. "openai/gpt-4o-mini")
+ * @param {Object} [options.retryOptions] - passed through to withRetry
  * @returns {Promise<string>} response text
  */
 export async function askAI(systemPrompt, userMsg, apiKey, retryOptions = {}) {
   const result = await withRetry(async (attempt) => {
-    const response = await window.electronAPI?.queryAI({ systemPrompt, userMsg, apiKey });
+    const response = await window.electronAPI?.queryAI({ systemPrompt, userMsg, apiKey, model });
     
     // electronAPI.queryAI returns the raw response string.
     // Check if it's an error string from the main process.
@@ -149,12 +151,19 @@ export async function askAI(systemPrompt, userMsg, apiKey, retryOptions = {}) {
  * Chat with NOVA via OpenRouter API with automatic retry.
  * @param {Array} messages - array of {role, content} objects
  * @param {string} apiKey - OpenRouter API key
- * @param {Object} [retryOptions] - passed through to withRetry
+ * @param {Object} [options]
+ * @param {string} [options.model] - OpenRouter model ID (e.g. "openai/gpt-4o-mini")
+ * @param {Object} [options.retryOptions] - passed through to withRetry
  * @returns {Promise<string>} response text
  */
-export async function chatWithNOVA(messages, apiKey, retryOptions = {}) {
+export async function chatWithNOVA(messages, apiKey, options = {}) {
+  // Pre-flight validation — prevents wasted API calls on invalid keys
+  validateApiKeyOrThrow(apiKey);
+
+  const { model, retryOptions = {} } = options;
+
   const result = await withRetry(async (attempt) => {
-    const response = await window.electronAPI?.chatNOVA({ messages, apiKey });
+    const response = await window.electronAPI?.chatNOVA({ messages, apiKey, model });
     
     if (typeof response === 'string' && response.startsWith('Error:')) {
       const msg = response.replace('Error: ', '');
