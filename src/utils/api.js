@@ -1,6 +1,79 @@
 import { withRetry, NovaRetryError, getRetryAfter, shouldAbortRetry } from './retry.js';
 
 /**
+ * @typedef {Object} ApiKeyValidationResult
+ * @property {boolean} valid - Whether the key passes validation
+ * @property {string|null} reason - Human-readable failure reason, null if valid
+ * @property {'missing'|'format'|'ok'} code - Machine-readable status code
+ */
+
+/**
+ * Validate an OpenRouter API key format and presence.
+ * Does NOT make network requests — purely client-side format validation.
+ *
+ * OpenRouter keys follow the pattern: sk-or-v1-<64 hex chars>
+ * @param {string|null|undefined} key
+ * @returns {ApiKeyValidationResult}
+ */
+export function validateApiKey(key) {
+  // 1. Missing / empty / undefined check
+  if (!key || typeof key !== 'string' || !key.trim()) {
+    return {
+      valid: false,
+      reason: 'API key is required. Please enter your OpenRouter API key.',
+      code: 'missing',
+    };
+  }
+
+  const trimmed = key.trim();
+
+  // 2. Format validation: OpenRouter keys start with "sk-or-v1-" followed by 64 hex chars
+  const OPENROUTER_KEY_PATTERN = /^sk-or-v1-[0-9a-f]{64}$/;
+  if (!OPENROUTER_KEY_PATTERN.test(trimmed)) {
+    // Provide specific guidance based on what's wrong
+    if (!trimmed.startsWith('sk-or-v1-')) {
+      return {
+        valid: false,
+        reason: 'Invalid key format. OpenRouter API keys start with "sk-or-v1-". Please check your key at openrouter.ai/keys.',
+        code: 'format',
+      };
+    }
+    if (trimmed.length < 20) {
+      return {
+        valid: false,
+        reason: 'API key is too short. OpenRouter keys are typically 71 characters long (sk-or-v1- followed by 64 hex characters).',
+        code: 'format',
+      };
+    }
+    return {
+      valid: false,
+      reason: 'API key format is invalid. Expected format: sk-or-v1- followed by 64 hexadecimal characters.',
+      code: 'format',
+    };
+  }
+
+  // 3. Passed all checks
+  return { valid: true, reason: null, code: 'ok' };
+}
+
+/**
+ * Validate the API key and throw a NovaRetryError if invalid.
+ * Called at the start of askAI() and chatWithNOVA() to prevent wasted requests.
+ * @param {string|null|undefined} apiKey
+ * @throws {NovaRetryError} If the key is missing or invalid
+ */
+function validateApiKeyOrThrow(apiKey) {
+  const result = validateApiKey(apiKey);
+  if (!result.valid) {
+    throw new NovaRetryError(result.reason, {
+      status: 0,
+      retryable: false, // Don't retry — key won't become valid on retry
+      userMessage: result.reason,
+    });
+  }
+}
+
+/**
  * Parse an OpenRouter API error response into a NovaRetryError.
  * @param {Response} response - fetch Response object
  * @returns {Promise<NovaRetryError>}

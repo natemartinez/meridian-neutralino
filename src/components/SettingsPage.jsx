@@ -1,19 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { T } from '../utils/theme.js';
+import { validateApiKey } from '../utils/api.js';
 
-export default function SettingsPage({ apiKey, setApiKey, intensity, setIntensity, showApiKey, setShowApiKey, companionName, setCompanionName, setMainPage }) {
+export default function SettingsPage({ apiKey, setApiKey, model, setModel, intensity, setIntensity, showApiKey, setShowApiKey, companionName, setCompanionName, setMainPage }) {
   const [keyVal, setKeyVal]       = useState(apiKey || '');
   const [keySaved, setKeySaved]   = useState(false);
-  const [modelVal, setModelVal]   = useState('');
+  const [keyError, setKeyError]   = useState('');
+  const [modelVal, setModelVal]   = useState(model || '');
   const [modelSaved, setModelSaved] = useState(false);
-
-  useEffect(() => {
-    (window.electronAPI?.getModel() ?? Promise.resolve('')).then(m => setModelVal(m || ''));
-  }, []);
 
   const saveKey = async () => {
     const trimmed = keyVal.trim();
-    if (!trimmed) return;
+    // Run full validation before saving
+    const result = validateApiKey(trimmed);
+    if (!result.valid) {
+      setKeyError(result.reason);
+      // Log without exposing the full key
+      const prefix = trimmed ? trimmed.substring(0, 8) + '...' : '(empty)';
+      console.warn(`[ApiKeyValidation] Key rejected (${result.code}): ${prefix} — ${result.reason}`);
+      return;
+    }
+    setKeyError('');
     try { await (window.electronAPI?.setApiKey(trimmed) ?? Promise.resolve()); }
     catch { /* storage error — key still usable for this session */ }
     setApiKey?.(trimmed);
@@ -26,6 +33,7 @@ export default function SettingsPage({ apiKey, setApiKey, intensity, setIntensit
     if (!trimmed) return;
     try { await (window.electronAPI?.setModel(trimmed) ?? Promise.resolve()); }
     catch { /* ignore */ }
+    setModel?.(trimmed);
     setModelSaved(true);
     setTimeout(() => setModelSaved(false), 2000);
   };
@@ -46,24 +54,27 @@ export default function SettingsPage({ apiKey, setApiKey, intensity, setIntensit
         {/* API Key */}
         <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:'18px 20px', marginBottom:16 }}>
           <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted, letterSpacing:'.12em', marginBottom:12 }}>OPENROUTER API KEY</div>
-          <div style={{ display:'flex', gap:8, marginBottom:8 }}>
+          <div style={{ display:'flex', gap:8, marginBottom: keyError ? 4 : 8 }}>
             <input
               type={showApiKey ? 'text' : 'password'}
               value={keyVal}
-              onChange={e => { setKeyVal(e.target.value); setKeySaved(false); }}
+              onChange={e => { setKeyVal(e.target.value); setKeySaved(false); setKeyError(''); }}
               onKeyDown={e => e.key === 'Enter' && saveKey()}
               placeholder="sk-or-..."
-              style={{ flex:1, background:T.card, border:`1px solid ${T.border}`, borderRadius:6, padding:'8px 12px', color:T.text, fontFamily:"'IBM Plex Mono',monospace", fontSize:11, outline:'none' }}
+              style={{ flex:1, background:T.card, border:`1px solid ${keyError ? T.rose : T.border}`, borderRadius:6, padding:'8px 12px', color:T.text, fontFamily:"'IBM Plex Mono',monospace", fontSize:11, outline:'none' }}
             />
             <button onClick={() => setShowApiKey(v => !v)}
               style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:6, color:T.muted, fontSize:12, cursor:'pointer', padding:'0 12px', fontFamily:"'IBM Plex Mono',monospace" }}>
               {showApiKey ? 'hide' : 'show'}
             </button>
             <button onClick={saveKey}
-              style={{ background: keySaved ? T.green : T.accentLo, border:`1px solid ${keySaved ? T.green : T.accent}50`, borderRadius:6, color: keySaved ? T.green : T.accent, fontSize:12, fontWeight:700, cursor:'pointer', padding:'0 16px', fontFamily:"'Syne',sans-serif", transition:'all .2s' }}>
+              style={{ background: keySaved ? T.green : keyError ? T.rose + '20' : T.accentLo, border:`1px solid ${keySaved ? T.green : keyError ? T.rose + '50' : T.accent}50`, borderRadius:6, color: keySaved ? T.green : keyError ? T.rose : T.accent, fontSize:12, fontWeight:700, cursor:'pointer', padding:'0 16px', fontFamily:"'Syne',sans-serif", transition:'all .2s' }}>
               {keySaved ? '✓ saved' : 'save'}
             </button>
           </div>
+          {keyError && (
+            <div style={{ color:T.rose, fontSize:10, fontFamily:"'IBM Plex Mono',monospace", marginBottom:8, lineHeight:1.4 }}>{keyError}</div>
+          )}
           <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted }}>OpenRouter API key — used for AI Check-in, Plan My Day, Suggest Subtask</div>
         </div>
         {/* AI Model */}

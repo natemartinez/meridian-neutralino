@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { T } from '../utils/theme.js';
+import { validateApiKey } from '../utils/api.js';
 import meridianLogo from '../assets/meridian_full_logo.png';
 
 export default function ApiKeyScreen({ onSave }) {
@@ -9,10 +10,21 @@ export default function ApiKeyScreen({ onSave }) {
 
   const handleSave = async () => {
     const trimmed = val.trim();
-    if (!trimmed) { setErr('Please enter your API key.'); return; }
+    // Run full validation before saving
+    const result = validateApiKey(trimmed);
+    if (!result.valid) {
+      setErr(result.reason);
+      // Log without exposing the full key
+      const prefix = trimmed ? trimmed.substring(0, 8) + '...' : '(empty)';
+      console.warn(`[ApiKeyValidation] Key rejected (${result.code}): ${prefix} — ${result.reason}`);
+      return;
+    }
     setSaving(true);
+    // Save to extension (Neutralino keychain) — may fail if WebSocket not connected
     try { await (window.electronAPI?.setApiKey(trimmed) ?? Promise.resolve()); }
-    catch { /* storage failed but still update state so the app is usable */ }
+    catch { /* extension unavailable — localStorage fallback handles persistence */ }
+    // Always persist to localStorage as the reliable fallback
+    localStorage.setItem('meridian_api_key', trimmed);
     onSave(trimmed);
   };
 
