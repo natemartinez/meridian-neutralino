@@ -68,6 +68,19 @@ export function validateNOVAResponse(text, programId) {
       return { valid: true, reason: null };
     }
 
+    case 'calibration': {
+      // Must contain a question and reference understanding/learning
+      const hasQuestion = text.includes('?');
+      const hasLearningIntent = /understand|learn|tell me|what about|how about|clarify|help me understand|you mentioned|you said|what are|what does|how do/i.test(text);
+      if (!hasQuestion) {
+        return { valid: false, reason: 'Calibration should ask questions to understand the user.' };
+      }
+      if (!hasLearningIntent) {
+        return { valid: false, reason: 'Calibration should reference user context, not be generic.' };
+      }
+      return { valid: true, reason: null };
+    }
+
     default:
       return { valid: true, reason: null };
   }
@@ -187,7 +200,7 @@ export const NOVA_DEFAULT = {
   syncScore: 0,
   syncEvents: [],
   routine: null,
-  programChats: { briefing: [], focus: null, regroup: [], preview: [] },
+  programChats: { briefing: [], focus: null, regroup: [], preview: [], calibration: [] },
   suggestedTasks: [],
   dailyPlan: null,
   planGenLoading: false,

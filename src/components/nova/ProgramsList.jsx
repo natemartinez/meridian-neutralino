@@ -53,6 +53,19 @@ const PROGRAMS = [
       </svg>
     ),
   },
+  {
+    id: 'calibration',
+    label: 'Calibration',
+    desc: 'Align NOVA with your goals',
+    color: T.accent,
+    icon: (
+      <svg width="13" height="13" viewBox="0 0 13 13">
+        <path d="M6.5 1.5 L11.5 6.5 L6.5 11.5 L1.5 6.5 Z" fill="none" stroke={T.accent} strokeWidth="1.4"/>
+        <circle cx="6.5" cy="6.5" r="2.5" fill="none" stroke={T.accent} strokeWidth="1.2"/>
+        <circle cx="6.5" cy="6.5" r="1" fill={T.accent}/>
+      </svg>
+    ),
+  },
 ];
 
 export default function ProgramsList({ mainPage, onOpenProgram, onBackToHQ, addSyncEvent }) {

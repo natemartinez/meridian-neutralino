@@ -88,7 +88,7 @@ export function useNOVA({ apiKey, model, projects, focus, waypointContext, loade
   }, []); // intentionally narrow — one-time seed on mount
 
   const addSyncEvent = useCallback((type, detail = '') => {
-    const POINTS = { task_accepted: 5, task_completed: 10, briefing_done: 5, task_rejected: -2 };
+    const POINTS = { task_accepted: 5, task_completed: 10, briefing_done: 5, task_rejected: -2, calibration_complete: 15, knowledge_confirmed: 3 };
     const delta = POINTS[type] ?? 0;
     setNovaState(prev => ({
       ...prev,
@@ -216,6 +216,26 @@ export function useNOVA({ apiKey, model, projects, focus, waypointContext, loade
         .join('\n');
 
       return `${base} It's currently ${timeStr}. The user is planning for ${horizon}. Yesterday they completed ${yesterdayCompletions} subtasks.${todayTasks ? `\n\nToday's existing plan:\n${todayTasks}` : ''}\n\nYour FIRST message must be: "It's ${timeStr} — let's plan ${horizon}. What's top of mind?" Be concise. Suggest 2-4 specific tasks based on active goals and what's unfinished. Ask one question at a time. When the user seems satisfied, end with the exact token: [READY]`;
+    }
+
+    if (programId === 'calibration') {
+      const confidence = computePlanningConfidence(novaState.syncEvents);
+      const kbResult = buildStructuredKnowledgeBlock(knowledgePool);
+      const knowledgeBlock = kbResult.text || '';
+      if (kbResult.usedEntryIds?.length > 0) {
+        lastUsedEntryIdsRef.current = kbResult.usedEntryIds;
+      }
+
+      let directive;
+      if (confidence < 30) {
+        directive = `Your confidence with this user is very low (${confidence}%). Your ONLY goal is to understand them. Ask fundamental questions one at a time: What are their main goals? What does their ideal work day look like? What tools do they prefer? What are their biggest challenges? Do NOT make suggestions. Do NOT try to plan. Just learn.`;
+      } else if (confidence < 55) {
+        directive = `Your confidence with this user is moderate (${confidence}%). Ask targeted follow-up questions to fill gaps in your understanding. Reference what you already know from the Knowledge Pool and ask for clarification or elaboration. One question at a time.`;
+      } else {
+        directive = `Your confidence with this user is good (${confidence}%). Summarize what you understand about them and ask them to confirm. If they confirm accuracy, end with [READY]. If they correct you, learn from the correction and continue.`;
+      }
+
+      return `${base}\n\nThis is a Calibration session. ${directive}\n\nKnowledge Pool context:\n${knowledgeBlock}\n\nRules:\n- Ask ONE question at a time\n- Never repeat a question already answered\n- Reference what you already know to show understanding\n- When the user confirms understanding is accurate, end with [READY]`;
     }
 
     return base;
@@ -466,9 +486,13 @@ export function useNOVA({ apiKey, model, projects, focus, waypointContext, loade
         lastValidation: validation.valid ? null : validation,
       }));
       if (isReady) {
-        addSyncEvent('briefing_done', programId);
-        extractNOVAInsights(programId, finalHistory);
-        generateNovaPlanRef.current?.();
+        if (programId === 'calibration') {
+          addSyncEvent('calibration_complete', 'User confirmed NOVA understanding');
+        } else {
+          addSyncEvent('briefing_done', programId);
+          extractNOVAInsights(programId, finalHistory);
+          generateNovaPlanRef.current?.();
+        }
       }
     } finally { setNovaLoading(false); }
   }, [novaChatInput, novaLoading, apiKey, novaState, buildNOVASystemPrompt, addSyncEvent, extractNOVAInsights, novaRetry, inferKnowledgeFromMessage]);
