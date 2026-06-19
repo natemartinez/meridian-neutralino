@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import RegroupPanel from './RegroupPanel.jsx';
 import RetryFeedback from './RetryFeedback.jsx';
+import NOVAMessageBlock from './NOVAMessageBlock.jsx';
 import { parseDeferClue } from '../../utils/helpers.js';
 import { useNovaInteractionStore } from '../../store/novaInteractionStore.js';
 
@@ -25,10 +26,11 @@ function NOVAProgramPanel({
   const [breakdownInput, setBreakdownInput] = useState('');
 
   const PROG_META = {
-    briefing: { label:'Briefing', color:'#F59E0B', desc:'Morning debrief' },
-    focus:    { label:'Focus',    color: T.blue,   desc:'Lock in plan' },
-    regroup:  { label:'Re-group', color: T.purple, desc:'Recalibrate' },
-    preview:  { label:'Preview',  color: T.cyan,   desc:'Plan the next day' },
+    briefing:    { label:'Briefing',    color:'#F59E0B', desc:'Morning debrief' },
+    focus:       { label:'Focus',       color: T.blue,   desc:'Lock in plan' },
+    regroup:     { label:'Re-group',    color: T.purple, desc:'Recalibrate' },
+    preview:     { label:'Preview',     color: T.cyan,   desc:'Plan the next day' },
+    calibration: { label:'Calibration', color: T.accent, desc:'Align with NOVA' },
   };
   const meta     = PROG_META[progId] || PROG_META.briefing;
   const history  = novaState.programChats[progId] || [];
@@ -36,6 +38,7 @@ function NOVAProgramPanel({
   const isRegroup = progId === 'regroup';
   const isBriefing = progId === 'briefing';
   const isPreview = progId === 'preview';
+  const isCalibration = progId === 'calibration';
   const focusPlan = novaState.programChats.focus;
   const msgEndRef = React.useRef(null);
 
@@ -470,9 +473,7 @@ function NOVAProgramPanel({
           {focusPlan && focusPlan !== '__loading__' ? (
             <div style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:8, padding:'10px 12px', marginTop:8 }}>
               <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:meta.color, letterSpacing:'.08em', marginBottom:6 }}>ACTION PLAN</div>
-              {focusPlan.split('\n').map((line, i) => line.trim() && (
-                <div key={i} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:11, color:T.text, lineHeight:1.7, paddingLeft:4 }}>{line}</div>
-              ))}
+              <NOVAMessageBlock content={focusPlan} color={meta.color} />
             </div>
           ) : focusPlan === '__loading__' ? (
             <div style={{ textAlign:'center', padding:'20px 0', fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:T.muted }}>NOVA is thinking…</div>
@@ -496,12 +497,12 @@ function NOVAProgramPanel({
             />
           )}
         </div>
-      ) : (isBriefing || isPreview) && (
-        /* ── Briefing / Preview Chat ── */
+      ) : (isBriefing || isPreview || isCalibration) && (
+        /* ── Briefing / Preview / Calibration Chat ── */
         <div style={{ flex:1, overflowY:'auto', padding:'0 12px', display:'flex', flexDirection:'column', gap:8 }}>
           {history.length === 0 && (
             <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:T.muted, textAlign:'center', padding:'20px 0', lineHeight:1.8 }}>
-              {isPreview ? 'Plan your next day with NOVA.' : 'Start your morning debrief with NOVA.'}
+              {isPreview ? 'Plan your next day with NOVA.' : isCalibration ? 'Help NOVA understand your goals and work style.' : 'Start your morning debrief with NOVA.'}
             </div>
           )}
           {history.map((msg, i) => (
@@ -510,9 +511,14 @@ function NOVAProgramPanel({
                 maxWidth:'85%', padding:'7px 10px', borderRadius: msg.role === 'user' ? '8px 8px 2px 8px' : '8px 8px 8px 2px',
                 background: msg.role === 'user' ? `${meta.color}22` : T.card,
                 border: `1px solid ${msg.role === 'user' ? meta.color + '44' : T.border}`,
-                fontFamily:"'IBM Plex Mono',monospace", fontSize:11, color:T.text, lineHeight:1.6, whiteSpace:'pre-wrap',
               }}>
-                {msg.content}
+                {msg.role === 'user' ? (
+                  <span style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:11, color:T.text, lineHeight:1.6, whiteSpace:'pre-wrap' }}>
+                    {msg.content}
+                  </span>
+                ) : (
+                  <NOVAMessageBlock content={msg.content} color={meta.color} />
+                )}
               </div>
             </div>
           ))}
@@ -648,8 +654,8 @@ function NOVAProgramPanel({
         </div>
       )}
 
-      {/* ── Chat Input (for Briefing chat phase, Preview, and Focus) ── */}
-      {((isBriefing && briefingPhase === 'chat') || isPreview || (isFocus && !focusPlan)) && (
+      {/* ── Chat Input (for Briefing chat phase, Preview, Calibration, and Focus) ── */}
+      {((isBriefing && briefingPhase === 'chat') || isPreview || isCalibration || (isFocus && !focusPlan)) && (
         <div style={{ padding:'8px 12px 12px', borderTop:`1px solid ${T.border}`, display:'flex', gap:6 }}>
           <textarea
             value={novaChatInput}

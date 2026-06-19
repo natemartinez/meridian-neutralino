@@ -1968,6 +1968,42 @@ import NovaToast from './components/nova/NovaToast.jsx';
                     dismissInsight={dismissInsight}
                   />
                 )}
+                {mainPage === 'program-calibration' && (
+                  <NOVAProgramPanel
+                    progId="calibration"
+                    novaState={novaState}
+                    setNovaState={setNovaState}
+                    novaChatInput={novaChatInput}
+                    setNovaChatInput={setNovaChatInput}
+                    novaLoading={novaLoading}
+                    sendNOVAMessage={sendNOVAMessage}
+                    addSyncEvent={addSyncEvent}
+                    setOnwardItems={setOnwardItems}
+                    uid={uid}
+                    onBack={() => setMainPage('hq')}
+                    T={T}
+                    onNewSession={onNewSession}
+                    buildNOVASystemPrompt={buildNOVASystemPrompt}
+                    onwardItems={onwardItems}
+                    projects={projects}
+                    selectedForToday={selectedForToday}
+                    setSelectedForToday={setSelectedForToday}
+                    deferredItems={deferredItems}
+                    setDeferredItems={setDeferredItems}
+                    backlogItems={backlogItems}
+                    setBacklogItems={setBacklogItems}
+                    onBreakdownTask={handleBreakdownTask}
+                    sessions={sessions}
+                    brainDumpEntries={brainDumpEntries}
+                    onBrainDump={handleBrainDump}
+                    journalEntries={journalEntries}
+                    onJournalEntry={handleJournalEntry}
+                    onBreakdownSuggestion={handleBreakdownSuggestion}
+                    novaRetry={novaRetry}
+                    confirmInsight={confirmInsight}
+                    dismissInsight={dismissInsight}
+                  />
+                )}
               </div>
             </div>
 
