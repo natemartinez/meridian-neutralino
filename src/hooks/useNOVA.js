@@ -5,7 +5,7 @@ import { buildFullKnowledgeBlock, buildLightKnowledgeContext, buildStructuredKno
 import { computePlanningConfidence, NOVA_DEFAULT, validateNOVAResponse, updatePlanAccuracyHistory } from '../utils/nova.js';
 import { useNovaRetry } from './useNovaRetry.js';
 
-export function useNOVA({ apiKey, model, projects, focus, waypointContext, loaded }) {
+export function useNOVA({ apiKey, model, projects, focus, waypointContext, loaded, pendingAutoStart, setPendingAutoStart }) {
   const [novaState, setNovaState] = useState(() => {
     try {
       const s = localStorage.getItem('meridian_nova_v1');
@@ -183,7 +183,14 @@ export function useNOVA({ apiKey, model, projects, focus, waypointContext, loade
     if (kbResult.usedEntryIds?.length > 0) {
       lastUsedEntryIdsRef.current = kbResult.usedEntryIds;
     }
-    const base = `You are NOVA, a productivity companion and psychological coach. Planning confidence with this user: ${confidence}%. ${confidence < 30 ? 'Ask more questions to learn their patterns.' : confidence > 70 ? 'You know this user well — make bold, specific suggestions.' : 'Balance questions with suggestions.'} Active goals: ${goalsSummary}. Today's focus: ${focusSummary}. ${routineNote} Psychological coaching scope: stress reduction, task breakdown, work tips only — not personal therapy.${knowledgeBlock}`;
+    const base = `You are NOVA, a productivity companion and psychological coach. Planning confidence with this user: ${confidence}%. ${confidence < 30 ? 'Ask more questions to learn their patterns.' : confidence > 70 ? 'You know this user well — make bold, specific suggestions.' : 'Balance questions with suggestions.'} Active goals: ${goalsSummary}. Today's focus: ${focusSummary}. ${routineNote} Psychological coaching scope: stress reduction, task breakdown, work tips only — not personal therapy.${knowledgeBlock}
+
+After your message, include 3 multiple-choice reply options in this format:
+[OPTIONS]
+Option 1 text
+Option 2 text
+Option 3 text
+These should represent the 3 most likely ways the user would respond. Make them specific to your message, not generic. Do NOT include [OPTIONS] if the user is expected to type a free-form response (e.g., rating scales, open-ended reflection).`;
 
     if (programId === 'briefing') return `${base} This is a morning Briefing. Your FIRST message must be EXACTLY this mindset check-in: "On a scale of 1–5, how's your headspace going into today?" Use their score to calibrate: 1-2 = more coaching and task breakdown; 3 = balanced; 4-5 = jump straight to daily planning. Plan only for TODAY — not the week, not the month. Ask one question at a time. When the user says they feel ready, end your message with the exact token: [READY]`;
 
@@ -241,19 +248,40 @@ export function useNOVA({ apiKey, model, projects, focus, waypointContext, loade
     return base;
   }, [projects, focus, novaState.syncEvents, novaState.routine, knowledgePool, novaState.dailyPlan]);
 
-  // Auto-start NOVA programs when waypoint opens
+  // Auto-start NOVA programs when waypoint opens OR pendingAutoStart is set
   useEffect(() => {
     if (!loaded) return;
-    if (waypointContext?.type !== 'program') return;
-    const progId = waypointContext.id;
-    if (progId === 'focus') return;
-    const history = novaState.programChats[progId] || [];
-    if (history.length > 0) return;
-    if (novaLoading) return;
     if (!apiKey) return;
+    if (novaLoading) return;
+
+    // Determine which program to auto-start
+    let progId = null;
+
+    // Priority 1: pendingAutoStart (from App.jsx mount effect)
+    if (pendingAutoStart) {
+      progId = pendingAutoStart;
+    }
+    // Priority 2: waypointContext (from ProgramsList click)
+    else if (waypointContext?.type === 'program') {
+      progId = waypointContext.id;
+    }
+
+    if (!progId) return;
+    if (progId === 'focus') return;
+
+    const history = novaState.programChats[progId] || [];
+    if (history.length > 0) {
+      // If pendingAutoStart but program already has history, clear the flag
+      if (pendingAutoStart) setPendingAutoStart?.(null);
+      return;
+    }
 
     const systemPrompt = buildNOVASystemPrompt(progId);
     setNovaLoading(true);
+
+    // Clear pendingAutoStart once we begin
+    if (pendingAutoStart) setPendingAutoStart?.(null);
+
     novaRetry.executeWithRetry(() =>
       chatWithNOVA([
         { role: 'system', content: systemPrompt },
@@ -267,7 +295,7 @@ export function useNOVA({ apiKey, model, projects, focus, waypointContext, loade
         programChats: { ...prev.programChats, [progId]: [{ role: 'assistant', content: cleanReply }] },
       }));
     }).finally(() => setNovaLoading(false));
-  }, [waypointContext?.type, waypointContext?.id, apiKey, buildNOVASystemPrompt, loaded, novaSessionKey, novaRetry, novaLoading, novaState.programChats]);
+  }, [waypointContext?.type, waypointContext?.id, pendingAutoStart, apiKey, buildNOVASystemPrompt, loaded, novaSessionKey, novaRetry, novaLoading, novaState.programChats, setPendingAutoStart]);
 
   const extractNOVAInsights = useCallback(async (programId, messages) => {
     if (!apiKey || messages.length < 3) return;

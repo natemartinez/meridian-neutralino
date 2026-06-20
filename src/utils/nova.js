@@ -209,3 +209,92 @@ export const NOVA_DEFAULT = {
   pendingInsights: [],
   planAccuracy: { history: [], movingAverage: null },
 };
+
+/**
+ * Determine which NOVA program should auto-start on app launch.
+ * Priority order (highest to lowest):
+ *   1. Regroup — if streak was broken (had a streak, but missed yesterday)
+ *   2. Briefing — morning hours (5-12) if not done today
+ *   3. Preview — evening hours (17-22) if no history
+ *   4. Calibration — any time, if never completed
+ *
+ * Returns the program ID string, or null if no program should auto-start.
+ *
+ * @param {Object} opts
+ * @param {string}  opts.apiKey          - API key (required; null means no NOVA)
+ * @param {Array}   opts.syncEvents      - Array of sync event objects { type, ts }
+ * @param {Object}  opts.programChats    - novaState.programChats
+ * @param {number}  opts.hour            - Current hour (0-23)
+ * @param {number}  opts.streakDays      - Current streak count
+ * @param {string}  opts.lastActiveDate  - Date string of last activity
+ * @returns {string|null}
+ */
+export function determineAutoStartProgram({ apiKey, syncEvents, programChats, hour, streakDays, lastActiveDate }) {
+  if (!apiKey) return null;
+
+  const today = new Date().toDateString();
+  const yesterday = new Date(Date.now() - 86400000).toDateString();
+
+  const eventToday = (type) =>
+    Array.isArray(syncEvents) && syncEvents.some(e => e.type === type && new Date(e.ts).toDateString() === today);
+
+  const eventEver = (type) =>
+    Array.isArray(syncEvents) && syncEvents.some(e => e.type === type);
+
+  const hasHistory = (progId) => {
+    const chat = programChats?.[progId];
+    if (progId === 'focus') return chat !== null;
+    return Array.isArray(chat) && chat.length > 0;
+  };
+
+  // Priority 1: Regroup — streak was broken
+  // Streak was > 0 but last active was not today or yesterday
+  if (streakDays > 0 && lastActiveDate && lastActiveDate !== today && lastActiveDate !== yesterday) {
+    if (!hasHistory('regroup')) return 'regroup';
+  }
+
+  // Priority 2: Briefing — morning hours (5:00 - 11:59)
+  if (hour >= 5 && hour < 12) {
+    if (!eventToday('briefing_done') && !hasHistory('briefing')) return 'briefing';
+  }
+
+  // Priority 3: Preview — evening hours (17:00 - 21:59)
+  if (hour >= 17 && hour < 22) {
+    if (!hasHistory('preview')) return 'preview';
+  }
+
+  // Priority 4: Calibration — any time, if never completed
+  if (!eventEver('calibration_complete') && !hasHistory('calibration')) return 'calibration';
+
+  return null;
+}
+
+/**
+ * Find the most recently active NOVA program based on chat history.
+ * Checks all program chats for the one with the most recent message timestamp.
+ * Returns { progId, lastMessage, messageCount } or null if no program has history.
+ *
+ * @param {Object} programChats - novaState.programChats
+ * @returns {{ progId: string, lastMessage: Object, messageCount: number } | null}
+ */
+export function getLastActiveProgram(programChats) {
+  const progIds = ['briefing', 'focus', 'regroup', 'preview', 'calibration'];
+  let lastActive = null;
+  let lastTs = 0;
+
+  for (const progId of progIds) {
+    const chat = programChats[progId];
+    if (!chat) continue;
+    const messages = Array.isArray(chat) ? chat : [chat];
+    if (messages.length === 0) continue;
+
+    const lastMsg = messages[messages.length - 1];
+    const ts = lastMsg.ts || lastMsg.timestamp || 0;
+    if (ts > lastTs) {
+      lastTs = ts;
+      lastActive = { progId, lastMessage: lastMsg, messageCount: messages.length };
+    }
+  }
+
+  return lastActive;
+}

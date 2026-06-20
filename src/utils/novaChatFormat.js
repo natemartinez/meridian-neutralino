@@ -3,7 +3,7 @@
  *
  * Transforms raw LLM response text into structured segments for rich rendering.
  * Supports: paragraphs, bullet lists, numbered lists, section headers,
- * code blocks, dividers, and inline bold formatting.
+ * code blocks, dividers, options blocks, and inline bold formatting.
  */
 
 /**
@@ -19,6 +19,7 @@
  *   { type: 'header',    content: '...' }
  *   { type: 'code',      content: '...', language: '...' }
  *   { type: 'divider' }
+ *   { type: 'options',   items: ['...', '...', '...'] }
  */
 export function parseNOVAMessage(text) {
   if (!text || !text.trim()) return [];
@@ -59,6 +60,27 @@ export function parseNOVAMessage(text) {
         content: codeLines.join('\n'),
         language: language || undefined,
       });
+      continue;
+    }
+
+    // Options block: [OPTIONS] marker followed by option lines
+    if (trimmed === '[OPTIONS]') {
+      const items = [];
+      i++;
+      while (i < lines.length) {
+        const optLine = lines[i].trim();
+        if (optLine === '' || optLine === '[/OPTIONS]') {
+          i++;
+          break;
+        }
+        // Stop if we hit another marker
+        if (optLine.startsWith('[') && optLine.endsWith(']')) break;
+        items.push(optLine);
+        i++;
+      }
+      if (items.length > 0) {
+        segments.push({ type: 'options', items });
+      }
       continue;
     }
 

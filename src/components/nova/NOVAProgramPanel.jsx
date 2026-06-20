@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import RegroupPanel from './RegroupPanel.jsx';
 import RetryFeedback from './RetryFeedback.jsx';
 import NOVAMessageBlock from './NOVAMessageBlock.jsx';
@@ -21,6 +21,14 @@ function NOVAProgramPanel({
   dismissInsight,
 }) {
   const [showContext, setShowContext] = useState(false);
+  const [selectedOption, setSelectedOption] = useState(null);
+
+  // Handle multiple-choice option selection
+  const handleOptionSelect = useCallback((optionText) => {
+    if (novaLoading) return;
+    setSelectedOption(optionText);
+    sendNOVAMessage(progId, optionText);
+  }, [novaLoading, sendNOVAMessage, progId]);
   const [briefingPhase, setBriefingPhase] = useState('chat'); // 'chat' | 'pick3' | 'breakdown' | 'done'
   const [breakdownTask, setBreakdownTask] = useState(null);
   const [breakdownInput, setBreakdownInput] = useState('');
@@ -517,7 +525,11 @@ function NOVAProgramPanel({
                     {msg.content}
                   </span>
                 ) : (
-                  <NOVAMessageBlock content={msg.content} color={meta.color} />
+                  <NOVAMessageBlock
+                    content={msg.content}
+                    color={meta.color}
+                    onOptionSelect={handleOptionSelect}
+                  />
                 )}
               </div>
             </div>

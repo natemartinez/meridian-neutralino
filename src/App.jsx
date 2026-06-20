@@ -28,7 +28,7 @@ import ProgramsList from './components/nova/ProgramsList.jsx';
 import NovaInsightsPanel from './components/nova/NovaInsightsPanel.jsx';
 import { INITIAL_SKILLS, addSkillEvidence, updateSkillMeta } from './constants/skills.js';
 import { buildLightKnowledgeContext } from './utils/knowledge.js';
-import { computePlanningConfidence } from './utils/nova.js';
+import { computePlanningConfidence, determineAutoStartProgram, getLastActiveProgram } from './utils/nova.js';
 import NOVAProgramPanel from './components/nova/NOVAProgramPanel.jsx';
 import { useNOVA } from './hooks/useNOVA.js';
 import { drawOnwardPage, drawMapPage, drawPathsPage, drawSkillsPage, drawGoalsPage } from './utils/drawPages.js';
@@ -40,6 +40,7 @@ import { useNovaInteractions } from './hooks/useNovaInteractions.js';
 import { registerPatterns, useNovaInteractionStore } from './store/novaInteractionStore.js';
 import { PATTERNS } from './constants/novaInteractions.js';
 import NovaToast from './components/nova/NovaToast.jsx';
+import StartupCanvas from './components/nova/StartupCanvas.jsx';
 
     function Meridian() {
       const [projects, setProjects]     = useState(() => { try { const s = localStorage.getItem('meridian_projects_v2'); return s ? JSON.parse(s) : []; } catch { return []; } });
@@ -112,6 +113,8 @@ import NovaToast from './components/nova/NovaToast.jsx';
       const [selectedSkillId, setSelectedSkillId] = useState(null);
       // Top-level navigation
       const [mainPage, setMainPage]           = useState('hq');
+      const [showStartupCanvas, setShowStartupCanvas] = useState(true);
+      const [pendingAutoStart, setPendingAutoStart]   = useState(null);
       const [intensity, setIntensity]         = useState({ low:35, medium:55, high:75 });
       const [showApiKey, setShowApiKey]       = useState(false);
       const [showMindCheckCard, setShowMindCheckCard] = useState(false);
@@ -177,7 +180,7 @@ import NovaToast from './components/nova/NovaToast.jsx';
         confirmInsight,
         dismissInsight,
         recordPlanAccuracy,
-      } = useNOVA({ apiKey, model, projects, focus, waypointContext, loaded });
+      } = useNOVA({ apiKey, model, projects, focus, waypointContext, loaded, pendingAutoStart, setPendingAutoStart });
 
       // ── NOVA Active Interactions ──
       const novaInteractions = useNovaInteractions();
@@ -350,10 +353,29 @@ import NovaToast from './components/nova/NovaToast.jsx';
             if (savedModel) setModel(savedModel);
             setLoaded(true);
             
-            // Fire app_opened event for NOVA interactions
-            setTimeout(() => {
-              useNovaInteractionStore.getState().fireEvent('app_opened', {});
-            }, 1000);
+                        // Determine auto-start program after loading
+                        const effectiveApiKey = key || apiKey;
+                        if (effectiveApiKey) {
+                          const program = determineAutoStartProgram({
+                            apiKey: effectiveApiKey,
+                            syncEvents: novaState.syncEvents,
+                            programChats: novaState.programChats,
+                            hour: new Date().getHours(),
+                            streakDays,
+                            lastActiveDate,
+                          });
+                          if (program) {
+                            setTimeout(() => {
+                              setPendingAutoStart(program);
+                              setMainPage(`program-${program}`);
+                            }, 500);
+                          }
+                        }
+            
+                        // Fire app_opened event for NOVA interactions
+                        setTimeout(() => {
+                          useNovaInteractionStore.getState().fireEvent('app_opened', {});
+                        }, 1000);
 
             // Calculate deadline alerts after loading
             setTimeout(() => {
@@ -1725,7 +1747,28 @@ import NovaToast from './components/nova/NovaToast.jsx';
 
               {/* Body */}
               <div className="cbody">
-                {mainPage === 'hq' && (
+                {mainPage === 'hq' && showStartupCanvas ? (
+                  <StartupCanvas
+                    lastProgram={getLastActiveProgram(novaState?.programChats)}
+                    focusMode={focusMode}
+                    novaState={novaState}
+                    novaLoading={novaLoading}
+                    pendingAutoStart={pendingAutoStart}
+                    onDismiss={() => setShowStartupCanvas(false)}
+                    onNavigate={(page) => { setMainPage(page); setShowStartupCanvas(false); }}
+                    onResumeFocus={() => {
+                      if (focusMode) {
+                        setFocusMode({ ...focusMode, active: true });
+                        setShowStartupCanvas(false);
+                      }
+                    }}
+                    streakDays={streakDays}
+                    lastActiveDate={lastActiveDate}
+                    onwardItems={onwardItems}
+                    projects={projects}
+                    T={T}
+                  />
+                ) : mainPage === 'hq' && (
                   <div className="cv" style={{ cursor: activePage === 'goals' ? (dragging ? 'grabbing' : 'grab') : activePage === 'onward' ? 'default' : 'pointer', position: 'relative', overflow: activePage === 'onward' ? 'auto' : 'hidden', width: (activePage === 'onward' && waypointOpen) ? 'calc(100% - 244px)' : '100%', transition: 'width 0.4s cubic-bezier(.4,0,.2,1)', scrollbarWidth: 'thin', scrollbarColor: `${T.border} ${T.bg}` }}>
                     <canvas
                       ref={canvasRef}

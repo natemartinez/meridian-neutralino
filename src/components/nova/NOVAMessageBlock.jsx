@@ -7,13 +7,14 @@ import { parseNOVAMessage, parseInlineFormatting } from '../../utils/novaChatFor
  *
  * Renders a single NOVA assistant message as structured, visually distinct
  * segments — paragraphs, bullet lists, numbered lists, section headers,
- * code blocks, and dividers — instead of a monolithic text block.
+ * code blocks, dividers, and options — instead of a monolithic text block.
  *
  * Props:
- *   content   - Raw message string from NOVA
- *   color     - Program accent color (e.g. meta.color)
+ *   content        - Raw message string from NOVA
+ *   color          - Program accent color (e.g. meta.color)
+ *   onOptionSelect - (optionText: string) => void  (optional, for multiple-choice)
  */
-export default function NOVAMessageBlock({ content, color }) {
+export default function NOVAMessageBlock({ content, color, onOptionSelect }) {
   const segments = useMemo(() => parseNOVAMessage(content), [content]);
   const accentColor = color || T.accent;
 
@@ -68,7 +69,16 @@ export default function NOVAMessageBlock({ content, color }) {
               />
             );
 
-          case 'divider':
+          case 'options':
+            return (
+              <OptionsBlock
+                key={idx}
+                items={seg.items}
+                accentColor={accentColor}
+                onOptionSelect={onOptionSelect}
+              />
+            );
+
             return (
               <div
                 key={idx}
@@ -251,6 +261,75 @@ function CodeBlock({ content, language }) {
       >
         {content}
       </pre>
+    </div>
+  );
+}
+
+/* ── Options Block (multiple-choice) ── */
+function OptionsBlock({ items, accentColor, onOptionSelect }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        marginTop: 4,
+        paddingTop: 8,
+        borderTop: `1px solid ${T.border}60`,
+      }}
+    >
+      {items.map((item, i) => (
+        <button
+          key={i}
+          onClick={() => onOptionSelect?.(item)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            background: `${accentColor}10`,
+            border: `1px solid ${accentColor}30`,
+            borderRadius: 8,
+            padding: '10px 14px',
+            cursor: 'pointer',
+            textAlign: 'left',
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontSize: 10,
+            color: T.text,
+            lineHeight: 1.5,
+            transition: 'all .14s',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = `${accentColor}20`;
+            e.currentTarget.style.borderColor = `${accentColor}60`;
+            e.currentTarget.style.transform = 'translateX(3px)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = `${accentColor}10`;
+            e.currentTarget.style.borderColor = `${accentColor}30`;
+            e.currentTarget.style.transform = 'translateX(0)';
+          }}
+        >
+          <span
+            style={{
+              width: 20,
+              height: 20,
+              borderRadius: '50%',
+              background: `${accentColor}25`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: "'IBM Plex Mono', monospace",
+              fontSize: 9,
+              fontWeight: 700,
+              color: accentColor,
+              flexShrink: 0,
+            }}
+          >
+            {i + 1}
+          </span>
+          <span style={{ flex: 1 }}>{item}</span>
+        </button>
+      ))}
     </div>
   );
 }
