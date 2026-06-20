@@ -24,3 +24,13 @@ node_modules/
 
 # Temporary / local development files
 .tmp/
+
+# macOS system files
+.DS_Store
+
+# Environment / secrets (never commit)
+.env
+nova-key.txt
+
+# Random screenshots
+*.png
