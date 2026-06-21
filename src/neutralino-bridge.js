@@ -148,6 +148,7 @@ window.nova = {
   if (window.NL_TOKEN && window.NL_PORT) {
     // Already have auth from production __neutralino_globals.js — proceed
     init();
+    registerWindowCloseHandler();
     return;
   }
 
@@ -189,4 +190,27 @@ window.nova = {
 
   // ── Initialize Neutralino ──
   init();
+  registerWindowCloseHandler();
 })();
+
+// ── Graceful shutdown on window close ──
+// When the user clicks the close button (X), Neutralino fires a windowClose
+// event (if exitProcessOnClose is false) or calls app::exit() directly
+// (if exitProcessOnClose is true). We register a handler for the windowClose
+// event as a safety net, in case the event is dispatched.
+function registerWindowCloseHandler() {
+  try {
+    window.addEventListener('windowClose', () => {
+      // If this event fires, it means exitProcessOnClose is false and the
+      // server dispatched the event instead of exiting. We need to call
+      // Neutralino.app.exit(0) to cleanly shut down.
+      setTimeout(() => {
+        Neutralino.app.exit(0).catch(() => {
+          try { Neutralino.extensions.dispatch('meridian', 'killProcess', {}); } catch (_) {}
+        });
+      }, 0);
+    });
+  } catch (_) {
+    // Neutralino may not be available — ignore
+  }
+}

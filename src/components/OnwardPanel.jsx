@@ -17,12 +17,38 @@ export default function OnwardPanel({
   backlogItems = [], deferredItems = [], onRestoreFromBacklog, selectedForToday = [],
   // Plan props
   novaState, prioritizeInput, setPrioritizeInput, generateNovaPlan, apiKey,
+  // ── Day navigation props ──
+  selectedDate, onDateChange,
+  // ── Goal integration props ──
+  setModal, topGoals = [], onToggleTopGoal, setSunId,
 }) {
   const [showBacklog, setShowBacklog] = useState(false);
 
-  // Generate time slots from 6:00 to 23:45 in 15-minute increments
-  const timeSlots = Array.from({ length: 18 * 4 }, (_, i) => {
-    const totalMinutes = (6 * 60) + (i * 15);
+  // ── Day navigation state ──
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const resolvedDate = selectedDate || todayISO;
+  const isToday = resolvedDate === todayISO;
+  const selectedDateObj = new Date(resolvedDate + 'T00:00:00');
+  const displayLabel = isToday
+    ? 'Today'
+    : selectedDateObj.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+
+  const goToDay = (delta) => {
+    if (!onDateChange) return;
+    const d = new Date(selectedDateObj);
+    d.setDate(d.getDate() + delta);
+    // Clamp to ±30 days from today
+    const min = new Date();
+    min.setDate(min.getDate() - 30);
+    const max = new Date();
+    max.setDate(max.getDate() + 30);
+    if (d < min || d > max) return;
+    onDateChange(d.toISOString().slice(0, 10));
+  };
+
+  // Generate time slots from 0:00 to 23:45 in 15-minute increments (96 slots)
+  const timeSlots = Array.from({ length: 24 * 4 }, (_, i) => {
+    const totalMinutes = i * 15;
     const h = Math.floor(totalMinutes / 60);
     const m = totalMinutes % 60;
     return { hour: h, minute: m, value: totalMinutes };
@@ -36,19 +62,22 @@ export default function OnwardPanel({
   };
   const today = new Date().toDateString();
 
-  // Filter: show only today's items that are NOT deferred and NOT in backlog
-  const todayItems = onwardItems
-    .filter(it => (!it.date || it.date === today))
+  // Filter: show only items for the selected date that are NOT deferred and NOT in backlog
+  const selectedDateItems = onwardItems
+    .filter(it => {
+      if (!it.date) return isToday; // items without a date show on today only
+      return it.date === selectedDateObj.toDateString();
+    })
     .filter(it => !deferredItems.find(d => d.id === it.id))
     .filter(it => !backlogItems.find(b => b.id === it.id))
     .sort((a,b) => a.hour - b.hour);
 
-  // Deferred items that should appear today
+  // Deferred items that should appear on the selected date
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const todayName = dayNames[new Date().getDay()];
-  const visibleDeferred = deferredItems.filter(d => d.deferredTo === todayName);
+  const selectedDayName = dayNames[selectedDateObj.getDay()];
+  const visibleDeferred = deferredItems.filter(d => d.deferredTo === selectedDayName);
 
-  // Plan data
+  // Plan data — only show for today
   const plan = novaState?.dailyPlan;
   const planDate = new Date().toISOString().slice(0, 10);
   const planItems = (plan?.date === planDate && plan?.items) ? plan.items : [];
@@ -57,11 +86,34 @@ export default function OnwardPanel({
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
       <div style={{ padding:'18px 18px 14px', borderBottom:`1px solid ${T.border}` }}>
-        <div style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:700, color:T.accent, marginBottom:2 }}>ONWARD</div>
-        <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted }}>today's time blocks</div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div>
+            <div style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:700, color:T.accent, marginBottom:2 }}>ONWARD</div>
+            <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted }}>time blocks</div>
+          </div>
+          {/* ── Day navigation ── */}
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <button
+              onClick={() => goToDay(-1)}
+              title="Previous day"
+              style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color:T.muted, cursor:'pointer', fontSize:11, padding:'2px 6px', lineHeight:1 }}
+            >◀</button>
+            <div
+              onClick={() => { if (!isToday && onDateChange) onDateChange(todayISO); }}
+              title={isToday ? 'Today' : 'Jump to today'}
+              style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color: isToday ? T.accent : T.muted, cursor: isToday ? 'default' : 'pointer', minWidth:80, textAlign:'center', letterSpacing:'.03em' }}
+            >{displayLabel}</div>
+            <button
+              onClick={() => goToDay(1)}
+              title="Next day"
+              style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color:T.muted, cursor:'pointer', fontSize:11, padding:'2px 6px', lineHeight:1 }}
+            >▶</button>
+          </div>
+        </div>
       </div>
 
-      {/* ── Today's Plan (top-right area) ── */}
+      {/* ── Today's Plan (only show for today) ── */}
+      {isToday && (
       <div style={{ padding:'10px 18px', borderBottom:`1px solid ${T.border}`, background:`${T.accent}04` }}>
         {/* Daily plan header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
@@ -128,6 +180,7 @@ export default function OnwardPanel({
           return null;
         })()}
       </div>
+      )}
 
       {/* Add form */}
       <div style={{ padding:'12px 18px', borderBottom:`1px solid ${T.border}` }}>
@@ -230,8 +283,34 @@ export default function OnwardPanel({
         </div>
       )}
 
-      {/* ── Selected for Today indicator ── */}
-      {selectedForToday.length > 0 && (
+      {/* ── Top Goals quick-add (today only) ── */}
+      {isToday && topGoals.length > 0 && (
+        <div style={{ padding:'8px 18px', borderBottom:`1px solid ${T.border}`, background:`${T.accent}06` }}>
+          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:8, color:T.accent, letterSpacing:'0.08em', marginBottom:6 }}>TOP GOALS</div>
+          <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+            {topGoals.map(g => (
+              <div key={g.id} style={{
+                display:'flex', alignItems:'center', gap:8,
+                padding:'4px 6px', borderRadius:4,
+                borderLeft:`3px solid ${g.color || T.accent}`,
+                background: T.card,
+              }}>
+                <span style={{ flex:1, fontSize:10, color:T.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{g.title}</span>
+                <button
+                  onClick={() => {
+                    setOnwardForm(f => ({ ...f, title: g.title, goalId: g.id }));
+                  }}
+                  title="Add as task"
+                  style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:3, color:T.accent, cursor:'pointer', fontSize:10, padding:'0 5px', lineHeight:'16px', fontFamily:"'IBM Plex Mono',monospace" }}
+                >+</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Selected for Today indicator (today only) ── */}
+      {isToday && selectedForToday.length > 0 && (
         <div style={{ padding:'8px 18px', borderBottom:`1px solid ${T.border}`, background:`${T.green}08` }}>
           <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:8, color:T.green, letterSpacing:'0.08em' }}>
             Today's Focus ({selectedForToday.length}/3)
@@ -259,9 +338,11 @@ export default function OnwardPanel({
 
       {/* Task list */}
       <div style={{ flex:1, overflowY:'auto', padding:'16px 18px' }}>
-        {todayItems.length === 0 ? (
-          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:14, color:T.muted, textAlign:'center', marginTop:24, lineHeight:1.8 }}>No tasks yet.<br/>Add your first time block.</div>
-        ) : todayItems.map((item, index) => (
+        {selectedDateItems.length === 0 ? (
+          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:14, color:T.muted, textAlign:'center', marginTop:24, lineHeight:1.8 }}>
+            {isToday ? 'No tasks yet.\nAdd your first time block.' : 'No tasks for this day.'}
+          </div>
+        ) : selectedDateItems.map((item, index) => (
           <div key={item.id} style={{ display:'flex', alignItems:'center', gap:16, padding:'18px 0', borderBottom:`1px solid ${T.border}` }}>
             <button
               onClick={() => onToggleDone(item.id)}
@@ -302,8 +383,8 @@ export default function OnwardPanel({
                 >▲</button>
                 <button
                   onClick={() => onMoveItem(item.id, 1)}
-                  disabled={index === todayItems.length - 1}
-                  style={{ background:'none', border:'none', color: index === todayItems.length - 1 ? T.border : T.muted, cursor: index === todayItems.length - 1 ? 'default' : 'pointer', fontSize:10, padding:'0 4px', lineHeight:1 }}
+                  disabled={index === selectedDateItems.length - 1}
+                  style={{ background:'none', border:'none', color: index === selectedDateItems.length - 1 ? T.border : T.muted, cursor: index === selectedDateItems.length - 1 ? 'default' : 'pointer', fontSize:10, padding:'0 4px', lineHeight:1 }}
                 >▼</button>
               </div>
             )}

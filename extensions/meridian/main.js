@@ -242,6 +242,12 @@ class MeridianExtension {
         return { success: true, data: rows };
       }
 
+      case 'killProcess':
+        // Called when the close button is clicked and Neutralino.app.exit(0)
+        // fails. This kills the entire process group to ensure clean shutdown.
+        process.exit(0);
+        return { success: true };
+
       default:
         return { success: false, error: `Unknown method: ${method}` };
     }
