@@ -24,6 +24,14 @@ cat > "$LAUNCH_SCRIPT" << 'LAUNCH_SCRIPT_EOF'
 # If the Vite dev server is already running (e.g., from a previous launch
 # or from the terminal), this script will just open a new Neutralino window
 # connected to the existing server instead of starting a duplicate.
+#
+# NOTE: macOS .app bundles launched from Finder have a restricted CWD
+# environment where process.cwd() fails with EPERM. We work around this
+# by using a Node.js wrapper that changes to PROJECT_DIR before invoking neu.
+#
+# NOTE: macOS may run universal binaries under Rosetta (x86_64) when
+# launched from a .app bundle. We force arm64 architecture to ensure
+# native Node.js native bindings (like rolldown) are found.
 
 PROJECT_DIR="$HOME/Documents/dev-projects/meridian-neutralino"
 LOCK_FILE="/tmp/meridian-neu-run.lock"
@@ -35,6 +43,20 @@ LOG_FILE="/tmp/meridian-launcher.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 echo "$(date): === Meridian Launcher Started ==="
+
+# macOS .app bundles launched from Finder have minimal/empty PATH.
+# We must set it explicitly so that node, npx, vite, etc. are found.
+export PATH="$PROJECT_DIR/node_modules/.bin:/usr/local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+# Resolve the actual nvm current node bin directory (if nvm is available)
+if [ -d "$HOME/.nvm" ] && command -v node &>/dev/null; then
+  NODE_BIN="$(dirname "$(command -v node)")"
+  export PATH="$NODE_BIN:$PATH"
+  echo "Resolved node from: $NODE_BIN"
+fi
+
+echo "PATH=$PATH"
+echo "node=$(command -v node) ($(node --version))"
 
 # --- Helper: check if Vite dev server is already running ---
 is_vite_running() {
@@ -49,26 +71,36 @@ launch_neutralino() {
     return 1
   fi
   echo "Opening Neutralino window connected to existing dev server at $DEV_URL..."
-  "$binary" --load-dir-res --path="$PROJECT_DIR" --url="$DEV_URL" --export-auth-info --neu-dev-extension &
+  arch -arm64 "$binary" --load-dir-res --path="$PROJECT_DIR" --url="$DEV_URL" --export-auth-info --neu-dev-extension &
   return 0
 }
 
 # --- Helper: start full 'npx neu run' (Vite + Neutralino) ---
+# Uses a Node.js wrapper to work around macOS .app bundle CWD restrictions.
+# Forces arm64 architecture to ensure native bindings are found.
 start_neu_run() {
   echo "=== Starting Meridian via 'npx neu run' ==="
-  cd "$PROJECT_DIR" || { echo "ERROR: Project directory not found at $PROJECT_DIR"; exit 1; }
   echo $$ > "$LOCK_FILE"
 
-  # Use local neu from node_modules to avoid npx download delays
-  if [ -x "node_modules/.bin/neu" ]; then
-    echo "Using local neu from node_modules/.bin/neu"
-    ./node_modules/.bin/neu run
+  local neu_bin="$PROJECT_DIR/node_modules/.bin/neu"
+
+  if [ -x "$neu_bin" ]; then
+    echo "Using local neu from $neu_bin"
+    # Wrap in node -e to chdir first, avoiding process.cwd() EPERM from .app bundle.
+    # We set process.argv so the neu CLI parses 'run' as the command.
+    # Force arm64 architecture to ensure native bindings (rolldown) are found.
+    arch -arm64 node -e "
+      process.chdir('$PROJECT_DIR');
+      process.argv = ['node', 'neu', 'run'];
+      require('$PROJECT_DIR/node_modules/@neutralinojs/neu/bin/neu');
+    "
     EXIT_CODE=$?
     echo "neu run exited with code $EXIT_CODE"
     exit $EXIT_CODE
   else
     echo "Local neu not found, using npx --yes neu run"
-    npx --yes neu run
+    cd "$PROJECT_DIR" || { echo "ERROR: Project directory not found at $PROJECT_DIR"; exit 1; }
+    arch -arm64 npx --yes neu run
     EXIT_CODE=$?
     echo "npx neu run exited with code $EXIT_CODE"
     exit $EXIT_CODE
