@@ -97,7 +97,7 @@ export default function StartupCanvas({
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '40px 60px',
+      padding: '80px 60px',
       overflow: 'auto',
     },
     card: {
@@ -108,26 +108,6 @@ export default function StartupCanvas({
       borderRadius: 12,
       padding: 0,
       overflow: 'hidden',
-    },
-    quickActions: {
-      display: 'flex',
-      gap: 8,
-      flexWrap: 'wrap',
-      justifyContent: 'center',
-      marginTop: 28,
-    },
-    quickBtn: {
-      background: T.surface,
-      border: `1px solid ${T.border}`,
-      borderRadius: 8,
-      padding: '8px 16px',
-      fontFamily: "'IBM Plex Mono',monospace",
-      fontSize: 10,
-      fontWeight: 700,
-      color: T.text,
-      cursor: 'pointer',
-      letterSpacing: '.06em',
-      transition: 'all .14s',
     },
     summaryRow: {
       display: 'flex',
@@ -402,11 +382,11 @@ export default function StartupCanvas({
   const renderFirstLaunch = () => (
     <div style={styles.card}>
       <div style={{
-        padding: '36px 28px 28px',
+        padding: '60px 28px 48px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 12,
+        gap: 16,
       }}>
         {/* Welcome icon */}
         <div style={{
@@ -526,29 +506,6 @@ export default function StartupCanvas({
             {hasLastProgram && renderLastProgram()}
             {isFirstLaunch && renderFirstLaunch()}
           </div>
-
-          {/* Quick Actions (hidden during auto-start) */}
-          {!isAutoStarting && (
-            <div style={styles.quickActions}>
-              {[
-                { page: 'hq',          label: 'HQ' },
-                { page: 'program-briefing',  label: 'Briefing' },
-                { page: 'program-focus',     label: 'Focus' },
-                { page: 'program-preview',   label: 'Preview' },
-                { page: 'settings',     label: 'Settings' },
-              ].map(({ page, label }) => (
-                <button
-                  key={page}
-                  style={styles.quickBtn}
-                  onClick={() => onNavigate(page)}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = T.dim; e.currentTarget.style.color = T.accent; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.text; }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* Today's Summary (hidden during auto-start) */}
           {!isAutoStarting && (

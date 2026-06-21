@@ -18,7 +18,6 @@ import PathsView from './components/views/PathsView.jsx';
 import WorkLogsView from './components/views/WorkLogsView.jsx';
 import GoalModal from './components/panels/GoalModal.jsx';
 import FocusScreen from './components/views/FocusScreen.jsx';
-import BottomNav from './components/BottomNav.jsx';
 import DeadlineNotifier from './components/DeadlineNotifier.jsx';
 import OnwardTaskPopover from './components/OnwardTaskPopover.jsx';
 import GoalDetailPanel from './components/panels/GoalDetailPanel.jsx';
@@ -1368,13 +1367,11 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
             .app-shell{display:flex;height:100vh;overflow:hidden;background:${T.bg};color:${T.text};font-family:'Syne',sans-serif;}
 
             /* ── SIGNAL ── */
-            .sig{width:180px;flex-shrink:0;background:${T.surface};border-right:1px solid ${T.border};display:flex;flex-direction:column;overflow:hidden;transition:width .2s;}
+            .sig{width:240px;flex-shrink:0;background:transparent;display:flex;flex-direction:column;overflow:hidden;transition:width .2s;padding:12px 0;}
             .sig.collapsed{width:48px;}
             .sig.collapsed .sec,
-            .sig.collapsed .sig-add,
             .sig.collapsed .wp-ttl,
             .sig.collapsed .wp-badge,
-            .sig.collapsed .nl,
             .sig.collapsed .nova-lbl,
             .sig.collapsed .nova-pct,
             .sig.collapsed .nova-status,
@@ -1384,11 +1381,6 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
             .sig.collapsed .plan-refresh-btn,
             .sig.collapsed .prg-lbl,
             .sig.collapsed .prg-desc{display:none;}
-            .sig.collapsed .sig-nav{flex-direction:column;padding:4px 0;}
-            .sig.collapsed .nb{padding:8px 0;}
-            .sig.collapsed .ni{width:28px;height:28px;}
-            .sig.collapsed .collapse-btn span{display:none;}
-            .sig.collapsed .collapse-btn{justify-content:center;padding:6px 0;}
             .sec{padding:10px 11px 6px;}
             .secl{font-size:7.5px;color:${T.muted};text-transform:uppercase;letter-spacing:.12em;display:flex;align-items:center;gap:5px;margin-bottom:8px;}
             .pip{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
@@ -1407,12 +1399,6 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
             .gr-pc{font-size:9.5px;color:${T.muted};}
             .sig-add{margin:5px 11px 7px;padding:7px;background:${T.accentLo};border:1px solid ${T.accent}30;border-radius:6px;color:${T.accent};font-size:10.5px;text-align:center;cursor:pointer;letter-spacing:.04em;font-family:'Syne',sans-serif;font-weight:700;transition:all .14s;}
             .sig-add:hover{background:${T.accent}22;border-color:${T.accent}60;}
-            .sig-nav{display:flex;border-top:1px solid ${T.border};background:${T.bg};margin-top:auto;flex-shrink:0;}
-            .nb{flex:1;padding:9px 2px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;border:none;background:none;}
-            .ni{width:27px;height:27px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:background .14s;}
-            .nl{font-size:7px;letter-spacing:.06em;text-transform:uppercase;color:${T.muted};transition:color .14s;font-family:'IBM Plex Mono',monospace;}
-            .nb.on .nl{color:${T.accent};}
-            .nb.on .ni{background:${T.accent}12;}
 
             /* ── COMMAND ── */
             .cmd{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;position:relative;}
@@ -1514,7 +1500,6 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
             .fci-input,.fci-txt,.gr-nm{font-size:clamp(13px, 1.15vw, 16px);}
             .gr-pc{font-size:clamp(12px, 1.05vw, 15px);}
             .sig-add{font-size:clamp(13px, 1.1vw, 16px);}
-            .nl{font-size:clamp(9px, 0.77vw, 12px);}
             .cttl{font-size:clamp(18px, 1.55vw, 24px);}
             .cdt{font-size:clamp(12px, 1.05vw, 15px);}
             .cbtn{font-size:clamp(12px, 1.05vw, 15px);}
@@ -1539,11 +1524,9 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
             .plan-refresh-btn{font-size:8px;}
 
             /* Base sizes (1440px - 1919px) - default zoomed in */
-            .sig{width:253px;}
+            .sig{width:336px;}
             .sec{padding:14px 14px 10px;}
             .sig-add{margin:6px 14px 10px;padding:9px;}
-            .nb{padding:12px 3px;}
-            .ni{width:32px;height:32px;}
             .wp.open{width:345px;}
             .wpi{width:345px;}
             .wp-hd{padding:16px 16px 12px;}
@@ -1563,13 +1546,11 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
 
             /* Small screens (laptops, 1366px - 1439px) - slight reduction */
             @media (max-width: 1439px) {
-              .sig{width:230px;}
+              .sig{width:306px;}
               .wp.open{width:299px;}
               .wpi{width:299px;}
               .sec{padding:12px 12px 8px;}
               .sig-add{margin:5px 12px 8px;padding:8px;}
-              .nb{padding:10px 2px;}
-              .ni{width:28px;height:28px;}
               .wp-hd{padding:14px 14px 10px;}
               .wp-pg{padding:10px 14px;}
               .wp-bdy{padding:10px 14px 5px;}
@@ -1585,13 +1566,11 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
 
             /* Extra small screens (compact laptops, < 1366px) */
             @media (max-width: 1365px) {
-              .sig{width:207px;}
+              .sig{width:275px;}
               .wp.open{width:276px;}
               .wpi{width:276px;}
               .sec{padding:10px 10px 6px;}
               .sig-add{margin:4px 10px 6px;padding:7px;}
-              .nb{padding:8px 2px;}
-              .ni{width:26px;height:26px;}
               .wp-hd{padding:12px 12px 9px;}
               .wp-pg{padding:9px 12px;}
               .wp-bdy{padding:9px 12px 4px;}
@@ -1608,13 +1587,11 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
 
             /* Large screens (1920px - 2559px) - bigger for TV/desktop */
             @media (min-width: 1920px) {
-              .sig{width:299px;}
+              .sig{width:398px;}
               .wp.open{width:391px;}
               .wpi{width:391px;}
               .sec{padding:18px 18px 12px;}
               .sig-add{margin:8px 18px 12px;padding:11px;}
-              .nb{padding:14px 4px;}
-              .ni{width:38px;height:38px;}
               .wp-hd{padding:20px 20px 16px;}
               .wp-pg{padding:14px 20px;}
               .wp-bdy{padding:14px 20px 8px;}
@@ -1645,9 +1622,6 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
               .wpi{width:460px;}
               .sec{padding:22px 22px 16px;}
               .sig-add{margin:10px 22px 16px;padding:13px;}
-              .nb{padding:18px 6px;}
-              .ni{width:46px;height:46px;}
-              .ni svg{width:20px;height:20px;}
               .wp-hd{padding:24px 24px 20px;}
               .wp-pg{padding:18px 24px;}
               .wp-bdy{padding:18px 24px 10px;}
@@ -1679,8 +1653,6 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
               .wp.open{width:253px;}
               .wpi{width:253px;}
               .sec{padding:8px 9px 5px;}
-              .nb{padding:8px 1px;}
-              .ni{width:24px;height:24px;}
               .fci-ico{width:20px;height:20px;}
               .wp-ai-orb{width:24px;height:24px;}
             }
@@ -1701,46 +1673,52 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                 onBackToHQ={() => setMainPage('hq')}
                 addSyncEvent={addSyncEvent}
               />
-              {/* ── Inline navigation (replaces BottomNav) ── */}
-              <div className="sig-nav">
-                {[
-                  { page:'hq',        label:'HQ',       icon: (c) => <svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.2" fill={c}/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1.2" fill={c} opacity=".55"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1.2" fill={c} opacity=".55"/><rect x="9" y="9" width="5.5" height="5.5" rx="1.2" fill={c} opacity=".35"/></svg> },
-                  { page:'tracking',  label:'Track',    icon: () => <svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 12 L5.5 7 L9 10 L14 4" fill="none" stroke={T.blue} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><circle cx="14" cy="4" r="1.8" fill={T.blue}/></svg> },
-                  { page:'settings',  label:'Settings', icon: () => <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke={T.purple} strokeWidth="1.6"/><circle cx="8" cy="8" r="2" fill={T.purple}/><path d="M8 2.5v1M8 12.5v1M2.5 8h1M12.5 8h1" stroke={T.purple} strokeWidth="1.4" strokeLinecap="round"/></svg> },
-                  { page:'mindcheck', label:'Mind',     icon: () => <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 13C8 13 2.5 9.2 2.5 5.8a3.5 3.5 0 016.5-1.8 3.5 3.5 0 016.5 1.8C15.5 9.2 8 13 8 13z" fill="none" stroke={T.green} strokeWidth="1.6"/><path d="M5.5 6.5l1.8 1.8L10 5.5" fill="none" stroke={T.green} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-                ].map(({ page, label, icon }) => (
+            </div>
+
+            {/* ── Floating nav bar (Track, Settings, Mind) ── */}
+            <div style={{
+              position:'fixed', left:0, top:'50%', transform:'translateY(-50%)',
+              display:'flex', flexDirection:'column', gap:4,
+              padding:'6px 4px',
+              background:`${T.surface}cc`,
+              backdropFilter:'blur(8px)',
+              border:`1px solid ${T.border}`,
+              borderRadius:'0 8px 8px 0',
+              borderLeft:'none',
+              zIndex:50,
+            }}>
+              {[
+                { page:'tracking',  label:'Track',    icon: () => <svg width="14" height="14" viewBox="0 0 16 16"><path d="M2 12 L5.5 7 L9 10 L14 4" fill="none" stroke={T.blue} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><circle cx="14" cy="4" r="1.8" fill={T.blue}/></svg> },
+                { page:'settings',  label:'Settings', icon: () => <svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke={T.purple} strokeWidth="1.6"/><circle cx="8" cy="8" r="2" fill={T.purple}/><path d="M8 2.5v1M8 12.5v1M2.5 8h1M12.5 8h1" stroke={T.purple} strokeWidth="1.4" strokeLinecap="round"/></svg> },
+                { page:'mindcheck', label:'Mind',     icon: () => <svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 13C8 13 2.5 9.2 2.5 5.8a3.5 3.5 0 016.5-1.8 3.5 3.5 0 016.5 1.8C15.5 9.2 8 13 8 13z" fill="none" stroke={T.green} strokeWidth="1.6"/><path d="M5.5 6.5l1.8 1.8L10 5.5" fill="none" stroke={T.green} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+              ].map(({ page, label, icon }) => {
+                const isActive = mainPage === page;
+                return (
                   <button
                     key={page}
-                    className={`nb${mainPage === page ? ' on' : ''}`}
                     onClick={() => { setMainPage(page); closeWaypoint(); }}
+                    style={{
+                      display:'flex', alignItems:'center', gap:6,
+                      padding:'7px 8px',
+                      borderRadius:6,
+                      background: isActive ? `${T.accent}15` : 'transparent',
+                      border:'none',
+                      cursor:'pointer',
+                      color: isActive ? T.accent : T.muted,
+                      transition:'all .14s',
+                      whiteSpace:'nowrap',
+                      fontFamily:"'IBM Plex Mono',monospace",
+                      fontSize:9,
+                      letterSpacing:'.04em',
+                    }}
+                    onMouseEnter={e => { if (!isActive) { e.currentTarget.style.color = T.text; e.currentTarget.style.background = `${T.surface}`; } }}
+                    onMouseLeave={e => { if (!isActive) { e.currentTarget.style.color = T.muted; e.currentTarget.style.background = 'transparent'; } }}
                   >
-                    <div className="ni">{icon(T.accent)}</div>
-                    <div className="nl">{label}</div>
+                    {icon()}
+                    <span>{label}</span>
                   </button>
-                ))}
-                {/* ── Collapse toggle ── */}
-                <button
-                  className="collapse-btn nb"
-                  onClick={() => setSidebarCollapsed(prev => !prev)}
-                  style={{
-                    border:'none', background:'none', cursor:'pointer',
-                    display:'flex', alignItems:'center', gap:4,
-                    padding:'9px 2px', width:'100%',
-                    color: T.muted, fontSize:9,
-                    fontFamily:"'IBM Plex Mono',monospace",
-                    letterSpacing:'.05em',
-                    borderTop:`1px solid ${T.border}`,
-                    marginTop:'auto',
-                  }}
-                >
-                  <div className="ni" style={{ fontSize:11, lineHeight:1 }}>
-                    {sidebarCollapsed ? '▸' : '◂'}
-                  </div>
-                  <span style={{ fontSize:7, textTransform:'uppercase', letterSpacing:'.06em' }}>
-                    {sidebarCollapsed ? 'EXPAND' : 'COLLAPSE'}
-                  </span>
-                </button>
-              </div>
+                );
+              })}
             </div>
 
             {/* ═══ COMMAND ═══ */}
