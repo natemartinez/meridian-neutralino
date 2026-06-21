@@ -32,6 +32,12 @@ cat > "$LAUNCH_SCRIPT" << 'LAUNCH_SCRIPT_EOF'
 # NOTE: macOS may run universal binaries under Rosetta (x86_64) when
 # launched from a .app bundle. We force arm64 architecture to ensure
 # native Node.js native bindings (like rolldown) are found.
+#
+# IMPORTANT: This script MUST exit quickly to avoid macOS Dock marking the
+# app as "not responding." macOS monitors the main process of .app bundles
+# and expects it to create a window. Since this is a bash script (not a
+# native binary), we fork the actual launch into a background process and
+# exit immediately. The background process handles everything.
 
 PROJECT_DIR="$HOME/Documents/dev-projects/meridian-neutralino"
 LOCK_FILE="/tmp/meridian-neu-run.lock"
@@ -39,10 +45,37 @@ VITE_PORT=5173
 DEV_URL="http://localhost:$VITE_PORT"
 LOG_FILE="/tmp/meridian-launcher.log"
 
-# Redirect all output to log file AND terminal for debugging
-exec > >(tee -a "$LOG_FILE") 2>&1
+# ── Fork into background immediately ──
+# macOS Dock monitors the main process of .app bundles. If the main process
+# doesn't create a window within a few seconds, macOS shows "not responding."
+# Since this is a bash script, we fork to background and exit the parent
+# immediately. The background child process handles the actual launch.
+if [ "$1" != "--forked" ]; then
+  # Re-launch self in background with --forked flag
+  nohup "$0" --forked > /dev/null 2>&1 &
+  exit 0
+fi
 
-echo "$(date): === Meridian Launcher Started ==="
+# ── From here on, we're the background forked process ──
+
+# Redirect all output to log file (no terminal since we're backgrounded)
+exec >> "$LOG_FILE" 2>&1
+
+echo "$(date): === Meridian Launcher Started (forked) ==="
+
+# ── Detect launch source ──
+LAUNCH_SOURCE="unknown"
+if [ -n "$_LAUNCHD_SESSION" ]; then
+  LAUNCH_SOURCE="launchd"
+fi
+if [ -n "$LSREGISTER_FORCE" ]; then
+  LAUNCH_SOURCE="lsregister"
+fi
+echo "Launch source: $LAUNCH_SOURCE"
+echo "PWD=$(pwd)"
+echo "SHELL=$SHELL"
+echo "USER=$USER"
+echo "HOME=$HOME"
 
 # macOS .app bundles launched from Finder have minimal/empty PATH.
 # We must set it explicitly so that node, npx, vite, etc. are found.
@@ -55,7 +88,7 @@ if [ -d "$HOME/.nvm" ] && command -v node &>/dev/null; then
   echo "Resolved node from: $NODE_BIN"
 fi
 
-echo "PATH=$PATH"
+echo "Resolved PATH=$PATH"
 echo "node=$(command -v node) ($(node --version))"
 
 # --- Helper: check if Vite dev server is already running ---
@@ -80,6 +113,8 @@ launch_neutralino() {
 # Forces arm64 architecture to ensure native bindings are found.
 start_neu_run() {
   echo "=== Starting Meridian via 'npx neu run' ==="
+  echo "CWD before chdir: $(pwd)"
+  echo "PROJECT_DIR=$PROJECT_DIR"
   echo $$ > "$LOCK_FILE"
 
   local neu_bin="$PROJECT_DIR/node_modules/.bin/neu"
@@ -91,16 +126,19 @@ start_neu_run() {
     # Force arm64 architecture to ensure native bindings (rolldown) are found.
     arch -arm64 node -e "
       process.chdir('$PROJECT_DIR');
+      console.log('Node.js wrapper: CWD after chdir = ' + process.cwd());
       process.argv = ['node', 'neu', 'run'];
       require('$PROJECT_DIR/node_modules/@neutralinojs/neu/bin/neu');
-    "
+    " 2>&1
     EXIT_CODE=$?
     echo "neu run exited with code $EXIT_CODE"
+    echo "Lock file PID: $$ (current shell), lock file contents: $(cat "$LOCK_FILE" 2>/dev/null || echo 'MISSING')"
     exit $EXIT_CODE
   else
     echo "Local neu not found, using npx --yes neu run"
     cd "$PROJECT_DIR" || { echo "ERROR: Project directory not found at $PROJECT_DIR"; exit 1; }
-    arch -arm64 npx --yes neu run
+    echo "CWD after cd: $(pwd)"
+    arch -arm64 npx --yes neu run 2>&1
     EXIT_CODE=$?
     echo "npx neu run exited with code $EXIT_CODE"
     exit $EXIT_CODE
@@ -114,6 +152,7 @@ if [ -f "$LOCK_FILE" ]; then
   LOCK_PID=$(cat "$LOCK_FILE")
   if kill -0 "$LOCK_PID" 2>/dev/null; then
     echo "Meridian dev server is already running (PID $LOCK_PID via lock file)."
+    echo "Launching Neutralino window directly (instant) — connected to existing dev server."
     launch_neutralino
     exit $?
   else
@@ -130,6 +169,7 @@ if is_vite_running; then
   if [ -n "$NEU_PID" ]; then
     echo "$NEU_PID" > "$LOCK_FILE"
   fi
+  echo "Launching Neutralino window directly (instant) — connected to existing dev server."
   launch_neutralino
   exit $?
 fi
@@ -147,6 +187,30 @@ fi
 # 4) Start fresh
 start_neu_run
 LAUNCH_SCRIPT_EOF
+
+echo "=== Making launch script executable ==="
+chmod +x "$LAUNCH_SCRIPT"
+
+echo "=== Removing quarantine attribute ==="
+xattr -dr com.apple.quarantine "$APP" 2>/dev/null || true
+
+# ── Re-register with macOS Launch Services ──
+# This ensures the Dock and Finder pick up the updated launch script.
+# Without this, the Dock may cache an old registration and fail to launch.
+echo "=== Re-registering with Launch Services ==="
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP" 2>/dev/null || true
+touch "$APP"
+
+echo ""
+echo "=== Done! Double-click Meridian.app on your desktop to launch ==="
+echo ""
+echo "NOTE: The desktop app now runs 'npx neu run' (dev mode) to ensure"
+echo "feature parity with the terminal-launched version."
+echo ""
+echo "If you need to rebuild the production bundle for distribution,"
+echo "run: npx neu build"
+echo ""
+echo "If the app doesn't start, check the log: cat /tmp/meridian-launcher.log"
 
 echo "=== Making launch script executable ==="
 chmod +x "$LAUNCH_SCRIPT"
