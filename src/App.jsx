@@ -158,6 +158,8 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
       // waypointContext shape: { type: 'goal' | 'focus' | 'canvas-panel' | 'program', id: string | null }
 
       const [onwardClickedItem, setOnwardClickedItem] = useState(null);
+      const [selectedOnwardDate, setSelectedOnwardDate] = useState(null);
+      const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
       const [sunId, setSunId] = useState(() => localStorage.getItem('meridian_sun_id') || null);
       const [companionName, setCompanionName] = useState(() => localStorage.getItem('meridian_companion_name') || 'AI Companion');
 
@@ -1366,7 +1368,27 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
             .app-shell{display:flex;height:100vh;overflow:hidden;background:${T.bg};color:${T.text};font-family:'Syne',sans-serif;}
 
             /* ── SIGNAL ── */
-            .sig{width:180px;flex-shrink:0;background:${T.surface};border-right:1px solid ${T.border};display:flex;flex-direction:column;overflow:hidden;}
+            .sig{width:180px;flex-shrink:0;background:${T.surface};border-right:1px solid ${T.border};display:flex;flex-direction:column;overflow:hidden;transition:width .2s;}
+            .sig.collapsed{width:48px;}
+            .sig.collapsed .sec,
+            .sig.collapsed .sig-add,
+            .sig.collapsed .wp-ttl,
+            .sig.collapsed .wp-badge,
+            .sig.collapsed .nl,
+            .sig.collapsed .nova-lbl,
+            .sig.collapsed .nova-pct,
+            .sig.collapsed .nova-status,
+            .sig.collapsed .plan-lbl,
+            .sig.collapsed .plan-item-title,
+            .sig.collapsed .plan-item-meta,
+            .sig.collapsed .plan-refresh-btn,
+            .sig.collapsed .prg-lbl,
+            .sig.collapsed .prg-desc{display:none;}
+            .sig.collapsed .sig-nav{flex-direction:column;padding:4px 0;}
+            .sig.collapsed .nb{padding:8px 0;}
+            .sig.collapsed .ni{width:28px;height:28px;}
+            .sig.collapsed .collapse-btn span{display:none;}
+            .sig.collapsed .collapse-btn{justify-content:center;padding:6px 0;}
             .sec{padding:10px 11px 6px;}
             .secl{font-size:7.5px;color:${T.muted};text-transform:uppercase;letter-spacing:.12em;display:flex;align-items:center;gap:5px;margin-bottom:8px;}
             .pip{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
@@ -1666,7 +1688,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
 
           <div className="app-shell">
             {/* ═══ SIGNAL ═══ */}
-            <div className="sig">
+            <div className={`sig${sidebarCollapsed ? ' collapsed' : ''}`}>
               <NovaSidebarBlock
                 novaState={novaState}
                 mainPage={mainPage}
@@ -1679,7 +1701,46 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                 onBackToHQ={() => setMainPage('hq')}
                 addSyncEvent={addSyncEvent}
               />
-              <BottomNav mainPage={mainPage} setMainPage={setMainPage} closeWaypoint={closeWaypoint} />
+              {/* ── Inline navigation (replaces BottomNav) ── */}
+              <div className="sig-nav">
+                {[
+                  { page:'hq',        label:'HQ',       icon: (c) => <svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.2" fill={c}/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1.2" fill={c} opacity=".55"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1.2" fill={c} opacity=".55"/><rect x="9" y="9" width="5.5" height="5.5" rx="1.2" fill={c} opacity=".35"/></svg> },
+                  { page:'tracking',  label:'Track',    icon: () => <svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 12 L5.5 7 L9 10 L14 4" fill="none" stroke={T.blue} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><circle cx="14" cy="4" r="1.8" fill={T.blue}/></svg> },
+                  { page:'settings',  label:'Settings', icon: () => <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke={T.purple} strokeWidth="1.6"/><circle cx="8" cy="8" r="2" fill={T.purple}/><path d="M8 2.5v1M8 12.5v1M2.5 8h1M12.5 8h1" stroke={T.purple} strokeWidth="1.4" strokeLinecap="round"/></svg> },
+                  { page:'mindcheck', label:'Mind',     icon: () => <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 13C8 13 2.5 9.2 2.5 5.8a3.5 3.5 0 016.5-1.8 3.5 3.5 0 016.5 1.8C15.5 9.2 8 13 8 13z" fill="none" stroke={T.green} strokeWidth="1.6"/><path d="M5.5 6.5l1.8 1.8L10 5.5" fill="none" stroke={T.green} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+                ].map(({ page, label, icon }) => (
+                  <button
+                    key={page}
+                    className={`nb${mainPage === page ? ' on' : ''}`}
+                    onClick={() => { setMainPage(page); closeWaypoint(); }}
+                  >
+                    <div className="ni">{icon(T.accent)}</div>
+                    <div className="nl">{label}</div>
+                  </button>
+                ))}
+                {/* ── Collapse toggle ── */}
+                <button
+                  className="collapse-btn nb"
+                  onClick={() => setSidebarCollapsed(prev => !prev)}
+                  style={{
+                    border:'none', background:'none', cursor:'pointer',
+                    display:'flex', alignItems:'center', gap:4,
+                    padding:'9px 2px', width:'100%',
+                    color: T.muted, fontSize:9,
+                    fontFamily:"'IBM Plex Mono',monospace",
+                    letterSpacing:'.05em',
+                    borderTop:`1px solid ${T.border}`,
+                    marginTop:'auto',
+                  }}
+                >
+                  <div className="ni" style={{ fontSize:11, lineHeight:1 }}>
+                    {sidebarCollapsed ? '▸' : '◂'}
+                  </div>
+                  <span style={{ fontSize:7, textTransform:'uppercase', letterSpacing:'.06em' }}>
+                    {sidebarCollapsed ? 'EXPAND' : 'COLLAPSE'}
+                  </span>
+                </button>
+              </div>
             </div>
 
             {/* ═══ COMMAND ═══ */}
@@ -2162,6 +2223,14 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                     setPrioritizeInput={setPrioritizeInput}
                     generateNovaPlan={generateNovaPlan}
                     apiKey={apiKey}
+                    // ── Day navigation props ──
+                    selectedOnwardDate={selectedOnwardDate}
+                    setSelectedOnwardDate={setSelectedOnwardDate}
+                    // ── Goal integration props ──
+                    setModal={setModal}
+                    topGoals={topGoals}
+                    onToggleTopGoal={toggleTopGoal}
+                    setSunId={setSunId}
                   />
                 )}
 

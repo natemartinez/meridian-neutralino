@@ -47,6 +47,9 @@ export default function StartupCanvas({
   lastActiveDate,
   onwardItems,
   projects,
+  // ── Future sidebar integration props ──
+  mainPage,
+  addSyncEvent,
 }) {
   // ── Derived data ──
   const isAutoStarting = !!pendingAutoStart;

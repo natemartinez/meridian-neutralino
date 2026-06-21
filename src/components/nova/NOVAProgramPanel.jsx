@@ -33,61 +33,7 @@ function NOVAProgramPanel({
   const [breakdownTask, setBreakdownTask] = useState(null);
   const [breakdownInput, setBreakdownInput] = useState('');
 
-  const PROG_META = {
-    briefing:    { label:'Briefing',    color:'#F59E0B', desc:'Morning debrief' },
-    focus:       { label:'Focus',       color: T.blue,   desc:'Lock in plan' },
-    regroup:     { label:'Re-group',    color: T.purple, desc:'Recalibrate' },
-    preview:     { label:'Preview',     color: T.cyan,   desc:'Plan the next day' },
-    calibration: { label:'Calibration', color: T.accent, desc:'Align with NOVA' },
-  };
-  const meta     = PROG_META[progId] || PROG_META.briefing;
-  const history  = novaState.programChats[progId] || [];
-  const isFocus   = progId === 'focus';
-  const isRegroup = progId === 'regroup';
-  const isBriefing = progId === 'briefing';
-  const isPreview = progId === 'preview';
-  const isCalibration = progId === 'calibration';
-  const focusPlan = novaState.programChats.focus;
-  const msgEndRef = React.useRef(null);
-
-  React.useEffect(() => {
-    msgEndRef.current?.scrollIntoView({ behavior:'smooth' });
-  }, [history.length, novaLoading]);
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendNOVAMessage(progId); }
-  };
-
-  const contextContent = useMemo(() => {
-    return buildNOVASystemPrompt ? buildNOVASystemPrompt(progId) : '';
-  }, [buildNOVASystemPrompt, progId]);
-
-  // ── Rule of 3: Pick 3 objectives ──
-  const today = new Date().toDateString();
-  const availableItems = [
-    ...onwardItems.filter(it => (!it.date || it.date === today) && !it.done),
-    ...(projects || []).flatMap(p =>
-      (p.subtasks || []).filter(st => !st.done).map(st => ({
-        id: st.id, title: st.title, goalId: p.id, goalTitle: p.title, goalColor: p.color,
-        source: 'subtask', priority: p.priority || 'low',
-      }))
-    ),
-  ].filter(item => !selectedForToday.includes(item.id));
-
-  const selectedItems = selectedForToday.map(id =>
-    availableItems.find(i => i.id === id) ||
-    onwardItems.find(i => i.id === id) ||
-    { id, title: 'Unknown', priority: 'low' }
-  );
-
-  const toggleSelection = (itemId) => {
-    setSelectedForToday(prev => {
-      if (prev.includes(itemId)) return prev.filter(id => id !== itemId);
-      if (prev.length >= 3) return prev; // Max 3
-      return [...prev, itemId];
-    });
-  };
-
+  // ── Briefing handlers (defined before progActions useMemo to avoid TDZ) ──
   const handleBriefingReady = () => {
     setBriefingPhase('pick3');
   };
@@ -142,6 +88,96 @@ function NOVAProgramPanel({
     setBriefingPhase('breakdown');
   };
 
+  const finishBriefing = () => {
+    setBriefingPhase('done');
+    addSyncEvent('briefing_done', `Selected ${selectedForToday.length} objectives`);
+    useNovaInteractionStore.getState().fireEvent('briefing_done', {
+      selectedCount: selectedForToday.length,
+    });
+  };
+
+  const PROG_META = {
+    briefing:    { label:'Briefing',    color:'#F59E0B', desc:'Morning debrief' },
+    focus:       { label:'Focus',       color: T.blue,   desc:'Lock in plan' },
+    regroup:     { label:'Re-group',    color: T.purple, desc:'Recalibrate' },
+    preview:     { label:'Preview',     color: T.cyan,   desc:'Plan the next day' },
+    calibration: { label:'Calibration', color: T.accent, desc:'Align with NOVA' },
+  };
+  const meta     = PROG_META[progId] || PROG_META.briefing;
+  const history  = novaState.programChats[progId] || [];
+  const isFocus   = progId === 'focus';
+  const isRegroup = progId === 'regroup';
+  const isBriefing = progId === 'briefing';
+  const isPreview = progId === 'preview';
+  const isCalibration = progId === 'calibration';
+  const focusPlan = novaState.programChats.focus;
+  const msgEndRef = React.useRef(null);
+
+  // ── Per-program contextual action buttons ──
+  const progActions = useMemo(() => {
+    const actions = [];
+    if (isBriefing) {
+      if (briefingPhase === 'chat' && history.length > 0 && !novaLoading) {
+        actions.push({ label:'Pick 3 →', onClick:handleBriefingReady, primary:true });
+      } else if (briefingPhase === 'pick3') {
+        actions.push({ label:'Confirm & Backlog', onClick:confirmPick3, disabled: selectedForToday.length === 0, primary:true });
+      } else if (briefingPhase === 'breakdown') {
+        actions.push({ label:'Finish Briefing', onClick:finishBriefing, primary:true });
+      }
+    }
+    if (isFocus && !focusPlan) {
+      actions.push({ label:'Generate Plan', onClick:() => sendNOVAMessage(progId), primary:true });
+    }
+    if (isPreview) {
+      actions.push({ label:'Preview Tomorrow', onClick:() => sendNOVAMessage(progId, 'Preview tomorrow'), primary:true });
+    }
+    if (isCalibration) {
+      actions.push({ label:'Run Calibration', onClick:() => sendNOVAMessage(progId, 'Run calibration'), primary:true });
+    }
+    if (isRegroup) {
+      actions.push({ label:'Re-group Now', onClick:() => sendNOVAMessage(progId, 'Re-group now'), primary:true });
+    }
+    return actions;
+  }, [isBriefing, isFocus, isPreview, isCalibration, isRegroup, briefingPhase, history.length, novaLoading, handleBriefingReady, confirmPick3, selectedForToday.length, finishBriefing, focusPlan, sendNOVAMessage, progId]);
+
+  React.useEffect(() => {
+    msgEndRef.current?.scrollIntoView({ behavior:'smooth' });
+  }, [history.length, novaLoading]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendNOVAMessage(progId); }
+  };
+
+  const contextContent = useMemo(() => {
+    return buildNOVASystemPrompt ? buildNOVASystemPrompt(progId) : '';
+  }, [buildNOVASystemPrompt, progId]);
+
+  // ── Rule of 3: Pick 3 objectives ──
+  const today = new Date().toDateString();
+  const availableItems = [
+    ...onwardItems.filter(it => (!it.date || it.date === today) && !it.done),
+    ...(projects || []).flatMap(p =>
+      (p.subtasks || []).filter(st => !st.done).map(st => ({
+        id: st.id, title: st.title, goalId: p.id, goalTitle: p.title, goalColor: p.color,
+        source: 'subtask', priority: p.priority || 'low',
+      }))
+    ),
+  ].filter(item => !selectedForToday.includes(item.id));
+
+  const selectedItems = selectedForToday.map(id =>
+    availableItems.find(i => i.id === id) ||
+    onwardItems.find(i => i.id === id) ||
+    { id, title: 'Unknown', priority: 'low' }
+  );
+
+  const toggleSelection = (itemId) => {
+    setSelectedForToday(prev => {
+      if (prev.includes(itemId)) return prev.filter(id => id !== itemId);
+      if (prev.length >= 3) return prev; // Max 3
+      return [...prev, itemId];
+    });
+  };
+
   const startBreakdown = (item) => {
     setBreakdownTask(item);
     setBreakdownInput('');
@@ -154,14 +190,6 @@ function NOVAProgramPanel({
     onBreakdownTask && onBreakdownTask(breakdownTask, subTasks);
     setBreakdownTask(null);
     setBreakdownInput('');
-  };
-
-  const finishBriefing = () => {
-    setBriefingPhase('done');
-    addSyncEvent('briefing_done', `Selected ${selectedForToday.length} objectives`);
-    useNovaInteractionStore.getState().fireEvent('briefing_done', {
-      selectedCount: selectedForToday.length,
-    });
   };
 
   // ── Pending Insights ──
@@ -183,7 +211,28 @@ function NOVAProgramPanel({
         >← Back</button>
         <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div className="wp-ttl" style={{ color:meta.color }}>{meta.label}</div>
-          <div style={{ display:'flex', gap:4 }}>
+          <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+            {/* ── Per-program contextual action buttons ── */}
+            {progActions.map((action, i) => (
+              <button
+                key={i}
+                onClick={action.onClick}
+                disabled={action.disabled}
+                style={{
+                  background: action.primary ? `${meta.color}18` : 'none',
+                  border: `1px solid ${action.primary ? meta.color + '50' : T.border}`,
+                  borderRadius: 4,
+                  color: action.disabled ? T.muted : (action.primary ? meta.color : T.muted),
+                  cursor: action.disabled ? 'default' : 'pointer',
+                  fontSize: 9,
+                  padding: '2px 8px',
+                  fontFamily:"'IBM Plex Mono',monospace",
+                  letterSpacing: '.05em',
+                  whiteSpace: 'nowrap',
+                  opacity: action.disabled ? 0.5 : 1,
+                }}
+              >{action.label}</button>
+            ))}
             <button
               onClick={() => setShowContext(s => !s)}
               style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color: showContext ? meta.color : T.muted, cursor:'pointer', fontSize:9, padding:'2px 6px', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.05em' }}

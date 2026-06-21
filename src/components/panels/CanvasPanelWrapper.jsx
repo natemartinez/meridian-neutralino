@@ -1,10 +1,18 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { T } from '../../utils/theme.js';
 import OnwardPanel from '../OnwardPanel.jsx';
 import MapPanel from '../MapPanel.jsx';
 import SkillsPanel from '../SkillsPanel.jsx';
 
 export default function CanvasPanelWrapper({ panelId, ...props }) {
+  // Resolve topGoals ID array to full goal objects
+  const resolvedTopGoals = useMemo(() => {
+    if (!props.topGoals || !props.projects) return [];
+    return props.topGoals
+      .map(id => props.projects.find(p => p.id === id))
+      .filter(Boolean);
+  }, [props.topGoals, props.projects]);
+
   return (
     <>
       <div className="wp-accent" style={{ background: T.accent }} />
@@ -43,6 +51,14 @@ export default function CanvasPanelWrapper({ panelId, ...props }) {
             setPrioritizeInput={props.setPrioritizeInput}
             generateNovaPlan={props.generateNovaPlan}
             apiKey={props.apiKey}
+            // ── Day navigation props ──
+            selectedDate={props.selectedOnwardDate}
+            onDateChange={props.setSelectedOnwardDate}
+            // ── Goal integration props ──
+            setModal={props.setModal}
+            topGoals={resolvedTopGoals}
+            onToggleTopGoal={props.onToggleTopGoal}
+            setSunId={props.setSunId}
           />
         )}
         {panelId === 'map' && (
