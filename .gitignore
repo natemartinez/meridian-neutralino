@@ -34,3 +34,6 @@ nova-key.txt
 
 # Random screenshots
 *.png
+
+# Planning documents (local only, never commit)
+/plans
