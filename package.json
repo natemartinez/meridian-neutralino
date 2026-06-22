@@ -22,8 +22,10 @@
     "personal-dashboard"
   ],
   "scripts": {
+    "prebuild": "bash scripts/validate-config.sh",
     "dev": "vite",
     "build": "vite build",
+    "predist": "bash scripts/validate-config.sh",
     "start": "npx neu run",
     "dist": "vite build && npx neu build",
     "test": "vitest run",

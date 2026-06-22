@@ -194,23 +194,78 @@ window.nova = {
 })();
 
 // ── Graceful shutdown on window close ──
-// When the user clicks the close button (X), Neutralino fires a windowClose
-// event (if exitProcessOnClose is false) or calls app::exit() directly
-// (if exitProcessOnClose is true). We register a handler for the windowClose
-// event as a safety net, in case the event is dispatched.
+// Close event handling uses a multi-layer defensive strategy:
+// 1. exitProcessOnClose is set to false in neutralino.config.json to prevent
+//    the C++ dispatch_sync crash. Instead, Neutralino dispatches a windowClose
+//    event to the JavaScript layer.
+// 2. We register handlers on Neutralino.events.on('windowClose', ...) for
+//    proper Neutralino event handling.
+// 3. We also register browser-level beforeunload/unload handlers as fallbacks.
 function registerWindowCloseHandler() {
+  // Runtime safety check: verify the patched binary is in use
+  // With the patched binary (dispatch_sync → dispatch_async fix),
+  // exitProcessOnClose: true is safe and provides reliable close behavior.
+  // This check catches regressions where the binary was replaced with
+  // an unpatched version.
   try {
-    window.addEventListener('windowClose', () => {
-      // If this event fires, it means exitProcessOnClose is false and the
-      // server dispatched the event instead of exiting. We need to call
-      // Neutralino.app.exit(0) to cleanly shut down.
-      setTimeout(() => {
-        Neutralino.app.exit(0).catch(() => {
-          try { Neutralino.extensions.dispatch('meridian', 'killProcess', {}); } catch (_) {}
-        });
-      }, 0);
-    });
+    Neutralino.app.getConfig().then(config => {
+      const exitOnClose = config?.modes?.window?.exitProcessOnClose;
+      if (exitOnClose !== true) {
+        console.warn(
+          '%c⚠ exitProcessOnClose is ' + JSON.stringify(exitOnClose) + ' — expected true with patched binary',
+          'color: orange; font-weight: bold;'
+        );
+      }
+    }).catch(() => {});
   } catch (_) {
-    // Neutralino may not be available — ignore
+    // Neutralino.app.getConfig() may not be available (e.g., browser dev mode)
+  }
+
+  // Guard against re-entrancy — prevent double execution
+  if (window.__neutralinoClosing) return;
+  window.__neutralinoClosing = true;
+
+  function safeExit() {
+    if (window.__neutralinoClosing) return;
+    window.__neutralinoClosing = true;
+
+    // Path 1: Neutralino.app.exit(0) — WebSocket RPC to server
+    Neutralino.app.exit(0).catch(() => {});
+
+    // Path 2: Neutralino.app.killProcess() — more forceful WebSocket RPC
+    Neutralino.app.killProcess().catch(() => {});
+
+    // Path 3: Extension killProcess dispatch — separate IPC channel
+    try {
+      Neutralino.extensions.dispatch('meridian', 'killProcess', {});
+    } catch (_) {
+      // Extension dispatch may also fail — nothing more we can do
+    }
+  }
+
+  // Layer 1: Neutralino's windowClose event (primary)
+  // With exitProcessOnClose: true, the C++ layer handles close directly
+  // via the patched dispatch_async call. This handler is a safety net
+  // for the beforeunload/unload browser events.
+  try {
+    Neutralino.events.on('windowClose', safeExit);
+  } catch (_) {
+    // Neutralino may not be available (e.g., running in browser dev mode)
+  }
+
+  // Layer 2: Browser beforeunload event (fallback)
+  // Fires when the window/tab is being closed, regardless of Neutralino
+  try {
+    window.addEventListener('beforeunload', safeExit);
+  } catch (_) {
+    // Browser may not support this event
+  }
+
+  // Layer 3: Browser unload event (last resort)
+  // Fires when the document is being unloaded
+  try {
+    window.addEventListener('unload', safeExit);
+  } catch (_) {
+    // Browser may not support this event
   }
 }

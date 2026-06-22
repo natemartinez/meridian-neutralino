@@ -1,0 +1,495 @@
+-------------------------------------
+Translated Report (Full Report Below)
+-------------------------------------
+Process:             neutralino-mac_arm64 [9801]
+Path:                /Users/USER/Documents/*/neutralino-mac_arm64
+Identifier:          neutralino-mac_arm64
+Version:             ???
+Code Type:           ARM-64 (Native)
+Role:                Foreground
+Parent Process:      launchd [1]
+Coalition:           app.meridian.desktop [1339]
+User ID:             501
+
+Date/Time:           2026-06-22 11:59:43.8396 -0500
+Launch Time:         2026-06-22 11:58:43.9146 -0500
+Hardware Model:      Mac17,5
+OS Version:          macOS 26.4 (25E246)
+Release Type:        User
+
+Crash Reporter Key:  2FA3CF85-78C3-041C-626F-5A10257E297A
+Incident Identifier: AEBDD3E2-7627-4733-8700-E937F31C77FC
+
+Sleep/Wake UUID:       0FB886F5-E46D-4B06-B7E9-0B0DCBD03D45
+
+Time Awake Since Boot: 15000 seconds
+Time Since Wake:       2442 seconds
+
+System Integrity Protection: enabled
+
+Triggered by Thread: 0, Dispatch Queue: com.apple.main-thread
+
+Exception Type:    EXC_BREAKPOINT (SIGTRAP)
+Exception Codes:   0x0000000000000001, 0x000000018df28760
+
+Termination Reason:  Namespace SIGNAL, Code 5, Trace/BPT trap: 5
+Terminating Process: exc handler [9801]
+
+
+Application Specific Information:
+BUG IN CLIENT OF LIBDISPATCH: dispatch_sync called on queue already owned by current thread
+Abort Cause 9005618706776320
+
+
+Thread 0 Crashed::  Dispatch queue: com.apple.main-thread
+0   libdispatch.dylib             	       0x18df28760 __DISPATCH_WAIT_FOR_QUEUE__ + 612
+1   libdispatch.dylib             	       0x18df281f8 _dispatch_sync_f_slow + 140
+2   neutralino-mac_arm64          	       0x1002a95fc window::_close(int) + 92
+3   neutralino-mac_arm64          	       0x1002ad5bc webview::cocoa_wkwebview_engine::cocoa_wkwebview_engine(bool, bool, void*, bool, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, bool)::'lambda1'(objc_object*, objc_selector*, objc_object*)::__invoke(objc_object*, objc_selector*, objc_object*) + 44
+4   AppKit                        	       0x192871be8 __19-[NSWindow __close]_block_invoke + 148
+5   AppKit                        	       0x192871b24 -[NSWindow __close] + 376
+6   AppKit                        	       0x19275570c -[NSApplication(NSResponder) sendAction:to:from:] + 560
+7   AppKit                        	       0x1927554ac -[NSControl sendAction:to:] + 72
+8   AppKit                        	       0x1927553f0 __26-[NSCell _sendActionFrom:]_block_invoke + 100
+9   AppKit                        	       0x192755318 -[NSCell _sendActionFrom:] + 204
+10  AppKit                        	       0x192755214 -[NSButtonCell _sendActionFrom:] + 96
+11  AppKit                        	       0x192ca4294 -[NSControl(_NSTracking) _pressGRActionCellBased:] + 2392
+12  AppKit                        	       0x192ca4ad8 -[NSControl(_NSTracking) gestureRecognizerTrackingAction:] + 104
+13  AppKit                        	       0x19275570c -[NSApplication(NSResponder) sendAction:to:from:] + 560
+14  AppKit                        	       0x1927f16ac _NSGestureRecognizerSendActions + 156
+15  AppKit                        	       0x1934fcb90 -[NSGestureRecognizer _updateGesture] + 444
+16  Gestures                      	       0x258c48ec4 0x258c38000 + 69316
+17  Gestures                      	       0x258c6a334 0x258c38000 + 205620
+18  Gestures                      	       0x258c9ba6c 0x258c38000 + 408172
+19  Gestures                      	       0x258cca494 0x258c38000 + 599188
+20  AppKit                        	       0x19342e970 -[_NSGFGestureEnvironment _routeMouseEventToActiveGestureRecognizers:] + 312
+21  AppKit                        	       0x192d55648 -[_NSGestureEnvironmentBase _sendMouseEventToGestureRecognizers:requireAcceptsFirstMouse:] + 376
+22  AppKit                        	       0x192d569ec -[_NSGestureEnvironmentBase sendEventToGestureRecognizers:requireAcceptsFirstMouse:] + 92
+23  AppKit                        	       0x1926dee0c -[NSWindow(NSEventRouting) sendEvent:] + 316
+24  AppKit                        	       0x19314f1f8 -[NSApplication(NSEventRouting) sendEvent:] + 1276
+25  AppKit                        	       0x192d9c498 -[NSApplication _handleEvent:] + 60
+26  AppKit                        	       0x1925ae164 -[NSApplication run] + 408
+27  neutralino-mac_arm64          	       0x1002aa94c webview::cocoa_wkwebview_engine::run() + 192
+28  neutralino-mac_arm64          	       0x1002aa760 window::init(nlohmann::json_abi_v3_11_2::basic_json<std::__1::map, std::__1::vector, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, bool, long long, unsigned long long, double, std::__1::allocator, nlohmann::json_abi_v3_11_2::adl_serializer, std::__1::vector<unsigned char, std::__1::allocator<unsigned char>>> const&) + 2796
+29  neutralino-mac_arm64          	       0x100260760 __startApp() + 196
+30  neutralino-mac_arm64          	       0x100261258 main + 128
+31  dyld                          	       0x18dd17da4 start + 6992
+
+Thread 1:
+0   neutralino-mac_arm64          	       0x1002d9894 std::__1::error_code::error_code[abi:ue170006]<websocketpp::error::value>(websocketpp::error::value, std::__1::enable_if<is_error_code_enum<websocketpp::error::value>::value, void>::type*) + 0
+1   neutralino-mac_arm64          	       0x1002d669c websocketpp::connection<websocketpp::config::asio>::terminate(std::__1::error_code const&) + 248
+2   neutralino-mac_arm64          	       0x1002d639c websocketpp::server<websocketpp::config::asio>::handle_accept(std::__1::shared_ptr<websocketpp::connection<websocketpp::config::asio>>, std::__1::error_code const&) + 48
+3   neutralino-mac_arm64          	       0x1003027b8 std::__1::__bind_return<void (websocketpp::server<websocketpp::config::asio>::*)(std::__1::shared_ptr<websocketpp::connection<websocketpp::config::asio>>, std::__1::error_code const&), std::__1::tuple<websocketpp::server<websocketpp::config::asio>*, std::__1::shared_ptr<websocketpp::connection<websocketpp::config::asio>>, std::__1::placeholders::__ph<1>>, std::__1::tuple<std::__1::error_code const&>, __is_valid_bind_return<void (websocketpp::server<websocketpp::config::asio>::*)(std::__1::shared_ptr<websocketpp::connection<websocketpp::config::asio>>, std::__1::error_code const&), std::__1::tuple<websocketpp::server<websocketpp::config::asio>*, std::__1::shared_ptr<websocketpp::connection<websocketpp::config::asio>>, std::__1::placeholders::__ph<1>>, std::__1::tuple<std::__1::error_code const&>>::value>::type std::__1::__bind<void (websocketpp::server<websocketpp::config::asio>::*)(std::__1::shared_ptr<websocketpp::connection<websocketpp::config::asio>>, std::__1::error_code const&), websocketpp::server<websocketpp::config::asio>*, std::__1::shared_ptr<websocketpp::connection<websocketpp::config::asio>>&, std::__1::placeholders::__ph<1> const&>::operator()[abi:ue170006]<std::__1::error_code const&>(std::__1::error_code const&) + 80
+4   neutralino-mac_arm64          	       0x1002e8154 websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::handle_accept(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&) + 228
+5   neutralino-mac_arm64          	       0x1002e8e68 std::__1::__bind_return<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), std::__1::tuple<websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>, std::__1::placeholders::__ph<1>>, std::__1::tuple<std::__1::error_code const&>, __is_valid_bind_return<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), std::__1::tuple<websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>, std::__1::placeholders::__ph<1>>, std::__1::tuple<std::__1::error_code const&>>::value>::type std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>::operator()[abi:ue170006]<std::__1::error_code const&>(std::__1::error_code const&) + 96
+6   neutralino-mac_arm64          	       0x1002e8d5c void asio::detail::strand_service::dispatch<asio::detail::binder1<std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, std::__1::error_code>>(asio::detail::strand_service::strand_impl*&, asio::detail::binder1<std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, std::__1::error_code>&) + 60
+7   neutralino-mac_arm64          	       0x1002e8c84 void asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>::operator()<std::__1::error_code>(std::__1::error_code const&) + 104
+8   neutralino-mac_arm64          	       0x1002e91dc asio::detail::completion_handler<asio::detail::rewrapped_handler<asio::detail::binder1<asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>, std::__1::error_code>, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>>, asio::io_context::basic_executor_type<std::__1::allocator<void>, 0ul>>::do_complete(void*, asio::detail::scheduler_operation*, std::__1::error_code const&, unsigned long) + 96
+9   neutralino-mac_arm64          	       0x1002dd008 asio::detail::strand_service::do_dispatch(asio::detail::strand_service::strand_impl*&, asio::detail::scheduler_operation*) + 180
+10  neutralino-mac_arm64          	       0x1002e8bd4 void asio::detail::strand_service::dispatch<asio::detail::rewrapped_handler<asio::detail::binder1<asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>, std::__1::error_code>, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>>>(asio::detail::strand_service::strand_impl*&, asio::detail::rewrapped_handler<asio::detail::binder1<asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>, std::__1::error_code>, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>>&) + 148
+11  neutralino-mac_arm64          	       0x1002e86f4 void asio::detail::handler_work<asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>, asio::any_io_executor, void>::complete<asio::detail::binder1<asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>, std::__1::error_code>>(asio::detail::binder1<asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>, std::__1::error_code>&, asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>&) + 120
+12  neutralino-mac_arm64          	       0x1002e8480 asio::detail::reactive_socket_accept_op<asio::basic_socket<asio::ip::tcp, asio::any_io_executor>, asio::ip::tcp, asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>, asio::any_io_executor>::do_complete(void*, asio::detail::scheduler_operation*, std::__1::error_code const&, unsigned long) + 180
+13  neutralino-mac_arm64          	       0x1002d1e70 asio::detail::scheduler::do_run_one(asio::detail::conditionally_enabled_mutex::scoped_lock&, asio::detail::scheduler_thread_info&, std::__1::error_code const&) + 464
+14  neutralino-mac_arm64          	       0x1002d1b9c asio::detail::scheduler::run(std::__1::error_code&) + 252
+15  neutralino-mac_arm64          	       0x100303ecc websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::run() + 44
+16  neutralino-mac_arm64          	       0x100303e30 void* std::__1::__thread_proxy[abi:ue170006]<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct>>, neuserver::startAsync()::$_6>>(void*) + 56
+17  libsystem_pthread.dylib       	       0x18e0d3c58 _pthread_start + 136
+18  libsystem_pthread.dylib       	       0x18e0cec1c thread_start + 8
+
+Thread 2:
+
+Thread 3:: com.apple.NSEventThread
+0   libsystem_kernel.dylib        	       0x18e08fc34 mach_msg2_trap + 8
+1   libsystem_kernel.dylib        	       0x18e0a2574 mach_msg2_internal + 76
+2   libsystem_kernel.dylib        	       0x18e0989c0 mach_msg_overwrite + 480
+3   libsystem_kernel.dylib        	       0x18e08ffc0 mach_msg + 24
+4   CoreFoundation                	       0x18e190d68 __CFRunLoopServiceMachPort + 160
+5   CoreFoundation                	       0x18e18f654 __CFRunLoopRun + 1188
+6   CoreFoundation                	       0x18e261be0 _CFRunLoopRunSpecificWithOptions + 532
+7   AppKit                        	       0x1926dcc64 _NSEventThread + 184
+8   libsystem_pthread.dylib       	       0x18e0d3c58 _pthread_start + 136
+9   libsystem_pthread.dylib       	       0x18e0cec1c thread_start + 8
+
+Thread 4:: JavaScriptCore libpas scavenger
+0   libsystem_kernel.dylib        	       0x18e09350c __psynch_cvwait + 8
+1   libsystem_pthread.dylib       	       0x18e0d4128 _pthread_cond_wait + 980
+2   JavaScriptCore                	       0x1b17bed10 scavenger_thread_main + 1632
+3   libsystem_pthread.dylib       	       0x18e0d3c58 _pthread_start + 136
+4   libsystem_pthread.dylib       	       0x18e0cec1c thread_start + 8
+
+Thread 5:: WebCore: Scrolling
+0   libsystem_kernel.dylib        	       0x18e08fc34 mach_msg2_trap + 8
+1   libsystem_kernel.dylib        	       0x18e0a2574 mach_msg2_internal + 76
+2   libsystem_kernel.dylib        	       0x18e0989c0 mach_msg_overwrite + 480
+3   libsystem_kernel.dylib        	       0x18e08ffc0 mach_msg + 24
+4   CoreFoundation                	       0x18e190d68 __CFRunLoopServiceMachPort + 160
+5   CoreFoundation                	       0x18e18f654 __CFRunLoopRun + 1188
+6   CoreFoundation                	       0x18e261be0 _CFRunLoopRunSpecificWithOptions + 532
+7   CoreFoundation                	       0x18e205524 CFRunLoopRun + 64
+8   JavaScriptCore                	       0x1b0103030 WTF::Detail::CallableWrapper<WTF::RunLoop::create(WTF::ASCIILiteral, WTF::ThreadType, WTF::Thread::QOS)::$_0, void>::call() + 240
+9   JavaScriptCore                	       0x1b014a8cc WTF::Thread::entryPoint(WTF::Thread::NewThreadContext*) + 296
+10  JavaScriptCore                	       0x1aff17088 WTF::wtfThreadEntryPoint(void*) + 16
+11  libsystem_pthread.dylib       	       0x18e0d3c58 _pthread_start + 136
+12  libsystem_pthread.dylib       	       0x18e0cec1c thread_start + 8
+
+Thread 6:: Log work queue
+0   libsystem_kernel.dylib        	       0x18e08fbb0 semaphore_wait_trap + 8
+1   WebKit                        	       0x1b949bab0 IPC::StreamConnectionWorkQueue::startProcessingThread()::$_0::operator()() + 48
+2   JavaScriptCore                	       0x1b014a8cc WTF::Thread::entryPoint(WTF::Thread::NewThreadContext*) + 296
+3   JavaScriptCore                	       0x1aff17088 WTF::wtfThreadEntryPoint(void*) + 16
+4   libsystem_pthread.dylib       	       0x18e0d3c58 _pthread_start + 136
+5   libsystem_pthread.dylib       	       0x18e0cec1c thread_start + 8
+
+Thread 7:
+
+Thread 8:
+
+
+Thread 0 crashed with ARM Thread State (64-bit):
+    x0: 0x000000016fbb9e50   x1: 0x00000001f9ee2240   x2: 0x00000001002a9620   x3: 0x0000000000000002
+    x4: 0x00000001f9ee2240   x5: 0x0000000000000012   x6: 0x0000000000000065   x7: 0xfffff0003ffff800
+    x8: 0x001ffe9000000100   x9: 0x0000000000000003  x10: 0xff80002000000002  x11: 0x0000002000000002
+   x12: 0x0000001000000000  x13: 0x001ffe1000000000  x14: 0x000000000065646f  x15: 0x4d746c7561666564
+   x16: 0x000000018df283e4  x17: 0x00000001f9ee1808  x18: 0x0000000000000000  x19: 0x000000016fbb9e50
+   x20: 0x00000001f9ee2240  x21: 0x000000016fbb9ef8  x22: 0x00000001f9ee2240  x23: 0x000000016fbba078
+   x24: 0x000000016fbba2d8  x25: 0x000000016fbbaa18  x26: 0x00000007bccc7780  x27: 0x000000016fbba870
+   x28: 0x0000000000000038   fp: 0x000000016fbb9e40   lr: 0x000000018df281f8
+    sp: 0x000000016fbb9e10   pc: 0x000000018df28760 cpsr: 0x60000000
+   far: 0x0000000000000000  esr: 0xf2000001 (Breakpoint) brk 1
+
+Binary Images:
+       0x100244000 -        0x10032ffff neutralino-mac_arm64 (*) <c1e2ed72-6447-39c2-8359-5eb21e3c5044> /Users/USER/Documents/*/neutralino-mac_arm64
+       0x100630000 -        0x10063bfff libobjc-trampolines.dylib (*) <a4dd56f1-375a-3540-844b-5e397f0b78b3> /usr/lib/libobjc-trampolines.dylib
+       0x109a7c000 -        0x10a2f3fff com.apple.AGXMetalG17P (350.38) <249f5375-a082-3df1-8eb8-094e2f7d74d1> /System/Library/Extensions/AGXMetalG17P.bundle/Contents/MacOS/AGXMetalG17P
+       0x100668000 -        0x1006cbfff com.apple.AppleMetalOpenGLRenderer (1.0) <0a5a2e2b-9899-3606-af8c-84850db23fea> /System/Library/Extensions/AppleMetalOpenGLRenderer.bundle/Contents/MacOS/AppleMetalOpenGLRenderer
+       0x18df17000 -        0x18df5e23f libdispatch.dylib (*) <e17aa23f-db2a-3302-b14c-f6b08c540fcf> /usr/lib/system/libdispatch.dylib
+       0x192582000 -        0x193ca4abf com.apple.AppKit (6.9) <59e23bd5-d01e-305a-b96f-a5790356049a> /System/Library/Frameworks/AppKit.framework/Versions/C/AppKit
+       0x258c38000 -        0x258cfbe9f com.apple.Gestures (9126.1.5) <ebd4a257-1460-3cfb-91ff-61eba39b1ac3> /System/Library/PrivateFrameworks/Gestures.framework/Versions/A/Gestures
+       0x18dcf8000 -        0x18dd9dec7 dyld (*) <9f682dcf-340c-3bfa-bcdd-dd702f30313e> /usr/lib/dyld
+               0x0 - 0xffffffffffffffff ??? (*) <00000000-0000-0000-0000-000000000000> ???
+       0x18e0cd000 -        0x18e0d9b3b libsystem_pthread.dylib (*) <e7a73008-0c09-31e3-9dd9-0c61652f0e85> /usr/lib/system/libsystem_pthread.dylib
+       0x18e0da000 -        0x18e0e28f3 libsystem_platform.dylib (*) <d93ec420-f465-3a3a-916d-a04af9b023eb> /usr/lib/system/libsystem_platform.dylib
+       0x18e08f000 -        0x18e0cc28f libsystem_kernel.dylib (*) <51565b39-f595-3e96-a217-fef29815057a> /usr/lib/system/libsystem_kernel.dylib
+       0x18e113000 -        0x18e670c5f com.apple.CoreFoundation (6.9) <04941709-2330-3bf8-9213-6d33964db448> /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation
+       0x1aff11000 -        0x1b19b9ddf com.apple.JavaScriptCore (21624) <cae1f78c-542e-30f7-8e08-fdca4b880e04> /System/Library/Frameworks/JavaScriptCore.framework/Versions/A/JavaScriptCore
+       0x1b828a000 -        0x1b98633df com.apple.WebKit (21624) <e7e04c4f-689c-3e21-bd4a-c7591fd3d5ca> /System/Library/Frameworks/WebKit.framework/Versions/A/WebKit
+
+External Modification Summary:
+  Calls made by other processes targeting this process:
+    task_for_pid: 0
+    thread_create: 0
+    thread_set_state: 0
+  Calls made by this process:
+    task_for_pid: 0
+    thread_create: 0
+    thread_set_state: 0
+  Calls made by all processes on this machine:
+    task_for_pid: 0
+    thread_create: 0
+    thread_set_state: 0
+
+VM Region Summary:
+ReadOnly portion of Libraries: Total=1.8G resident=0K(0%) swapped_out_or_unallocated=1.8G(100%)
+Writable regions: Total=4.4G written=1073K(0%) resident=689K(0%) swapped_out=384K(0%) unallocated=4.4G(100%)
+
+                                VIRTUAL   REGION 
+REGION TYPE                        SIZE    COUNT (non-coalesced) 
+===========                     =======  ======= 
+Accelerate framework               256K        2 
+Activity Tracing                   256K        1 
+AttributeGraph Data               1024K        1 
+CG image                           640K        1 
+ColorSync                           32K        2 
+CoreAnimation                      576K       30 
+CoreGraphics                        32K        2 
+CoreUI image data                 1888K       13 
+Foundation                          32K        2 
+Image IO                           176K        2 
+JS VM Gigacage (reserved)          4.0G        1         reserved VM address space (unallocated)
+Kernel Alloc Once                   32K        1 
+MALLOC                            64.9M       30 
+MALLOC guard page                 3744K        4 
+Memory Tag 22                     64.0M        1 
+SQLite page cache                  128K        1 
+STACK GUARD                       56.1M        9 
+Stack                             12.2M        9 
+VM_ALLOCATE                        976K       13 
+WebKit Malloc                    256.1M        7 
+__AUTH                            6105K      645 
+__AUTH_CONST                      90.4M     1037 
+__CTF                               824        1 
+__DATA                            34.6M      988 
+__DATA_CONST                      34.7M     1045 
+__DATA_DIRTY                      8495K      895 
+__FONT_DATA                        2352        1 
+__GLSLBUILTINS                    5176K        1 
+__LINKEDIT                       576.0M        5 
+__OBJC_RO                         79.1M        1 
+__OBJC_RW                         2597K        1 
+__TEXT                             1.2G     1067 
+__TPRO_CONST                       128K        2 
+mapped file                      285.7M       43 
+page table in kernel               689K        1 
+shared memory                      880K       14 
+===========                     =======  ======= 
+TOTAL                              6.8G     5879 
+TOTAL, minus reserved VM space     2.8G     5879 
+
+
+-----------
+Full Report
+-----------
+
+{"app_name":"neutralino-mac_arm64","timestamp":"2026-06-22 11:59:48.00 -0500","app_version":"","slice_uuid":"c1e2ed72-6447-39c2-8359-5eb21e3c5044","build_version":"","platform":1,"share_with_app_devs":0,"is_first_party":1,"bug_type":"309","os_version":"macOS 26.4 (25E246)","roots_installed":0,"incident_id":"AEBDD3E2-7627-4733-8700-E937F31C77FC","name":"neutralino-mac_arm64"}
+{
+  "uptime" : 15000,
+  "procRole" : "Foreground",
+  "version" : 2,
+  "userID" : 501,
+  "deployVersion" : 210,
+  "modelCode" : "Mac17,5",
+  "coalitionID" : 1339,
+  "osVersion" : {
+    "train" : "macOS 26.4",
+    "build" : "25E246",
+    "releaseType" : "User"
+  },
+  "captureTime" : "2026-06-22 11:59:43.8396 -0500",
+  "codeSigningMonitor" : 2,
+  "incident" : "AEBDD3E2-7627-4733-8700-E937F31C77FC",
+  "pid" : 9801,
+  "translated" : false,
+  "cpuType" : "ARM-64",
+  "procLaunch" : "2026-06-22 11:58:43.9146 -0500",
+  "procStartAbsTime" : 382026381129,
+  "procExitAbsTime" : 383463809893,
+  "procName" : "neutralino-mac_arm64",
+  "procPath" : "\/Users\/USER\/Documents\/*\/neutralino-mac_arm64",
+  "parentProc" : "launchd",
+  "parentPid" : 1,
+  "coalitionName" : "app.meridian.desktop",
+  "crashReporterKey" : "2FA3CF85-78C3-041C-626F-5A10257E297A",
+  "appleIntelligenceStatus" : {"state":"available"},
+  "developerMode" : 1,
+  "bootProgressRegister" : "0x2f000008",
+  "codeSigningID" : "neutralino-mac_arm64",
+  "codeSigningTeamID" : "",
+  "codeSigningFlags" : 570556929,
+  "codeSigningValidationCategory" : 10,
+  "codeSigningTrustLevel" : 4294967295,
+  "codeSigningAuxiliaryInfo" : 0,
+  "instructionByteStream" : {"beforePC":"6AMJqoj\/\/xf0V7+plAEAkJQSFpEVqTTQteIokbQGAPmoHgD59FfBqA==","atPC":"IAAg1H8jA9X0T76p\/XsBqf1DAJHzAwGq9AMAqkgEQdOfAhPrwAIAVA=="},
+  "bootSessionUUID" : "7B643D87-0EB4-44BB-9273-C64177303B71",
+  "wakeTime" : 2442,
+  "sleepWakeUUID" : "0FB886F5-E46D-4B06-B7E9-0B0DCBD03D45",
+  "sip" : "enabled",
+  "exception" : {"codes":"0x0000000000000001, 0x000000018df28760","rawCodes":[1,6676449120],"type":"EXC_BREAKPOINT","signal":"SIGTRAP"},
+  "termination" : {"flags":0,"code":5,"namespace":"SIGNAL","indicator":"Trace\/BPT trap: 5","byProc":"exc handler","byPid":9801},
+  "os_fault" : {"process":"neutralino-mac_arm64"},
+  "asi" : {"libdispatch.dylib":["BUG IN CLIENT OF LIBDISPATCH: dispatch_sync called on queue already owned by current thread","Abort Cause 9005618706776320"]},
+  "extMods" : {"caller":{"thread_create":0,"thread_set_state":0,"task_for_pid":0},"system":{"thread_create":0,"thread_set_state":0,"task_for_pid":0},"targeted":{"thread_create":0,"thread_set_state":0,"task_for_pid":0},"warnings":0},
+  "faultingThread" : 0,
+  "threads" : [{"triggered":true,"id":218615,"threadState":{"x":[{"value":6169534032},{"value":8488100416,"symbolLocation":0,"symbol":"_dispatch_main_q"},{"value":4297758240,"symbolLocation":0,"symbol":"invocation function for block in window::_close(int)"},{"value":2},{"value":8488100416,"symbolLocation":0,"symbol":"_dispatch_main_q"},{"value":18},{"value":101},{"value":18446726482597246976},{"value":9005618706776320},{"value":3},{"value":18410715414129541122},{"value":137438953474},{"value":68719476736},{"value":9005068950962176},{"value":6644847},{"value":5581205089619961188},{"value":6676448228,"symbolLocation":0,"symbol":"_dispatch_async_and_wait_invoke"},{"value":8488097800,"symbolLocation":0,"symbol":"OBJC_CLASS_$_OS_dispatch_queue_main"},{"value":0},{"value":6169534032},{"value":8488100416,"symbolLocation":0,"symbol":"_dispatch_main_q"},{"value":6169534200},{"value":8488100416,"symbolLocation":0,"symbol":"_dispatch_main_q"},{"value":6169534584},{"value":6169535192},{"value":6169537048},{"value":33232287616},{"value":6169536624},{"value":56}],"flavor":"ARM_THREAD_STATE64","lr":{"value":6676447736},"cpsr":{"value":1610612736},"fp":{"value":6169534016},"sp":{"value":6169533968},"esr":{"value":4060086273,"description":"(Breakpoint) brk 1"},"pc":{"value":6676449120,"matchesCrashFrame":1},"far":{"value":0}},"queue":"com.apple.main-thread","frames":[{"imageOffset":71520,"symbol":"__DISPATCH_WAIT_FOR_QUEUE__","symbolLocation":612,"imageIndex":4},{"imageOffset":70136,"symbol":"_dispatch_sync_f_slow","symbolLocation":140,"imageIndex":4},{"imageOffset":415228,"symbol":"window::_close(int)","symbolLocation":92,"imageIndex":0},{"imageOffset":431548,"symbol":"webview::cocoa_wkwebview_engine::cocoa_wkwebview_engine(bool, bool, void*, bool, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, bool)::'lambda1'(objc_object*, objc_selector*, objc_object*)::__invoke(objc_object*, objc_selector*, objc_object*)","symbolLocation":44,"imageIndex":0},{"imageOffset":3079144,"symbol":"__19-[NSWindow __close]_block_invoke","symbolLocation":148,"imageIndex":5},{"imageOffset":3078948,"symbol":"-[NSWindow __close]","symbolLocation":376,"imageIndex":5},{"imageOffset":1914636,"symbol":"-[NSApplication(NSResponder) sendAction:to:from:]","symbolLocation":560,"imageIndex":5},{"imageOffset":1914028,"symbol":"-[NSControl sendAction:to:]","symbolLocation":72,"imageIndex":5},{"imageOffset":1913840,"symbol":"__26-[NSCell _sendActionFrom:]_block_invoke","symbolLocation":100,"imageIndex":5},{"imageOffset":1913624,"symbol":"-[NSCell _sendActionFrom:]","symbolLocation":204,"imageIndex":5},{"imageOffset":1913364,"symbol":"-[NSButtonCell _sendActionFrom:]","symbolLocation":96,"imageIndex":5},{"imageOffset":7479956,"symbol":"-[NSControl(_NSTracking) _pressGRActionCellBased:]","symbolLocation":2392,"imageIndex":5},{"imageOffset":7482072,"symbol":"-[NSControl(_NSTracking) gestureRecognizerTrackingAction:]","symbolLocation":104,"imageIndex":5},{"imageOffset":1914636,"symbol":"-[NSApplication(NSResponder) sendAction:to:from:]","symbolLocation":560,"imageIndex":5},{"imageOffset":2553516,"symbol":"_NSGestureRecognizerSendActions","symbolLocation":156,"imageIndex":5},{"imageOffset":16231312,"symbol":"-[NSGestureRecognizer _updateGesture]","symbolLocation":444,"imageIndex":5},{"imageOffset":69316,"imageIndex":6},{"imageOffset":205620,"imageIndex":6},{"imageOffset":408172,"imageIndex":6},{"imageOffset":599188,"imageIndex":6},{"imageOffset":15386992,"symbol":"-[_NSGFGestureEnvironment _routeMouseEventToActiveGestureRecognizers:]","symbolLocation":312,"imageIndex":5},{"imageOffset":8205896,"symbol":"-[_NSGestureEnvironmentBase _sendMouseEventToGestureRecognizers:requireAcceptsFirstMouse:]","symbolLocation":376,"imageIndex":5},{"imageOffset":8210924,"symbol":"-[_NSGestureEnvironmentBase sendEventToGestureRecognizers:requireAcceptsFirstMouse:]","symbolLocation":92,"imageIndex":5},{"imageOffset":1429004,"symbol":"-[NSWindow(NSEventRouting) sendEvent:]","symbolLocation":316,"imageIndex":5},{"imageOffset":12374520,"symbol":"-[NSApplication(NSEventRouting) sendEvent:]","symbolLocation":1276,"imageIndex":5},{"imageOffset":8496280,"symbol":"-[NSApplication _handleEvent:]","symbolLocation":60,"imageIndex":5},{"imageOffset":180580,"symbol":"-[NSApplication run]","symbolLocation":408,"imageIndex":5},{"imageOffset":420172,"symbol":"webview::cocoa_wkwebview_engine::run()","symbolLocation":192,"imageIndex":0},{"imageOffset":419680,"symbol":"window::init(nlohmann::json_abi_v3_11_2::basic_json<std::__1::map, std::__1::vector, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, bool, long long, unsigned long long, double, std::__1::allocator, nlohmann::json_abi_v3_11_2::adl_serializer, std::__1::vector<unsigned char, std::__1::allocator<unsigned char>>> const&)","symbolLocation":2796,"imageIndex":0},{"imageOffset":116576,"symbol":"__startApp()","symbolLocation":196,"imageIndex":0},{"imageOffset":119384,"symbol":"main","symbolLocation":128,"imageIndex":0},{"imageOffset":130468,"symbol":"start","symbolLocation":6992,"imageIndex":7}]},{"id":218617,"frames":[{"imageOffset":612500,"symbol":"std::__1::error_code::error_code[abi:ue170006]<websocketpp::error::value>(websocketpp::error::value, std::__1::enable_if<is_error_code_enum<websocketpp::error::value>::value, void>::type*)","symbolLocation":0,"imageIndex":0},{"imageOffset":599708,"symbol":"websocketpp::connection<websocketpp::config::asio>::terminate(std::__1::error_code const&)","symbolLocation":248,"imageIndex":0},{"imageOffset":598940,"symbol":"websocketpp::server<websocketpp::config::asio>::handle_accept(std::__1::shared_ptr<websocketpp::connection<websocketpp::config::asio>>, std::__1::error_code const&)","symbolLocation":48,"imageIndex":0},{"imageOffset":780216,"symbol":"std::__1::__bind_return<void (websocketpp::server<websocketpp::config::asio>::*)(std::__1::shared_ptr<websocketpp::connection<websocketpp::config::asio>>, std::__1::error_code const&), std::__1::tuple<websocketpp::server<websocketpp::config::asio>*, std::__1::shared_ptr<websocketpp::connection<websocketpp::config::asio>>, std::__1::placeholders::__ph<1>>, std::__1::tuple<std::__1::error_code const&>, __is_valid_bind_return<void (websocketpp::server<websocketpp::config::asio>::*)(std::__1::shared_ptr<websocketpp::connection<websocketpp::config::asio>>, std::__1::error_code const&), std::__1::tuple<websocketpp::server<websocketpp::config::asio>*, std::__1::shared_ptr<websocketpp::connection<websocketpp::config::asio>>, std::__1::placeholders::__ph<1>>, std::__1::tuple<std::__1::error_code const&>>::value>::type std::__1::__bind<void (websocketpp::server<websocketpp::config::asio>::*)(std::__1::shared_ptr<websocketpp::connection<websocketpp::config::asio>>, std::__1::error_code const&), websocketpp::server<websocketpp::config::asio>*, std::__1::shared_ptr<websocketpp::connection<websocketpp::config::asio>>&, std::__1::placeholders::__ph<1> const&>::operator()[abi:ue170006]<std::__1::error_code const&>(std::__1::error_code const&)","symbolLocation":80,"imageIndex":0},{"imageOffset":672084,"symbol":"websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::handle_accept(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&)","symbolLocation":228,"imageIndex":0},{"imageOffset":675432,"symbol":"std::__1::__bind_return<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), std::__1::tuple<websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>, std::__1::placeholders::__ph<1>>, std::__1::tuple<std::__1::error_code const&>, __is_valid_bind_return<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), std::__1::tuple<websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>, std::__1::placeholders::__ph<1>>, std::__1::tuple<std::__1::error_code const&>>::value>::type std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>::operator()[abi:ue170006]<std::__1::error_code const&>(std::__1::error_code const&)","symbolLocation":96,"imageIndex":0},{"imageOffset":675164,"symbol":"void asio::detail::strand_service::dispatch<asio::detail::binder1<std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, std::__1::error_code>>(asio::detail::strand_service::strand_impl*&, asio::detail::binder1<std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, std::__1::error_code>&)","symbolLocation":60,"imageIndex":0},{"imageOffset":674948,"symbol":"void asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>::operator()<std::__1::error_code>(std::__1::error_code const&)","symbolLocation":104,"imageIndex":0},{"imageOffset":676316,"symbol":"asio::detail::completion_handler<asio::detail::rewrapped_handler<asio::detail::binder1<asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>, std::__1::error_code>, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>>, asio::io_context::basic_executor_type<std::__1::allocator<void>, 0ul>>::do_complete(void*, asio::detail::scheduler_operation*, std::__1::error_code const&, unsigned long)","symbolLocation":96,"imageIndex":0},{"imageOffset":626696,"symbol":"asio::detail::strand_service::do_dispatch(asio::detail::strand_service::strand_impl*&, asio::detail::scheduler_operation*)","symbolLocation":180,"imageIndex":0},{"imageOffset":674772,"symbol":"void asio::detail::strand_service::dispatch<asio::detail::rewrapped_handler<asio::detail::binder1<asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>, std::__1::error_code>, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>>>(asio::detail::strand_service::strand_impl*&, asio::detail::rewrapped_handler<asio::detail::binder1<asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>, std::__1::error_code>, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>>&)","symbolLocation":148,"imageIndex":0},{"imageOffset":673524,"symbol":"void asio::detail::handler_work<asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>, asio::any_io_executor, void>::complete<asio::detail::binder1<asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>, std::__1::error_code>>(asio::detail::binder1<asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>, std::__1::error_code>&, asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>&)","symbolLocation":120,"imageIndex":0},{"imageOffset":672896,"symbol":"asio::detail::reactive_socket_accept_op<asio::basic_socket<asio::ip::tcp, asio::any_io_executor>, asio::ip::tcp, asio::detail::wrapped_handler<asio::io_context::strand, std::__1::__bind<void (websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::*)(std::__1::function<void (std::__1::error_code const&)>, std::__1::error_code const&), websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>*, std::__1::function<void (std::__1::error_code const&)>&, std::__1::placeholders::__ph<1> const&>, asio::detail::is_continuation_if_running>, asio::any_io_executor>::do_complete(void*, asio::detail::scheduler_operation*, std::__1::error_code const&, unsigned long)","symbolLocation":180,"imageIndex":0},{"imageOffset":581232,"symbol":"asio::detail::scheduler::do_run_one(asio::detail::conditionally_enabled_mutex::scoped_lock&, asio::detail::scheduler_thread_info&, std::__1::error_code const&)","symbolLocation":464,"imageIndex":0},{"imageOffset":580508,"symbol":"asio::detail::scheduler::run(std::__1::error_code&)","symbolLocation":252,"imageIndex":0},{"imageOffset":786124,"symbol":"websocketpp::transport::asio::endpoint<websocketpp::config::asio::transport_config>::run()","symbolLocation":44,"imageIndex":0},{"imageOffset":785968,"symbol":"void* std::__1::__thread_proxy[abi:ue170006]<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct>>, neuserver::startAsync()::$_6>>(void*)","symbolLocation":56,"imageIndex":0},{"imageOffset":27736,"symbol":"_pthread_start","symbolLocation":136,"imageIndex":9},{"imageOffset":7196,"symbol":"thread_start","symbolLocation":8,"imageIndex":9}],"threadState":{"x":[{"value":6170093568},{"value":21},{"value":0},{"value":6170093586},{"value":49392311168},{"value":0},{"value":46},{"value":18446726482597246976},{"value":3},{"value":8194354859780866226},{"value":1},{"value":0},{"value":13864332677018032},{"value":13846725458586038},{"value":192512},{"value":31},{"value":6678238144,"symbolLocation":0,"symbol":"_platform_memmove"},{"value":13643092125463839408,"symbolLocation":13643092121165496320,"symbol":"asio::system_category()::instance"},{"value":0},{"value":33235812376},{"value":33235832424},{"value":20040},{"value":33235832416},{"value":4307979496},{"value":0},{"value":6170095360},{"value":4307985024},{"value":4307979568},{"value":4307979568}],"flavor":"ARM_THREAD_STATE64","lr":{"value":4297942684},"cpsr":{"value":2147483648},"fp":{"value":6170093680},"sp":{"value":6170093520},"esr":{"value":2181038087,"description":"(Instruction Abort) Translation fault"},"pc":{"value":4297955476},"far":{"value":4297955476}}},{"id":218620,"frames":[],"threadState":{"x":[{"value":6171815936},{"value":8963},{"value":6171279360},{"value":0},{"value":409604},{"value":18446744073709551615},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0}],"flavor":"ARM_THREAD_STATE64","lr":{"value":0},"cpsr":{"value":0},"fp":{"value":0},"sp":{"value":6171815936},"esr":{"value":1442840704,"description":"(Syscall)"},"pc":{"value":6678178824},"far":{"value":0}}},{"id":218630,"name":"com.apple.NSEventThread","threadState":{"x":[{"value":268451845},{"value":21592279046},{"value":8589934592},{"value":135252815118336},{"value":0},{"value":135252815118336},{"value":2},{"value":4294967295},{"value":0},{"value":17179869184},{"value":0},{"value":2},{"value":0},{"value":0},{"value":31491},{"value":0},{"value":18446744073709551569},{"value":8511383088},{"value":0},{"value":4294967295},{"value":2},{"value":135252815118336},{"value":0},{"value":135252815118336},{"value":21592279046},{"value":6172958856},{"value":8589934592},{"value":18446744073709550527},{"value":4412409862}],"flavor":"ARM_THREAD_STATE64","lr":{"value":6677996916},"cpsr":{"value":0},"fp":{"value":6172958704},"sp":{"value":6172958624},"esr":{"value":1442840704,"description":"(Syscall)"},"pc":{"value":6677920820},"far":{"value":0}},"frames":[{"imageOffset":3124,"symbol":"mach_msg2_trap","symbolLocation":8,"imageIndex":11},{"imageOffset":79220,"symbol":"mach_msg2_internal","symbolLocation":76,"imageIndex":11},{"imageOffset":39360,"symbol":"mach_msg_overwrite","symbolLocation":480,"imageIndex":11},{"imageOffset":4032,"symbol":"mach_msg","symbolLocation":24,"imageIndex":11},{"imageOffset":515432,"symbol":"__CFRunLoopServiceMachPort","symbolLocation":160,"imageIndex":12},{"imageOffset":509524,"symbol":"__CFRunLoopRun","symbolLocation":1188,"imageIndex":12},{"imageOffset":1371104,"symbol":"_CFRunLoopRunSpecificWithOptions","symbolLocation":532,"imageIndex":12},{"imageOffset":1420388,"symbol":"_NSEventThread","symbolLocation":184,"imageIndex":5},{"imageOffset":27736,"symbol":"_pthread_start","symbolLocation":136,"imageIndex":9},{"imageOffset":7196,"symbol":"thread_start","symbolLocation":8,"imageIndex":9}]},{"id":218632,"name":"JavaScriptCore libpas scavenger","threadState":{"x":[{"value":260},{"value":0},{"value":1220864},{"value":0},{"value":0},{"value":160},{"value":9},{"value":999998048},{"value":6173535912},{"value":0},{"value":0},{"value":2},{"value":2},{"value":0},{"value":0},{"value":0},{"value":305},{"value":8511381208},{"value":0},{"value":4501071936},{"value":4501072000},{"value":6173536480},{"value":999998048},{"value":9},{"value":1220864},{"value":1229057},{"value":1229312},{"value":0},{"value":8490754048,"symbolLocation":3520,"symbol":"bmalloc_common_primitive_heap_support"}],"flavor":"ARM_THREAD_STATE64","lr":{"value":6678200616},"cpsr":{"value":1610612736},"fp":{"value":6173536032},"sp":{"value":6173535888},"esr":{"value":1442840704,"description":"(Syscall)"},"pc":{"value":6677935372},"far":{"value":0}},"frames":[{"imageOffset":17676,"symbol":"__psynch_cvwait","symbolLocation":8,"imageIndex":11},{"imageOffset":28968,"symbol":"_pthread_cond_wait","symbolLocation":980,"imageIndex":9},{"imageOffset":25877776,"symbol":"scavenger_thread_main","symbolLocation":1632,"imageIndex":13},{"imageOffset":27736,"symbol":"_pthread_start","symbolLocation":136,"imageIndex":9},{"imageOffset":7196,"symbol":"thread_start","symbolLocation":8,"imageIndex":9}]},{"id":218673,"name":"WebCore: Scrolling","threadState":{"x":[{"value":268451845},{"value":21592279046},{"value":8589934592},{"value":205621559296000},{"value":0},{"value":205621559296000},{"value":2},{"value":4294967295},{"value":0},{"value":17179869184},{"value":0},{"value":2},{"value":0},{"value":0},{"value":47875},{"value":2199023256064},{"value":18446744073709551569},{"value":8511383088},{"value":0},{"value":4294967295},{"value":2},{"value":205621559296000},{"value":0},{"value":205621559296000},{"value":21592279046},{"value":6175252424},{"value":8589934592},{"value":18446744073709550527},{"value":4412409862}],"flavor":"ARM_THREAD_STATE64","lr":{"value":6677996916},"cpsr":{"value":0},"fp":{"value":6175252272},"sp":{"value":6175252192},"esr":{"value":1442840704,"description":"(Syscall)"},"pc":{"value":6677920820},"far":{"value":0}},"frames":[{"imageOffset":3124,"symbol":"mach_msg2_trap","symbolLocation":8,"imageIndex":11},{"imageOffset":79220,"symbol":"mach_msg2_internal","symbolLocation":76,"imageIndex":11},{"imageOffset":39360,"symbol":"mach_msg_overwrite","symbolLocation":480,"imageIndex":11},{"imageOffset":4032,"symbol":"mach_msg","symbolLocation":24,"imageIndex":11},{"imageOffset":515432,"symbol":"__CFRunLoopServiceMachPort","symbolLocation":160,"imageIndex":12},{"imageOffset":509524,"symbol":"__CFRunLoopRun","symbolLocation":1188,"imageIndex":12},{"imageOffset":1371104,"symbol":"_CFRunLoopRunSpecificWithOptions","symbolLocation":532,"imageIndex":12},{"imageOffset":992548,"symbol":"CFRunLoopRun","symbolLocation":64,"imageIndex":12},{"imageOffset":2039856,"symbol":"WTF::Detail::CallableWrapper<WTF::RunLoop::create(WTF::ASCIILiteral, WTF::ThreadType, WTF::Thread::QOS)::$_0, void>::call()","symbolLocation":240,"imageIndex":13},{"imageOffset":2332876,"symbol":"WTF::Thread::entryPoint(WTF::Thread::NewThreadContext*)","symbolLocation":296,"imageIndex":13},{"imageOffset":24712,"symbol":"WTF::wtfThreadEntryPoint(void*)","symbolLocation":16,"imageIndex":13},{"imageOffset":27736,"symbol":"_pthread_start","symbolLocation":136,"imageIndex":9},{"imageOffset":7196,"symbol":"thread_start","symbolLocation":8,"imageIndex":9}]},{"id":218711,"name":"Log work queue","threadState":{"x":[{"value":14},{"value":4994025756},{"value":0},{"value":6176971072},{"value":8443395064,"symbolLocation":0,"symbol":"_os_log_current_test_callback"},{"value":1},{"value":0},{"value":6176977120},{"value":0},{"value":0},{"value":0},{"value":0},{"value":67730},{"value":67730},{"value":8488091728,"symbolLocation":0,"symbol":"OBJC_CLASS_$_OS_os_log"},{"value":8488091728,"symbolLocation":0,"symbol":"OBJC_CLASS_$_OS_os_log"},{"value":18446744073709551580},{"value":8511385584},{"value":0},{"value":4647339392},{"value":4647339432},{"value":6176976896},{"value":0},{"value":0},{"value":4647780992},{"value":0},{"value":0},{"value":0},{"value":0}],"flavor":"ARM_THREAD_STATE64","lr":{"value":7403584176},"cpsr":{"value":2147483648},"fp":{"value":6176976720},"sp":{"value":6176976688},"esr":{"value":1442840704,"description":"(Syscall)"},"pc":{"value":6677920688},"far":{"value":0}},"frames":[{"imageOffset":2992,"symbol":"semaphore_wait_trap","symbolLocation":8,"imageIndex":11},{"imageOffset":18946736,"symbol":"IPC::StreamConnectionWorkQueue::startProcessingThread()::$_0::operator()()","symbolLocation":48,"imageIndex":14},{"imageOffset":2332876,"symbol":"WTF::Thread::entryPoint(WTF::Thread::NewThreadContext*)","symbolLocation":296,"imageIndex":13},{"imageOffset":24712,"symbol":"WTF::wtfThreadEntryPoint(void*)","symbolLocation":16,"imageIndex":13},{"imageOffset":27736,"symbol":"_pthread_start","symbolLocation":136,"imageIndex":9},{"imageOffset":7196,"symbol":"thread_start","symbolLocation":8,"imageIndex":9}]},{"id":219196,"frames":[],"threadState":{"x":[{"value":6172389376},{"value":10119},{"value":6171852800},{"value":0},{"value":409604},{"value":18446744073709551615},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0}],"flavor":"ARM_THREAD_STATE64","lr":{"value":0},"cpsr":{"value":0},"fp":{"value":0},"sp":{"value":6172389376},"esr":{"value":1442840704,"description":"(Syscall)"},"pc":{"value":6678178824},"far":{"value":0}}},{"id":219197,"frames":[],"threadState":{"x":[{"value":6174109696},{"value":0},{"value":6173573120},{"value":0},{"value":278532},{"value":18446744073709551615},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0}],"flavor":"ARM_THREAD_STATE64","lr":{"value":0},"cpsr":{"value":0},"fp":{"value":0},"sp":{"value":6174109696},"esr":{"value":0},"pc":{"value":6678178824},"far":{"value":0}}}],
+  "usedImages" : [
+  {
+    "source" : "P",
+    "arch" : "arm64",
+    "base" : 4297342976,
+    "size" : 966656,
+    "uuid" : "c1e2ed72-6447-39c2-8359-5eb21e3c5044",
+    "path" : "\/Users\/USER\/Documents\/*\/neutralino-mac_arm64",
+    "name" : "neutralino-mac_arm64"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64e",
+    "base" : 4301455360,
+    "size" : 49152,
+    "uuid" : "a4dd56f1-375a-3540-844b-5e397f0b78b3",
+    "path" : "\/usr\/lib\/libobjc-trampolines.dylib",
+    "name" : "libobjc-trampolines.dylib"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64e",
+    "base" : 4456955904,
+    "CFBundleShortVersionString" : "350.38",
+    "CFBundleIdentifier" : "com.apple.AGXMetalG17P",
+    "size" : 8880128,
+    "uuid" : "249f5375-a082-3df1-8eb8-094e2f7d74d1",
+    "path" : "\/System\/Library\/Extensions\/AGXMetalG17P.bundle\/Contents\/MacOS\/AGXMetalG17P",
+    "name" : "AGXMetalG17P",
+    "CFBundleVersion" : "350.38"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64e",
+    "base" : 4301684736,
+    "CFBundleShortVersionString" : "1.0",
+    "CFBundleIdentifier" : "com.apple.AppleMetalOpenGLRenderer",
+    "size" : 409600,
+    "uuid" : "0a5a2e2b-9899-3606-af8c-84850db23fea",
+    "path" : "\/System\/Library\/Extensions\/AppleMetalOpenGLRenderer.bundle\/Contents\/MacOS\/AppleMetalOpenGLRenderer",
+    "name" : "AppleMetalOpenGLRenderer",
+    "CFBundleVersion" : "1"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64e",
+    "base" : 6676377600,
+    "size" : 291392,
+    "uuid" : "e17aa23f-db2a-3302-b14c-f6b08c540fcf",
+    "path" : "\/usr\/lib\/system\/libdispatch.dylib",
+    "name" : "libdispatch.dylib"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64e",
+    "base" : 6750216192,
+    "CFBundleShortVersionString" : "6.9",
+    "CFBundleIdentifier" : "com.apple.AppKit",
+    "size" : 24259264,
+    "uuid" : "59e23bd5-d01e-305a-b96f-a5790356049a",
+    "path" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+    "name" : "AppKit",
+    "CFBundleVersion" : "2685.50.120"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64e",
+    "base" : 10079141888,
+    "CFBundleShortVersionString" : "9126.1.5",
+    "CFBundleIdentifier" : "com.apple.Gestures",
+    "size" : 802464,
+    "uuid" : "ebd4a257-1460-3cfb-91ff-61eba39b1ac3",
+    "path" : "\/System\/Library\/PrivateFrameworks\/Gestures.framework\/Versions\/A\/Gestures",
+    "name" : "Gestures",
+    "CFBundleVersion" : "9126.1.5"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64e",
+    "base" : 6674153472,
+    "size" : 679624,
+    "uuid" : "9f682dcf-340c-3bfa-bcdd-dd702f30313e",
+    "path" : "\/usr\/lib\/dyld",
+    "name" : "dyld"
+  },
+  {
+    "size" : 0,
+    "source" : "A",
+    "base" : 0,
+    "uuid" : "00000000-0000-0000-0000-000000000000"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64e",
+    "base" : 6678171648,
+    "size" : 52028,
+    "uuid" : "e7a73008-0c09-31e3-9dd9-0c61652f0e85",
+    "path" : "\/usr\/lib\/system\/libsystem_pthread.dylib",
+    "name" : "libsystem_pthread.dylib"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64e",
+    "base" : 6678224896,
+    "size" : 35060,
+    "uuid" : "d93ec420-f465-3a3a-916d-a04af9b023eb",
+    "path" : "\/usr\/lib\/system\/libsystem_platform.dylib",
+    "name" : "libsystem_platform.dylib"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64e",
+    "base" : 6677917696,
+    "size" : 250512,
+    "uuid" : "51565b39-f595-3e96-a217-fef29815057a",
+    "path" : "\/usr\/lib\/system\/libsystem_kernel.dylib",
+    "name" : "libsystem_kernel.dylib"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64e",
+    "base" : 6678458368,
+    "CFBundleShortVersionString" : "6.9",
+    "CFBundleIdentifier" : "com.apple.CoreFoundation",
+    "size" : 5626976,
+    "uuid" : "04941709-2330-3bf8-9213-6d33964db448",
+    "path" : "\/System\/Library\/Frameworks\/CoreFoundation.framework\/Versions\/A\/CoreFoundation",
+    "name" : "CoreFoundation",
+    "CFBundleVersion" : "4424.1.402"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64e",
+    "base" : 7246778368,
+    "CFBundleShortVersionString" : "21624",
+    "CFBundleIdentifier" : "com.apple.JavaScriptCore",
+    "size" : 27954656,
+    "uuid" : "cae1f78c-542e-30f7-8e08-fdca4b880e04",
+    "path" : "\/System\/Library\/Frameworks\/JavaScriptCore.framework\/Versions\/A\/JavaScriptCore",
+    "name" : "JavaScriptCore",
+    "CFBundleVersion" : "21624.1.16.11.4"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64e",
+    "base" : 7384637440,
+    "CFBundleShortVersionString" : "21624",
+    "CFBundleIdentifier" : "com.apple.WebKit",
+    "size" : 22909920,
+    "uuid" : "e7e04c4f-689c-3e21-bd4a-c7591fd3d5ca",
+    "path" : "\/System\/Library\/Frameworks\/WebKit.framework\/Versions\/A\/WebKit",
+    "name" : "WebKit",
+    "CFBundleVersion" : "21624.1.16.11.4"
+  }
+],
+  "sharedCache" : {
+  "base" : 6673022976,
+  "size" : 5978570752,
+  "uuid" : "7d4906c9-9ca2-3f56-8242-3ec2c1e3245b"
+},
+  "vmSummary" : "ReadOnly portion of Libraries: Total=1.8G resident=0K(0%) swapped_out_or_unallocated=1.8G(100%)\nWritable regions: Total=4.4G written=1073K(0%) resident=689K(0%) swapped_out=384K(0%) unallocated=4.4G(100%)\n\n                                VIRTUAL   REGION \nREGION TYPE                        SIZE    COUNT (non-coalesced) \n===========                     =======  ======= \nAccelerate framework               256K        2 \nActivity Tracing                   256K        1 \nAttributeGraph Data               1024K        1 \nCG image                           640K        1 \nColorSync                           32K        2 \nCoreAnimation                      576K       30 \nCoreGraphics                        32K        2 \nCoreUI image data                 1888K       13 \nFoundation                          32K        2 \nImage IO                           176K        2 \nJS VM Gigacage (reserved)          4.0G        1         reserved VM address space (unallocated)\nKernel Alloc Once                   32K        1 \nMALLOC                            64.9M       30 \nMALLOC guard page                 3744K        4 \nMemory Tag 22                     64.0M        1 \nSQLite page cache                  128K        1 \nSTACK GUARD                       56.1M        9 \nStack                             12.2M        9 \nVM_ALLOCATE                        976K       13 \nWebKit Malloc                    256.1M        7 \n__AUTH                            6105K      645 \n__AUTH_CONST                      90.4M     1037 \n__CTF                               824        1 \n__DATA                            34.6M      988 \n__DATA_CONST                      34.7M     1045 \n__DATA_DIRTY                      8495K      895 \n__FONT_DATA                        2352        1 \n__GLSLBUILTINS                    5176K        1 \n__LINKEDIT                       576.0M        5 \n__OBJC_RO                         79.1M        1 \n__OBJC_RW                         2597K        1 \n__TEXT                             1.2G     1067 \n__TPRO_CONST                       128K        2 \nmapped file                      285.7M       43 \npage table in kernel               689K        1 \nshared memory                      880K       14 \n===========                     =======  ======= \nTOTAL                              6.8G     5879 \nTOTAL, minus reserved VM space     2.8G     5879 \n",
+  "legacyInfo" : {
+  "threadTriggered" : {
+    "queue" : "com.apple.main-thread"
+  }
+},
+  "logWritingSignature" : "32b6dc0a45fbaecf08b0d085ddd10ec8aee4a364",
+  "roots_installed" : 0,
+  "bug_type" : "309",
+  "trmStatus" : 1,
+  "trialInfo" : {
+  "rollouts" : [
+    {
+      "rolloutId" : "682ef9612c2ae30e2f38d3a4",
+      "factorPackIds" : [
+
+      ],
+      "deploymentId" : 240000006
+    },
+    {
+      "rolloutId" : "6761d0c9df60af01adb250fb",
+      "factorPackIds" : [
+
+      ],
+      "deploymentId" : 240000009
+    }
+  ],
+  "experiments" : [
+
+  ]
+}
+}
+
+Model: Mac17,5, BootROM 18000.101.7, proc 6:2:4:0 processors, 8 GB, SMC 
+Graphics: Apple A18 Pro, Apple A18 Pro, Built-In
+Display: Color LCD, spdisplays_2408x1506Retina, Main, MirrorOff, Online
+Memory Module: LPDDR5, Micron
+AirPort: spairport_wireless_card_type_wifi (0x14C3, 0x7932), MTK_driverkit-300.22 "MTK_driverkit-300.22" Mar  5 2026 21:58:58
+IO80211_driverkit-1555.23 "IO80211_driverkit-1555.23" Mar  5 2026 21:45:55
+AirPort: 
+Bluetooth: Version (null), 0 services, 0 devices, 0 incoming serial ports
+Network Service: Wi-Fi, AirPort, en0
+Thunderbolt Bus: 

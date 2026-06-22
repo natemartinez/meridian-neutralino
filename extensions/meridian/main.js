@@ -245,7 +245,16 @@ class MeridianExtension {
       case 'killProcess':
         // Called when the close button is clicked and Neutralino.app.exit(0)
         // fails. This kills the entire process group to ensure clean shutdown.
-        process.exit(0);
+        // The extension runs as a child process of the Neutralino server.
+        // We need to kill the parent (server) process, not just ourselves.
+        try {
+          process.kill(-process.ppid, 'SIGTERM');
+        } catch (_) {
+          // If killing the group fails, try the parent directly
+          try { process.kill(process.ppid, 'SIGTERM'); } catch (_) {}
+        }
+        // Give a moment for the signal to be delivered, then exit ourselves
+        setTimeout(() => process.exit(0), 100);
         return { success: true };
 
       default:

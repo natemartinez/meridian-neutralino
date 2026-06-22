@@ -34,6 +34,14 @@ export default [
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       // React Hooks rules
       ...hooksPlugin.configs.recommended.rules,
+      // Warn if exitProcessOnClose is false — patched binary handles close directly
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: 'Property[key.name="exitProcessOnClose"][value.value=false]',
+          message: 'exitProcessOnClose is set to false. With the patched binary (dispatch_async fix), setting it to true provides more reliable close behavior.',
+        },
+      ],
     },
     settings: {
       react: {
