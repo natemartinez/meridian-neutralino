@@ -24,6 +24,7 @@ export default function TrackingPage({
   apiKey, model, geminiInput, setGeminiInput, geminiResponse, setGeminiResponse, geminiLoading, setGeminiLoading,
   focus, knowledgePool,
   pomodoroPreselect, onClearPomodoroPreselect,
+  setMainPage,
 }) {
   const [trackView, setTrackView] = useState('performance');
   const [hoveredHour, setHoveredHour] = useState(null);
@@ -144,6 +145,20 @@ export default function TrackingPage({
 
   return (
     <div style={{ width:'100%', height:'100%', overflowY:'auto', background:T.bg, padding:'20px 28px', boxSizing:'border-box' }}>
+      {/* ── Back button ── */}
+      <button
+        onClick={() => setMainPage?.('hq')}
+        style={{
+          background:'none', border:`1px solid ${T.border}`, borderRadius:6,
+          color:T.muted, fontSize:11, cursor:'pointer', padding:'5px 12px',
+          fontFamily:"'IBM Plex Mono',monospace", marginBottom:12,
+          display:'flex', alignItems:'center', gap:5, transition:'all .15s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.color=T.text; e.currentTarget.style.borderColor=T.dim; }}
+        onMouseLeave={e => { e.currentTarget.style.color=T.muted; e.currentTarget.style.borderColor=T.border; }}
+      >
+        ← Back to HQ
+      </button>
       <div style={{ maxWidth:900, margin:'0 auto' }}>
         {/* ── Tab bar ── */}
         <div style={{ display:'flex', gap:4, background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, padding:4, marginBottom:16, alignSelf:'flex-start' }}>

@@ -242,7 +242,7 @@ These should represent the 3 most likely ways the user would respond. Make them 
         directive = `Your confidence with this user is good (${confidence}%). Summarize what you understand about them and ask them to confirm. If they confirm accuracy, end with [READY]. If they correct you, learn from the correction and continue.`;
       }
 
-      return `${base}\n\nThis is a Calibration session. ${directive}\n\nKnowledge Pool context:\n${knowledgeBlock}\n\nRules:\n- Ask ONE question at a time\n- Never repeat a question already answered\n- Reference what you already know to show understanding\n- When the user confirms understanding is accurate, end with [READY]`;
+      return `${base}\n\nThis is a Paths session. ${directive}\n\nKnowledge Pool context:\n${knowledgeBlock}\n\nRules:\n- Ask ONE question at a time\n- Never repeat a question already answered\n- Reference what you already know to show understanding\n- When the user confirms understanding is accurate, end with [READY]`;
     }
 
     return base;

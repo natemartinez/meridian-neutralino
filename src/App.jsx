@@ -41,6 +41,18 @@ import { PATTERNS } from './constants/novaInteractions.js';
 import NovaToast from './components/nova/NovaToast.jsx';
 import StartupCanvas from './components/nova/StartupCanvas.jsx';
 
+    // ── Programs that show their connected canvas instead of chat ──
+    const PROGRAMS_WITH_CANVAS = ['program-briefing', 'program-focus', 'program-preview', 'program-calibration'];
+    const PROGRAM_DEFAULT_PAGES = {
+      'briefing': 'goals',
+      'focus': 'onward',
+      'preview': 'map',
+      'calibration': 'paths',
+    };
+    const isCanvasPage = (page) => page === 'hq' || PROGRAMS_WITH_CANVAS.includes(page);
+    const isProgram = (page) => page.startsWith('program-');
+    const extractProgId = (page) => page.replace('program-', '');
+
     function Meridian() {
       const [projects, setProjects]     = useState(() => { try { const s = localStorage.getItem('meridian_projects_v2'); return s ? JSON.parse(s) : []; } catch { return []; } });
       const [selectedId, setSelectedId] = useState(null);
@@ -254,6 +266,28 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
         setWaypointOpen(false);
       };
 
+      // ── Program open handler: sets activePage to the program's default canvas page ──
+      const onOpenProgramWithPage = useCallback((progId, defaultPage) => {
+        setMainPage(`program-${progId}`);
+        if (defaultPage) {
+          setActivePage(defaultPage);
+          activePageRef.current = defaultPage;
+        }
+        setShowStartupCanvas(false);
+      }, [setMainPage, setActivePage, setShowStartupCanvas]);
+
+      // ── Sub-nav handler: called from NOVAProgramPanel sub-nav buttons ──
+      const onSubNav = useCallback((page) => {
+        setActivePage(page);
+        activePageRef.current = page;
+        novaInteractions.fireEvent('page_navigated', { page });
+        if (page !== 'goals' && page !== 'worklogs' && page !== 'briefing-chat') {
+          openWaypoint({ type: 'canvas-panel', id: page });
+        } else {
+          closeWaypoint();
+        }
+      }, [setActivePage, openWaypoint, closeWaypoint, novaInteractions]);
+
       // Refs
       const canvasRef     = useRef(null);
       const animRef       = useRef(null);
@@ -369,6 +403,11 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                             setTimeout(() => {
                               setPendingAutoStart(program);
                               setMainPage(`program-${program}`);
+                              const defaultPage = PROGRAM_DEFAULT_PAGES[program];
+                              if (defaultPage) {
+                                setActivePage(defaultPage);
+                                activePageRef.current = defaultPage;
+                              }
                             }, 500);
                           }
                         }
@@ -520,7 +559,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
 
       // ── Canvas draw loop ──────────────────────────────────────
       useEffect(() => {
-        if (!loaded || !apiKey || mainPage !== 'hq') return;
+        if (!loaded || !apiKey || !isCanvasPage(mainPage)) return;
         const canvas = canvasRef.current;
         if (!canvas) return;
         const dpr = window.devicePixelRatio || 1;
@@ -1367,7 +1406,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
             .app-shell{display:flex;height:100vh;overflow:hidden;background:${T.bg};color:${T.text};font-family:'Syne',sans-serif;}
 
             /* ── SIGNAL ── */
-            .sig{width:240px;flex-shrink:0;background:transparent;display:flex;flex-direction:column;overflow:hidden;transition:width .2s;padding:12px 0;}
+            .sig{width:180px;flex-shrink:0;background:transparent;display:flex;flex-direction:column;overflow:hidden;transition:width .2s;padding:12px 0;position:relative;}
             .sig.collapsed{width:48px;}
             .sig.collapsed .sec,
             .sig.collapsed .wp-ttl,
@@ -1381,6 +1420,9 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
             .sig.collapsed .plan-refresh-btn,
             .sig.collapsed .prg-lbl,
             .sig.collapsed .prg-desc{display:none;}
+            /* Center the NovaSidebarBlock (HQ button) when sidebar is collapsed */
+            .sig.collapsed .nova-block{display:flex;justify-content:center;}
+            .sig.collapsed .nova-block > div{margin:0 auto;}
             .sec{padding:10px 11px 6px;}
             .secl{font-size:7.5px;color:${T.muted};text-transform:uppercase;letter-spacing:.12em;display:flex;align-items:center;gap:5px;margin-bottom:8px;}
             .pip{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
@@ -1402,7 +1444,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
 
             /* ── COMMAND ── */
             .cmd{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;position:relative;}
-            .ctb{padding:11px 14px;border-bottom:1px solid ${T.border};display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+            .ctb{padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
             .cttl{font-size:14px;color:${T.accent};font-weight:700;letter-spacing:.1em;font-family:'Syne',sans-serif;}
             .cdt{font-size:9px;color:${T.muted};margin-top:2px;font-family:'IBM Plex Mono',monospace;}
             .cbtn{padding:6px 11px;background:${T.accentLo};border:1px solid ${T.accent}30;border-radius:20px;color:${T.accent};font-size:9.5px;cursor:pointer;font-family:'IBM Plex Mono',monospace;letter-spacing:.04em;white-space:nowrap;transition:all .14s;}
@@ -1524,7 +1566,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
             .plan-refresh-btn{font-size:8px;}
 
             /* Base sizes (1440px - 1919px) - default zoomed in */
-            .sig{width:336px;}
+            .sig{width:252px;}
             .sec{padding:14px 14px 10px;}
             .sig-add{margin:6px 14px 10px;padding:9px;}
             .wp.open{width:345px;}
@@ -1546,7 +1588,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
 
             /* Small screens (laptops, 1366px - 1439px) - slight reduction */
             @media (max-width: 1439px) {
-              .sig{width:306px;}
+              .sig{width:230px;}
               .wp.open{width:299px;}
               .wpi{width:299px;}
               .sec{padding:12px 12px 8px;}
@@ -1566,7 +1608,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
 
             /* Extra small screens (compact laptops, < 1366px) */
             @media (max-width: 1365px) {
-              .sig{width:275px;}
+              .sig{width:206px;}
               .wp.open{width:276px;}
               .wpi{width:276px;}
               .sec{padding:10px 10px 6px;}
@@ -1587,7 +1629,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
 
             /* Large screens (1920px - 2559px) - bigger for TV/desktop */
             @media (min-width: 1920px) {
-              .sig{width:398px;}
+              .sig{width:298px;}
               .wp.open{width:391px;}
               .wpi{width:391px;}
               .sec{padding:18px 18px 12px;}
@@ -1617,7 +1659,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
 
             /* Extra large screens (4K, >= 2560px) - very zoomed in */
             @media (min-width: 2560px) {
-              .sig{width:368px;}
+              .sig{width:276px;}
               .wp.open{width:460px;}
               .wpi{width:460px;}
               .sec{padding:22px 22px 16px;}
@@ -1649,7 +1691,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
 
             /* Very small viewports - absolute minimums */
             @media (max-width: 1200px) {
-              .sig{width:184px;}
+              .sig{width:138px;}
               .wp.open{width:253px;}
               .wpi{width:253px;}
               .sec{padding:8px 9px 5px;}
@@ -1661,6 +1703,25 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
           <div className="app-shell">
             {/* ═══ SIGNAL ═══ */}
             <div className={`sig${sidebarCollapsed ? ' collapsed' : ''}`}>
+              {/* ── Collapse toggle on the right edge of the sidebar ── */}
+              <button
+                onClick={() => setSidebarCollapsed(v => !v)}
+                title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                style={{
+                  position:'absolute',
+                  right: sidebarCollapsed ? -14 : -14,
+                  top: 12,
+                  zIndex: 60,
+                  background:'none', border:'none',
+                  color: T.muted, cursor:'pointer', fontSize:10,
+                  fontFamily:"'IBM Plex Mono',monospace", lineHeight:1,
+                  padding:'4px 2px',
+                  transition:'all .14s', opacity:0.4,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.opacity='1'; e.currentTarget.style.color=T.text; }}
+                onMouseLeave={e => { e.currentTarget.style.opacity='0.4'; e.currentTarget.style.color=T.muted; }}
+              >{sidebarCollapsed ? '▸' : '◂'}</button>
+
               <NovaSidebarBlock
                 novaState={novaState}
                 mainPage={mainPage}
@@ -1668,125 +1729,67 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                 onBackToHQ={() => setMainPage('hq')}
               />
               <ProgramsList
+                collapsed={sidebarCollapsed}
                 mainPage={mainPage}
                 onOpenProgram={(id) => setMainPage(`program-${id}`)}
                 onBackToHQ={() => setMainPage('hq')}
                 addSyncEvent={addSyncEvent}
+                onOpenProgramWithPage={onOpenProgramWithPage}
+                onSubNavNavigate={(programId, subNavId) => {
+                  setMainPage(`program-${programId}`);
+                  // Defer the sub-nav navigation so the program panel renders first
+                  setTimeout(() => onSubNav(subNavId), 50);
+                }}
               />
-            </div>
-
-            {/* ── Floating nav bar (Track, Settings, Mind) ── */}
-            <div style={{
-              position:'fixed', left:0, top:'50%', transform:'translateY(-50%)',
-              display:'flex', flexDirection:'column', gap:4,
-              padding:'6px 4px',
-              background:`${T.surface}cc`,
-              backdropFilter:'blur(8px)',
-              border:`1px solid ${T.border}`,
-              borderRadius:'0 8px 8px 0',
-              borderLeft:'none',
-              zIndex:50,
-            }}>
-              {[
-                { page:'tracking',  label:'Track',    icon: () => <svg width="14" height="14" viewBox="0 0 16 16"><path d="M2 12 L5.5 7 L9 10 L14 4" fill="none" stroke={T.blue} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><circle cx="14" cy="4" r="1.8" fill={T.blue}/></svg> },
-                { page:'settings',  label:'Settings', icon: () => <svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke={T.purple} strokeWidth="1.6"/><circle cx="8" cy="8" r="2" fill={T.purple}/><path d="M8 2.5v1M8 12.5v1M2.5 8h1M12.5 8h1" stroke={T.purple} strokeWidth="1.4" strokeLinecap="round"/></svg> },
-                { page:'mindcheck', label:'Mind',     icon: () => <svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 13C8 13 2.5 9.2 2.5 5.8a3.5 3.5 0 016.5-1.8 3.5 3.5 0 016.5 1.8C15.5 9.2 8 13 8 13z" fill="none" stroke={T.green} strokeWidth="1.6"/><path d="M5.5 6.5l1.8 1.8L10 5.5" fill="none" stroke={T.green} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-              ].map(({ page, label, icon }) => {
-                const isActive = mainPage === page;
-                return (
-                  <button
-                    key={page}
-                    onClick={() => { setMainPage(page); closeWaypoint(); }}
-                    style={{
-                      display:'flex', alignItems:'center', gap:6,
-                      padding:'7px 8px',
-                      borderRadius:6,
-                      background: isActive ? `${T.accent}15` : 'transparent',
-                      border:'none',
-                      cursor:'pointer',
-                      color: isActive ? T.accent : T.muted,
-                      transition:'all .14s',
-                      whiteSpace:'nowrap',
-                      fontFamily:"'IBM Plex Mono',monospace",
-                      fontSize:9,
-                      letterSpacing:'.04em',
-                    }}
-                    onMouseEnter={e => { if (!isActive) { e.currentTarget.style.color = T.text; e.currentTarget.style.background = `${T.surface}`; } }}
-                    onMouseLeave={e => { if (!isActive) { e.currentTarget.style.color = T.muted; e.currentTarget.style.background = 'transparent'; } }}
-                  >
-                    {icon()}
-                    <span>{label}</span>
-                  </button>
-                );
-              })}
             </div>
 
             {/* ═══ COMMAND ═══ */}
             <div className="cmd">
-              {/* Top bar */}
-              <div className="ctb">
-                <div>
-                  <div className="cttl">
-                    {mainPage === 'hq' ? (activePage === 'onward' ? 'ONWARD' : activePage === 'map' ? 'MAP' : activePage === 'paths' ? 'PATHS' : activePage === 'skills' ? 'SKILLS' : activePage === 'worklogs' ? 'WORK LOGS' : 'GOALS') : mainPage === 'tracking' ? 'TRACKING' : mainPage === 'settings' ? 'SETTINGS' : mainPage === 'knowledge-pool' ? 'KNOWLEDGE POOL' : mainPage === 'mindcheck' ? 'MIND CHECK' : mainPage === 'nova-insights' ? 'PRODUCTIVITY INSIGHTS' : mainPage === 'program-briefing' ? 'BRIEFING' : mainPage === 'program-focus' ? 'FOCUS' : mainPage === 'program-regroup' ? 'RE-GROUP' : mainPage === 'program-preview' ? 'PREVIEW' : 'MIND CHECK'}
-                  </div>
-                  <div className="cdt">
-                    {new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })}
-                  </div>
-                </div>
-                {mainPage === 'hq' && activePage === 'goals' && (
-                  <div style={{ display:'flex', gap:6 }}>
-                    <button className="cbtn" onClick={() => {
-                      const canvas = canvasRef.current;
-                      if (!canvas) return;
-                      const rect = canvas.getBoundingClientRect();
-                      setProjects(prev => autoOrganizeGoals(prev, rect.width, rect.height));
-                    }}>⟐ Organize</button>
-                    <button className="cbtn" onClick={() => setModal(true)}>+ New Goal</button>
-                  </div>
+              {/* Top bar — nav buttons */}
+              <div className="ctb" style={{ justifyContent: isProgram(mainPage) ? 'space-between' : 'flex-end' }}>
+                {/* Back button — shown when a program is active */}
+                {isProgram(mainPage) && (
+                  <button
+                    className="cbtn"
+                    onClick={() => { setMainPage('hq'); setShowStartupCanvas(true); }}
+                    style={{
+                      background: 'transparent',
+                      borderColor: T.border,
+                      color: T.text,
+                    }}
+                  >
+                    ← Back
+                  </button>
                 )}
-              </div>
-
-              {/* Compass sub-nav (HQ only, sits just under the top bar) */}
-              {mainPage === 'hq' && (
-                <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', borderBottom:`1px solid ${T.border}`, background:T.bg, flexShrink:0 }}>
+                <div style={{ display:'flex', gap:4 }}>
                   {[
-                    { page:'goals', label:'✦ Goals' },
-                    { page:'onward',        label:'ONWARD' },
-                    { page:'map',           label:'MAP' },
-                    { page:'paths',         label:'PATHS' },
-                    { page:'skills',        label:'SKILLS' },
-                    { page:'worklogs',      label:'WORK LOGS' },
-                  ].map(({ page, label }) => (
-                    <button
-                      key={page}
-                      onClick={() => {
-                        setActivePage(page);
-                        activePageRef.current = page;
-                        novaInteractions.fireEvent('page_navigated', { page });
-                        if (page !== 'goals' && page !== 'worklogs') openWaypoint({ type: 'canvas-panel', id: page });
-                        else closeWaypoint();
-                      }}
-                      style={{
-                        background: activePage === page ? `${T.accent}15` : 'transparent',
-                        border: `1px solid ${activePage === page ? T.accent + '50' : 'transparent'}`,
-                        borderRadius: 5,
-                        padding: '3px 9px',
-                        fontFamily: "'IBM Plex Mono',monospace",
-                        fontSize: 9,
-                        fontWeight: 700,
-                        color: activePage === page ? T.accent : T.muted,
-                        cursor: 'pointer',
-                        letterSpacing: '.08em',
-                        transition: 'all .14s',
-                      }}
-                    >{label}</button>
-                  ))}
+                    { page:'tracking',  label:'Track',    color:T.blue,   icon: () => <svg width="14" height="14" viewBox="0 0 16 16"><path d="M2 12 L5.5 7 L9 10 L14 4" fill="none" stroke={T.blue} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><circle cx="14" cy="4" r="1.8" fill={T.blue}/></svg> },
+                    { page:'settings',  label:'Settings', color:T.purple, icon: () => <svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke={T.purple} strokeWidth="1.6"/><circle cx="8" cy="8" r="2" fill={T.purple}/><path d="M8 2.5v1M8 12.5v1M2.5 8h1M12.5 8h1" stroke={T.purple} strokeWidth="1.4" strokeLinecap="round"/></svg> },
+                    { page:'mindcheck', label:'Mind',     color:T.green,  icon: () => <svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 13C8 13 2.5 9.2 2.5 5.8a3.5 3.5 0 016.5-1.8 3.5 3.5 0 016.5 1.8C15.5 9.2 8 13 8 13z" fill="none" stroke={T.green} strokeWidth="1.6"/><path d="M5.5 6.5l1.8 1.8L10 5.5" fill="none" stroke={T.green} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+                  ].map(({ page, label, color, icon }) => {
+                    const isActive = mainPage === page;
+                    return (
+                      <button
+                        key={page}
+                        className="cbtn"
+                        onClick={() => { setMainPage(page); closeWaypoint(); }}
+                        style={{
+                          background: isActive ? `${color}18` : 'transparent',
+                          borderColor: isActive ? `${color}50` : undefined,
+                          color: isActive ? color : undefined,
+                        }}
+                      >
+                        {icon()}
+                        <span style={{ marginLeft:4 }}>{label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
 
               {/* Body */}
               <div className="cbody">
-                {mainPage === 'hq' && showStartupCanvas ? (
+                {isCanvasPage(mainPage) && showStartupCanvas ? (
                   <StartupCanvas
                     lastProgram={getLastActiveProgram(novaState?.programChats)}
                     focusMode={focusMode}
@@ -1794,7 +1797,14 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                     novaLoading={novaLoading}
                     pendingAutoStart={pendingAutoStart}
                     onDismiss={() => setShowStartupCanvas(false)}
-                    onNavigate={(page) => { setMainPage(page); setShowStartupCanvas(false); }}
+                    onNavigate={(page) => {
+                      setMainPage(page);
+                      setShowStartupCanvas(false);
+                      if (page === 'program-briefing') {
+                        setActivePage('briefing-chat');
+                        activePageRef.current = 'briefing-chat';
+                      }
+                    }}
                     onResumeFocus={() => {
                       if (focusMode) {
                         setFocusMode({ ...focusMode, active: true });
@@ -1807,7 +1817,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                     projects={projects}
                     T={T}
                   />
-                ) : mainPage === 'hq' && (
+                ) : isCanvasPage(mainPage) && (
                   <div className="cv" style={{ cursor: activePage === 'goals' ? (dragging ? 'grabbing' : 'grab') : activePage === 'onward' ? 'default' : 'pointer', position: 'relative', overflow: activePage === 'onward' ? 'auto' : 'hidden', width: (activePage === 'onward' && waypointOpen) ? 'calc(100% - 244px)' : '100%', transition: 'width 0.4s cubic-bezier(.4,0,.2,1)', scrollbarWidth: 'thin', scrollbarColor: `${T.border} ${T.bg}` }}>
                     <canvas
                       ref={canvasRef}
@@ -1835,8 +1845,96 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                         <WorkLogsView />
                       </div>
                     )}
+                    {activePage === 'briefing-chat' && isProgram(mainPage) && (() => {
+                      const progId = extractProgId(mainPage);
+                      return (
+                        <div style={{ position: 'absolute', inset: 0, background: '#07090f', zIndex: 10, display: 'flex', flexDirection: 'column', padding: 16 }}>
+                          <NOVAProgramPanel
+                            progId={progId}
+                            novaState={novaState}
+                            setNovaState={setNovaState}
+                            novaChatInput={novaChatInput}
+                            setNovaChatInput={setNovaChatInput}
+                            novaLoading={novaLoading}
+                            sendNOVAMessage={sendNOVAMessage}
+                            addSyncEvent={addSyncEvent}
+                            setOnwardItems={setOnwardItems}
+                            uid={uid}
+                            onBack={() => setActivePage(PROGRAM_DEFAULT_PAGES[progId] || 'goals')}
+                            T={T}
+                            onNewSession={onNewSession}
+                            buildNOVASystemPrompt={buildNOVASystemPrompt}
+                            onwardItems={onwardItems}
+                            projects={projects}
+                            selectedForToday={selectedForToday}
+                            setSelectedForToday={setSelectedForToday}
+                            deferredItems={deferredItems}
+                            setDeferredItems={setDeferredItems}
+                            backlogItems={backlogItems}
+                            setBacklogItems={setBacklogItems}
+                            onBreakdownTask={handleBreakdownTask}
+                            sessions={sessions}
+                            brainDumpEntries={brainDumpEntries}
+                            onBrainDump={handleBrainDump}
+                            journalEntries={journalEntries}
+                            onJournalEntry={handleJournalEntry}
+                            onBreakdownSuggestion={handleBreakdownSuggestion}
+                            novaRetry={novaRetry}
+                            confirmInsight={confirmInsight}
+                            dismissInsight={dismissInsight}
+                            onSubNav={onSubNav}
+                          />
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
+                {/* ── Program Sub-Nav Overlay ── */}
+                {isProgram(mainPage) && PROGRAMS_WITH_CANVAS.includes(mainPage) && (() => {
+                  const progId = extractProgId(mainPage);
+                  const SUB_NAVS = {
+                    briefing:    [{ id: 'briefing', label: 'BRIEFING', action: 'chat' }],
+                    focus:       [{ id: 'onward',   label: 'ONWARD',   action: 'subnav' }, { id: 'worklogs', label: 'WORK LOGS', action: 'subnav' }],
+                  };
+                  const subNavs = SUB_NAVS[progId] || [];
+                  return (
+                    <div style={{
+                      position: 'absolute',
+                      top: 0, left: 0, right: 0,
+                      zIndex: 15,
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      gap: 10,
+                      padding: '10px 18px',
+                      pointerEvents: 'auto',
+                    }}>
+                      {subNavs.map(sub => (
+                        <button
+                          key={sub.id}
+                          onClick={() => {
+                            if (sub.action === 'chat') {
+                              onSubNav('briefing-chat');
+                            } else {
+                              onSubNav(sub.id);
+                            }
+                          }}
+                          style={{
+                            background: 'none',
+                            border: `1px solid ${T.border}`,
+                            borderRadius: 4,
+                            color: T.muted,
+                            cursor: 'pointer',
+                            fontSize: 9,
+                            padding: '2px 8px',
+                            fontFamily: "'IBM Plex Mono',monospace",
+                            letterSpacing: '.05em',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >{sub.label}</button>
+                      ))}
+                    </div>
+                  );
+                })()}
                 {mainPage === 'tracking' && (
                   <TrackingPage
                     projects={projects}
@@ -1865,6 +1963,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                     knowledgePool={knowledgePool}
                     pomodoroPreselect={pomodoroPreselect}
                     onClearPomodoroPreselect={() => setPomodoroPreselect(null)}
+                    setMainPage={setMainPage}
                   />
                 )}
                 {mainPage === 'settings' && (
@@ -1880,6 +1979,8 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                     companionName={companionName}
                     setCompanionName={setCompanionName}
                     setMainPage={setMainPage}
+                    buildNOVASystemPrompt={buildNOVASystemPrompt}
+                    onNewSession={onNewSession}
                   />
                 )}
                 {mainPage === 'knowledge-pool' && (
@@ -1893,7 +1994,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                   />
                 )}
                 {mainPage === 'mindcheck' && (
-                  <MindCheckPage routines={routines} setRoutines={setRoutines} />
+                  <MindCheckPage routines={routines} setRoutines={setRoutines} setMainPage={setMainPage} />
                 )}
                 {mainPage === 'nova-insights' && (
                   <NovaInsightsPanel
@@ -1906,78 +2007,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                     recordPlanAccuracy={recordPlanAccuracy}
                   />
                 )}
-                {mainPage === 'program-briefing' && (
-                  <NOVAProgramPanel
-                    progId="briefing"
-                    novaState={novaState}
-                    setNovaState={setNovaState}
-                    novaChatInput={novaChatInput}
-                    setNovaChatInput={setNovaChatInput}
-                    novaLoading={novaLoading}
-                    sendNOVAMessage={sendNOVAMessage}
-                    addSyncEvent={addSyncEvent}
-                    setOnwardItems={setOnwardItems}
-                    uid={uid}
-                    onBack={() => setMainPage('hq')}
-                    T={T}
-                    onNewSession={onNewSession}
-                    buildNOVASystemPrompt={buildNOVASystemPrompt}
-                    onwardItems={onwardItems}
-                    projects={projects}
-                    selectedForToday={selectedForToday}
-                    setSelectedForToday={setSelectedForToday}
-                    deferredItems={deferredItems}
-                    setDeferredItems={setDeferredItems}
-                    backlogItems={backlogItems}
-                    setBacklogItems={setBacklogItems}
-                    onBreakdownTask={handleBreakdownTask}
-                    sessions={sessions}
-                    brainDumpEntries={brainDumpEntries}
-                    onBrainDump={handleBrainDump}
-                    journalEntries={journalEntries}
-                    onJournalEntry={handleJournalEntry}
-                    onBreakdownSuggestion={handleBreakdownSuggestion}
-                    novaRetry={novaRetry}
-                    confirmInsight={confirmInsight}
-                    dismissInsight={dismissInsight}
-                  />
-                )}
-                {mainPage === 'program-focus' && (
-                  <NOVAProgramPanel
-                    progId="focus"
-                    novaState={novaState}
-                    setNovaState={setNovaState}
-                    novaChatInput={novaChatInput}
-                    setNovaChatInput={setNovaChatInput}
-                    novaLoading={novaLoading}
-                    sendNOVAMessage={sendNOVAMessage}
-                    addSyncEvent={addSyncEvent}
-                    setOnwardItems={setOnwardItems}
-                    uid={uid}
-                    onBack={() => setMainPage('hq')}
-                    T={T}
-                    onNewSession={onNewSession}
-                    buildNOVASystemPrompt={buildNOVASystemPrompt}
-                    onwardItems={onwardItems}
-                    projects={projects}
-                    selectedForToday={selectedForToday}
-                    setSelectedForToday={setSelectedForToday}
-                    deferredItems={deferredItems}
-                    setDeferredItems={setDeferredItems}
-                    backlogItems={backlogItems}
-                    setBacklogItems={setBacklogItems}
-                    onBreakdownTask={handleBreakdownTask}
-                    sessions={sessions}
-                    brainDumpEntries={brainDumpEntries}
-                    onBrainDump={handleBrainDump}
-                    journalEntries={journalEntries}
-                    onJournalEntry={handleJournalEntry}
-                    onBreakdownSuggestion={handleBreakdownSuggestion}
-                    novaRetry={novaRetry}
-                    confirmInsight={confirmInsight}
-                    dismissInsight={dismissInsight}
-                  />
-                )}
+                {/* Programs with canvas: NOVAProgramPanel is rendered in the Waypoint panel instead */}
                 {mainPage === 'program-regroup' && (
                   <NOVAProgramPanel
                     progId="regroup"
@@ -2012,78 +2042,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                     novaRetry={novaRetry}
                     confirmInsight={confirmInsight}
                     dismissInsight={dismissInsight}
-                  />
-                )}
-                {mainPage === 'program-preview' && (
-                  <NOVAProgramPanel
-                    progId="preview"
-                    novaState={novaState}
-                    setNovaState={setNovaState}
-                    novaChatInput={novaChatInput}
-                    setNovaChatInput={setNovaChatInput}
-                    novaLoading={novaLoading}
-                    sendNOVAMessage={sendNOVAMessage}
-                    addSyncEvent={addSyncEvent}
-                    setOnwardItems={setOnwardItems}
-                    uid={uid}
-                    onBack={() => setMainPage('hq')}
-                    T={T}
-                    onNewSession={onNewSession}
-                    buildNOVASystemPrompt={buildNOVASystemPrompt}
-                    onwardItems={onwardItems}
-                    projects={projects}
-                    selectedForToday={selectedForToday}
-                    setSelectedForToday={setSelectedForToday}
-                    deferredItems={deferredItems}
-                    setDeferredItems={setDeferredItems}
-                    backlogItems={backlogItems}
-                    setBacklogItems={setBacklogItems}
-                    onBreakdownTask={handleBreakdownTask}
-                    sessions={sessions}
-                    brainDumpEntries={brainDumpEntries}
-                    onBrainDump={handleBrainDump}
-                    journalEntries={journalEntries}
-                    onJournalEntry={handleJournalEntry}
-                    onBreakdownSuggestion={handleBreakdownSuggestion}
-                    novaRetry={novaRetry}
-                    confirmInsight={confirmInsight}
-                    dismissInsight={dismissInsight}
-                  />
-                )}
-                {mainPage === 'program-calibration' && (
-                  <NOVAProgramPanel
-                    progId="calibration"
-                    novaState={novaState}
-                    setNovaState={setNovaState}
-                    novaChatInput={novaChatInput}
-                    setNovaChatInput={setNovaChatInput}
-                    novaLoading={novaLoading}
-                    sendNOVAMessage={sendNOVAMessage}
-                    addSyncEvent={addSyncEvent}
-                    setOnwardItems={setOnwardItems}
-                    uid={uid}
-                    onBack={() => setMainPage('hq')}
-                    T={T}
-                    onNewSession={onNewSession}
-                    buildNOVASystemPrompt={buildNOVASystemPrompt}
-                    onwardItems={onwardItems}
-                    projects={projects}
-                    selectedForToday={selectedForToday}
-                    setSelectedForToday={setSelectedForToday}
-                    deferredItems={deferredItems}
-                    setDeferredItems={setDeferredItems}
-                    backlogItems={backlogItems}
-                    setBacklogItems={setBacklogItems}
-                    onBreakdownTask={handleBreakdownTask}
-                    sessions={sessions}
-                    brainDumpEntries={brainDumpEntries}
-                    onBrainDump={handleBrainDump}
-                    journalEntries={journalEntries}
-                    onJournalEntry={handleJournalEntry}
-                    onBreakdownSuggestion={handleBreakdownSuggestion}
-                    novaRetry={novaRetry}
-                    confirmInsight={confirmInsight}
-                    dismissInsight={dismissInsight}
+                    onSubNav={onSubNav}
                   />
                 )}
               </div>
@@ -2126,43 +2085,6 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                     />
                   );
                 })()}
-
-                {waypointContext?.type === 'program' && (
-                  <NOVAProgramPanel
-                    progId={waypointContext.id}
-                    novaState={novaState}
-                    setNovaState={setNovaState}
-                    novaChatInput={novaChatInput}
-                    setNovaChatInput={setNovaChatInput}
-                    novaLoading={novaLoading}
-                    sendNOVAMessage={sendNOVAMessage}
-                    addSyncEvent={addSyncEvent}
-                    setOnwardItems={setOnwardItems}
-                    uid={uid}
-                    onBack={closeWaypoint}
-                    T={T}
-                    onNewSession={onNewSession}
-                    buildNOVASystemPrompt={buildNOVASystemPrompt}
-                    onwardItems={onwardItems}
-                    projects={projects}
-                    selectedForToday={selectedForToday}
-                    setSelectedForToday={setSelectedForToday}
-                    deferredItems={deferredItems}
-                    setDeferredItems={setDeferredItems}
-                    backlogItems={backlogItems}
-                    setBacklogItems={setBacklogItems}
-                    onBreakdownTask={handleBreakdownTask}
-                    sessions={sessions}
-                    brainDumpEntries={brainDumpEntries}
-                    onBrainDump={handleBrainDump}
-                    journalEntries={journalEntries}
-                    onJournalEntry={handleJournalEntry}
-                    onBreakdownSuggestion={handleBreakdownSuggestion}
-                    novaRetry={novaRetry}
-                    confirmInsight={confirmInsight}
-                    dismissInsight={dismissInsight}
-                  />
-                )}
 
                 {waypointContext?.type === 'canvas-panel' && (
                   <CanvasPanelWrapper

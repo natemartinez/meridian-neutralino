@@ -73,10 +73,10 @@ export function validateNOVAResponse(text, programId) {
       const hasQuestion = text.includes('?');
       const hasLearningIntent = /understand|learn|tell me|what about|how about|clarify|help me understand|you mentioned|you said|what are|what does|how do/i.test(text);
       if (!hasQuestion) {
-        return { valid: false, reason: 'Calibration should ask questions to understand the user.' };
+        return { valid: false, reason: 'Paths should ask questions to understand the user.' };
       }
       if (!hasLearningIntent) {
-        return { valid: false, reason: 'Calibration should reference user context, not be generic.' };
+        return { valid: false, reason: 'Paths should reference user context, not be generic.' };
       }
       return { valid: true, reason: null };
     }
@@ -216,7 +216,7 @@ export const NOVA_DEFAULT = {
  *   1. Regroup — if streak was broken (had a streak, but missed yesterday)
  *   2. Briefing — morning hours (5-12) if not done today
  *   3. Preview — evening hours (17-22) if no history
- *   4. Calibration — any time, if never completed
+ *   4. Paths — any time, if never completed
  *
  * Returns the program ID string, or null if no program should auto-start.
  *
@@ -263,7 +263,7 @@ export function determineAutoStartProgram({ apiKey, syncEvents, programChats, ho
     if (!hasHistory('preview')) return 'preview';
   }
 
-  // Priority 4: Calibration — any time, if never completed
+  // Priority 4: Paths — any time, if never completed
   if (!eventEver('calibration_complete') && !hasHistory('calibration')) return 'calibration';
 
   return null;

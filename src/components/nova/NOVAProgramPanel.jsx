@@ -19,6 +19,11 @@ function NOVAProgramPanel({
   novaRetry,
   confirmInsight,
   dismissInsight,
+  // Navigation restructure props
+  onOrganize,
+  onNewGoal,
+  // Sub-nav navigation prop
+  onSubNav,
 }) {
   const [showContext, setShowContext] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
@@ -97,11 +102,11 @@ function NOVAProgramPanel({
   };
 
   const PROG_META = {
-    briefing:    { label:'Briefing',    color:'#F59E0B', desc:'Morning debrief' },
+    briefing:    { label:'Goals',       color:'#F59E0B', desc:'Morning debrief' },
     focus:       { label:'Focus',       color: T.blue,   desc:'Lock in plan' },
     regroup:     { label:'Re-group',    color: T.purple, desc:'Recalibrate' },
     preview:     { label:'Preview',     color: T.cyan,   desc:'Plan the next day' },
-    calibration: { label:'Calibration', color: T.accent, desc:'Align with NOVA' },
+    calibration: { label:'Paths', color: T.accent, desc:'Personal projects & roadmaps' },
   };
   const meta     = PROG_META[progId] || PROG_META.briefing;
   const history  = novaState.programChats[progId] || [];
@@ -110,6 +115,12 @@ function NOVAProgramPanel({
   const isBriefing = progId === 'briefing';
   const isPreview = progId === 'preview';
   const isCalibration = progId === 'calibration';
+
+  // ── Sub-nav items per program (moved from Compass bar) ──
+  const SUB_NAVS = {
+    focus:       [{ id: 'onward',   label: 'ONWARD' }, { id: 'worklogs', label: 'WORK LOGS' }],
+  };
+  const subNavs = SUB_NAVS[progId] || [];
   const focusPlan = novaState.programChats.focus;
   const msgEndRef = React.useRef(null);
 
@@ -132,13 +143,10 @@ function NOVAProgramPanel({
       actions.push({ label:'Preview Tomorrow', onClick:() => sendNOVAMessage(progId, 'Preview tomorrow'), primary:true });
     }
     if (isCalibration) {
-      actions.push({ label:'Run Calibration', onClick:() => sendNOVAMessage(progId, 'Run calibration'), primary:true });
-    }
-    if (isRegroup) {
-      actions.push({ label:'Re-group Now', onClick:() => sendNOVAMessage(progId, 'Re-group now'), primary:true });
+      actions.push({ label:'Run Paths', onClick:() => sendNOVAMessage(progId, 'Run calibration'), primary:true });
     }
     return actions;
-  }, [isBriefing, isFocus, isPreview, isCalibration, isRegroup, briefingPhase, history.length, novaLoading, handleBriefingReady, confirmPick3, selectedForToday.length, finishBriefing, focusPlan, sendNOVAMessage, progId]);
+  }, [isBriefing, isFocus, isPreview, isCalibration, briefingPhase, history.length, novaLoading, handleBriefingReady, confirmPick3, selectedForToday.length, finishBriefing, focusPlan, sendNOVAMessage, progId]);
 
   React.useEffect(() => {
     msgEndRef.current?.scrollIntoView({ behavior:'smooth' });
@@ -203,12 +211,8 @@ function NOVAProgramPanel({
   // ── Render ──
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', overflow:'hidden' }}>
-      {/* Full-page header with back button */}
-      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 18px', borderBottom:`1px solid ${T.border}`, flexShrink:0 }}>
-        <button
-          onClick={onBack}
-          style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:6, color:T.text, cursor:'pointer', fontSize:14, padding:'2px 10px', fontFamily:"'IBM Plex Mono',monospace", lineHeight:1.6 }}
-        >← Back</button>
+      {/* Program header */}
+      <div style={{ display:'flex', alignItems:'center', padding:'14px 18px', borderBottom:`1px solid ${T.border}`, flexShrink:0 }}>
         <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div className="wp-ttl" style={{ color:meta.color }}>{meta.label}</div>
           <div style={{ display:'flex', gap:4, alignItems:'center' }}>
@@ -233,15 +237,88 @@ function NOVAProgramPanel({
                 }}
               >{action.label}</button>
             ))}
-            <button
-              onClick={() => setShowContext(s => !s)}
-              style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color: showContext ? meta.color : T.muted, cursor:'pointer', fontSize:9, padding:'2px 6px', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.05em' }}
-              title="Toggle system prompt debug view"
-            >{showContext ? 'HIDE CTX' : 'SHOW CTX'}</button>
-            <button
-              onClick={() => onNewSession(progId)}
-              style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color:T.muted, cursor:'pointer', fontSize:9, padding:'2px 6px', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.05em' }}
-            >NEW SESSION</button>
+            {/* ── Briefing sub-nav: Briefing, Organize, + New Goal ── */}
+            {isBriefing && (
+              <>
+                <button
+                  onClick={() => { setBriefingPhase('chat'); }}
+                  style={{
+                    background: briefingPhase === 'chat' ? `${meta.color}18` : 'none',
+                    border: `1px solid ${briefingPhase === 'chat' ? meta.color + '50' : T.border}`,
+                    borderRadius: 4,
+                    color: briefingPhase === 'chat' ? meta.color : T.muted,
+                    cursor: 'pointer', fontSize: 9,
+                    padding: '2px 8px',
+                    fontFamily:"'IBM Plex Mono',monospace",
+                    letterSpacing: '.05em',
+                    whiteSpace: 'nowrap',
+                  }}
+                >Briefing</button>
+                <button
+                  onClick={onOrganize}
+                  style={{
+                    background: 'none',
+                    border: `1px solid ${T.border}`,
+                    borderRadius: 4,
+                    color: T.muted,
+                    cursor: 'pointer', fontSize: 9,
+                    padding: '2px 8px',
+                    fontFamily:"'IBM Plex Mono',monospace",
+                    letterSpacing: '.05em',
+                    whiteSpace: 'nowrap',
+                  }}
+                >⟐ Organize</button>
+                <button
+                  onClick={onNewGoal}
+                  style={{
+                    background: 'none',
+                    border: `1px solid ${T.border}`,
+                    borderRadius: 4,
+                    color: T.muted,
+                    cursor: 'pointer', fontSize: 9,
+                    padding: '2px 8px',
+                    fontFamily:"'IBM Plex Mono',monospace",
+                    letterSpacing: '.05em',
+                    whiteSpace: 'nowrap',
+                  }}
+                >+ New Goal</button>
+              </>
+            )}
+            {/* ── Per-program sub-nav buttons (moved from Compass bar) ── */}
+            {subNavs.length > 0 && (
+              <>
+                {subNavs.map(sub => (
+                  <button
+                    key={sub.id}
+                    onClick={() => onSubNav && onSubNav(sub.id)}
+                    style={{
+                      background: 'none',
+                      border: `1px solid ${T.border}`,
+                      borderRadius: 4,
+                      color: T.muted,
+                      cursor: 'pointer', fontSize: 9,
+                      padding: '2px 8px',
+                      fontFamily:"'IBM Plex Mono',monospace",
+                      letterSpacing: '.05em',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >{sub.label}</button>
+                ))}
+              </>
+            )}
+            {progId !== 'regroup' && (
+              <>
+                <button
+                  onClick={() => setShowContext(s => !s)}
+                  style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color: showContext ? meta.color : T.muted, cursor:'pointer', fontSize:9, padding:'2px 6px', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.05em' }}
+                  title="Toggle system prompt debug view"
+                >{showContext ? 'HIDE CTX' : 'SHOW CTX'}</button>
+                <button
+                  onClick={() => onNewSession(progId)}
+                  style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color:T.muted, cursor:'pointer', fontSize:9, padding:'2px 6px', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.05em' }}
+                >NEW SESSION</button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -559,7 +636,7 @@ function NOVAProgramPanel({
         <div style={{ flex:1, overflowY:'auto', padding:'0 12px', display:'flex', flexDirection:'column', gap:8 }}>
           {history.length === 0 && (
             <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:T.muted, textAlign:'center', padding:'20px 0', lineHeight:1.8 }}>
-              {isPreview ? 'Plan your next day with NOVA.' : isCalibration ? 'Help NOVA understand your goals and work style.' : 'Start your morning debrief with NOVA.'}
+              {isPreview ? 'Plan your next day with NOVA.' : isCalibration ? 'Manage your personal projects and roadmaps.' : 'Start your morning debrief with NOVA.'}
             </div>
           )}
           {history.map((msg, i) => (

@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { T } from '../utils/theme.js';
 import { validateApiKey } from '../utils/api.js';
 
-export default function SettingsPage({ apiKey, setApiKey, model, setModel, intensity, setIntensity, showApiKey, setShowApiKey, companionName, setCompanionName, setMainPage }) {
+export default function SettingsPage({ apiKey, setApiKey, model, setModel, intensity, setIntensity, showApiKey, setShowApiKey, companionName, setCompanionName, setMainPage, buildNOVASystemPrompt, onNewSession }) {
   const [keyVal, setKeyVal]       = useState(apiKey || '');
   const [keySaved, setKeySaved]   = useState(false);
   const [keyError, setKeyError]   = useState('');
   const [modelVal, setModelVal]   = useState(model || '');
   const [modelSaved, setModelSaved] = useState(false);
+  const [showSystemContext, setShowSystemContext] = useState(false);
 
   const saveKey = async () => {
     const trimmed = keyVal.trim();
@@ -46,6 +47,20 @@ export default function SettingsPage({ apiKey, setApiKey, model, setModel, inten
 
   return (
     <div style={{ width:'100%', height:'100%', overflowY:'auto', background:T.bg, padding:'28px 32px', boxSizing:'border-box' }}>
+      {/* ── Back button ── */}
+      <button
+        onClick={() => setMainPage?.('hq')}
+        style={{
+          background:'none', border:`1px solid ${T.border}`, borderRadius:6,
+          color:T.muted, fontSize:11, cursor:'pointer', padding:'5px 12px',
+          fontFamily:"'IBM Plex Mono',monospace", marginBottom:12,
+          display:'flex', alignItems:'center', gap:5, transition:'all .15s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.color=T.text; e.currentTarget.style.borderColor=T.dim; }}
+        onMouseLeave={e => { e.currentTarget.style.color=T.muted; e.currentTarget.style.borderColor=T.border; }}
+      >
+        ← Back to HQ
+      </button>
       <div style={{ maxWidth:560, margin:'0 auto' }}>
         <div style={{ marginBottom:28 }}>
           <div style={{ fontFamily:"'Syne',sans-serif", fontSize:20, fontWeight:800, color:T.accent, letterSpacing:'.07em' }}>SETTINGS</div>
@@ -120,6 +135,38 @@ export default function SettingsPage({ apiKey, setApiKey, model, setModel, inten
             style={{ background:'none', border:`1px solid rgba(240,180,41,0.3)`, borderRadius:6, color:T.accent, fontFamily:"'IBM Plex Mono',monospace", fontSize:10, padding:'7px 16px', cursor:'pointer', letterSpacing:'.04em' }}>
             Open Knowledge Pool →
           </button>
+          <div style={{ display:'flex', gap:8, marginTop:12 }}>
+            <button
+              onClick={() => setShowSystemContext(s => !s)}
+              style={{
+                background:'none', border:`1px solid rgba(240,180,41,0.3)`, borderRadius:6,
+                color: showSystemContext ? T.accent : T.muted, fontFamily:"'IBM Plex Mono',monospace",
+                fontSize:10, padding:'7px 16px', cursor:'pointer', letterSpacing:'.04em',
+              }}
+            >{showSystemContext ? 'Hide System Context' : 'Show System Context'}</button>
+            <button
+              onClick={() => onNewSession?.('regroup')}
+              style={{
+                background:'none', border:`1px solid rgba(240,180,41,0.3)`, borderRadius:6,
+                color:T.muted, fontFamily:"'IBM Plex Mono',monospace",
+                fontSize:10, padding:'7px 16px', cursor:'pointer', letterSpacing:'.04em',
+              }}
+            >New Session</button>
+          </div>
+          {showSystemContext && (
+            <div style={{
+              marginTop:8, padding:'8px 10px', background:'#1a1a2e',
+              border:`1px solid ${T.accent}44`, borderRadius:6,
+              maxHeight:200, overflowY:'auto',
+              fontFamily:"'IBM Plex Mono',monospace", fontSize:9,
+              color:T.muted, lineHeight:1.6, whiteSpace:'pre-wrap'
+            }}>
+              <div style={{ color:T.accent, fontSize:8, letterSpacing:'.08em', marginBottom:4 }}>
+                SYSTEM PROMPT CONTEXT
+              </div>
+              {buildNOVASystemPrompt ? buildNOVASystemPrompt('regroup') : 'No context loaded yet.'}
+            </div>
+          )}
         </div>
 
         {/* Time-blocking intensity */}

@@ -3,11 +3,11 @@ import { T } from '../../utils/theme.js';
 import NOVAMessageBlock from './NOVAMessageBlock.jsx';
 
 const PROG_META = {
-  briefing:    { label:'Briefing',    color:'#F59E0B', icon:'☀', desc:'Morning debrief' },
+  briefing:    { label:'Goals',       color:'#F59E0B', icon:'☀', desc:'Morning debrief' },
   focus:       { label:'Focus',       color:T.blue,    icon:'◎', desc:'Lock in plan' },
   regroup:     { label:'Re-group',    color:T.purple,  icon:'⟳', desc:'Recalibrate' },
   preview:     { label:'Preview',     color:T.cyan,    icon:'◷', desc:'Plan the next day' },
-  calibration: { label:'Calibration', color:T.accent,  icon:'◆', desc:'Align with NOVA' },
+  calibration: { label:'Paths', color:T.accent,  icon:'◆', desc:'Personal projects & roadmaps' },
 };
 
 /**
@@ -452,24 +452,6 @@ export default function StartupCanvas({
             }}
           >
             ✦ Explore Goals
-          </button>
-          <button
-            onClick={() => onNavigate('settings')}
-            style={{
-              background: `${T.purple}18`,
-              border: `1px solid ${T.purple}40`,
-              borderRadius: 8,
-              padding: '10px 22px',
-              fontFamily: "'IBM Plex Mono',monospace",
-              fontSize: 10,
-              fontWeight: 700,
-              color: T.purple,
-              cursor: 'pointer',
-              letterSpacing: '.06em',
-              transition: 'all .14s',
-            }}
-          >
-            ⚙ Open Settings
           </button>
         </div>
       </div>

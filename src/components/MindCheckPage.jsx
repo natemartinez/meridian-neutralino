@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { T } from '../utils/theme.js';
 import { uid } from '../utils/helpers.js';
 
-export default function MindCheckPage({ routines, setRoutines }) {
+export default function MindCheckPage({ routines, setRoutines, setMainPage }) {
   const phases = [
     { key:'before', label:'BEFORE', color: T.blue   },
     { key:'during', label:'DURING', color: T.accent },
@@ -20,8 +20,25 @@ export default function MindCheckPage({ routines, setRoutines }) {
   return (
     <div style={{ width:'100%', height:'100%', background:T.bg, display:'flex', flexDirection:'column', overflow:'hidden' }}>
       <div style={{ padding:'24px 28px 18px', borderBottom:`1px solid ${T.border}`, flexShrink:0 }}>
-        <div style={{ fontFamily:"'Syne',sans-serif", fontSize:20, fontWeight:800, color:T.accent, letterSpacing:'.07em' }}>MIND CHECK</div>
-        <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted, marginTop:3, letterSpacing:'.12em' }}>mental routines for deep work</div>
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
+          <button
+            onClick={() => setMainPage?.('hq')}
+            style={{
+              background:'none', border:`1px solid ${T.border}`, borderRadius:6,
+              color:T.muted, fontSize:11, cursor:'pointer', padding:'5px 12px',
+              fontFamily:"'IBM Plex Mono',monospace",
+              display:'flex', alignItems:'center', gap:5, transition:'all .15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color=T.text; e.currentTarget.style.borderColor=T.dim; }}
+            onMouseLeave={e => { e.currentTarget.style.color=T.muted; e.currentTarget.style.borderColor=T.border; }}
+          >
+            ← Back
+          </button>
+          <div>
+            <div style={{ fontFamily:"'Syne',sans-serif", fontSize:20, fontWeight:800, color:T.accent, letterSpacing:'.07em' }}>MIND CHECK</div>
+            <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted, marginTop:3, letterSpacing:'.12em' }}>mental routines for deep work</div>
+          </div>
+        </div>
       </div>
       <div style={{ flex:1, overflowY:'auto', padding:'8px 28px 28px' }}>
         {phases.map(ph => (
