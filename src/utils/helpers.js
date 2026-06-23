@@ -103,3 +103,33 @@ export const DEFAULT_SKILLS = [
     { id: uid(), name: 'Mindfulness', level: 3 },
   ]},
 ];
+
+/**
+ * Calculate deadline alerts for projects.
+ * Returns sorted array of { id, title, days, type, color, priority }.
+ */
+export function calculateDeadlineAlerts(projectsList) {
+  const now = new Date();
+  const alerts = [];
+
+  projectsList.forEach(p => {
+    if (!p.deadline || p.subtasks?.every(s => s.done)) return;
+
+    const deadline = new Date(p.deadline);
+    const diffDays = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      alerts.push({ id: p.id, title: p.title, days: diffDays, type: 'overdue', color: '#f77171', priority: p.priority });
+    } else if (diffDays <= 3) {
+      alerts.push({ id: p.id, title: p.title, days: diffDays, type: 'urgent', color: '#f0b429', priority: p.priority });
+    } else if (diffDays <= 7) {
+      alerts.push({ id: p.id, title: p.title, days: diffDays, type: 'upcoming', color: '#53aaff', priority: p.priority });
+    }
+  });
+
+  return alerts.sort((a, b) => {
+    if (a.type === 'overdue' && b.type !== 'overdue') return -1;
+    if (b.type === 'overdue' && a.type !== 'overdue') return 1;
+    return a.days - b.days;
+  });
+}

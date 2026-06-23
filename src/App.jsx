@@ -34,27 +34,21 @@ import { drawOnwardPage, drawMapPage, drawPathsPage, drawSkillsPage, drawGoalsPa
 import { autoOrganizeGoals } from './utils/layout.js';
 import useTracking from './hooks/useTracking.js';
 import useLocalStorageSync from './hooks/useLocalStorageSync.js';
+import useLocalStorageState from './hooks/useLocalStorageState.js';
+import useStreak from './hooks/useStreak.js';
+import useDeadlineAlerts from './hooks/useDeadlineAlerts.js';
 import { useOnwardScroll } from './hooks/useOnwardScroll.js';
 import { useNovaInteractions } from './hooks/useNovaInteractions.js';
 import { registerPatterns, useNovaInteractionStore } from './store/novaInteractionStore.js';
 import { PATTERNS } from './constants/novaInteractions.js';
 import NovaToast from './components/nova/NovaToast.jsx';
 import StartupCanvas from './components/nova/StartupCanvas.jsx';
-
-    // ── Programs that show their connected canvas instead of chat ──
-    const PROGRAMS_WITH_CANVAS = ['program-briefing', 'program-focus', 'program-preview', 'program-calibration'];
-    const PROGRAM_DEFAULT_PAGES = {
-      'briefing': 'goals',
-      'focus': 'onward',
-      'preview': 'map',
-      'calibration': 'paths',
-    };
-    const isCanvasPage = (page) => page === 'hq' || PROGRAMS_WITH_CANVAS.includes(page);
-    const isProgram = (page) => page.startsWith('program-');
-    const extractProgId = (page) => page.replace('program-', '');
+import { PROGRAMS_WITH_CANVAS, PROGRAM_DEFAULT_PAGES, isCanvasPage, isProgram, extractProgId } from './constants/programs.js';
+import { ROW_START, ROW_END, TOTAL_ROWS, VISIBLE_HOURS, PAD, DEFAULT_CLIENT_HEIGHT } from './constants/layout.js';
+import { TrackIcon, SettingsIcon, MindIcon, ClockIcon } from './components/icons.jsx';
 
     function Meridian() {
-      const [projects, setProjects]     = useState(() => { try { const s = localStorage.getItem('meridian_projects_v2'); return s ? JSON.parse(s) : []; } catch { return []; } });
+      const [projects, setProjects]     = useLocalStorageState('meridian_projects_v2', []);
       const [selectedId, setSelectedId] = useState(null);
       const [focus, setFocus]           = useState(["", "", ""]);
       const [modal, setModal]           = useState(false);
@@ -71,8 +65,8 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
       const [confirmDelete, setConfirmDelete] = useState(null);
       // Compass/page state
       const [activePage, setActivePage]           = useState('goals');
-      const [onwardItems, setOnwardItems]         = useState(() => { try { const s = localStorage.getItem('meridian_onward_v2'); return s ? JSON.parse(s) : []; } catch { /* empty — invalid JSON */ return []; } });
-      const [freeformTasks, setFreeformTasks]     = useState(() => { try { const s = localStorage.getItem('meridian_freeform_tasks'); return s ? JSON.parse(s) : []; } catch { /* empty — invalid JSON */ return []; } });
+      const [onwardItems, setOnwardItems]         = useLocalStorageState('meridian_onward_v2', []);
+      const [freeformTasks, setFreeformTasks]     = useLocalStorageState('meridian_freeform_tasks', []);
       const [skills, setSkills]                   = useState([]);
       const [onwardForm, setOnwardForm]           = useState({ title:'', hour:480, priority:'low', goalId:null });
       // Drag and drop state for subtasks/checkpoints to time blocks
@@ -148,21 +142,11 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
 
       // ── Ingestion & Smart Sorting state ──
       const [focusMode, setFocusMode] = useState(null); // { active, taskTitle, taskId, goalId } | null
-      const [selectedForToday, setSelectedForToday] = useState(() => {
-        try { const s = localStorage.getItem('meridian_selected_today'); return s ? JSON.parse(s) : []; } catch { return []; }
-      });
-      const [deferredItems, setDeferredItems] = useState(() => {
-        try { const s = localStorage.getItem('meridian_deferred'); return s ? JSON.parse(s) : []; } catch { return []; }
-      });
-      const [backlogItems, setBacklogItems] = useState(() => {
-        try { const s = localStorage.getItem('meridian_backlog'); return s ? JSON.parse(s) : []; } catch { return []; }
-      });
-      const [brainDumpEntries, setBrainDumpEntries] = useState(() => {
-        try { const s = localStorage.getItem('meridian_brain_dump'); return s ? JSON.parse(s) : []; } catch { return []; }
-      });
-      const [journalEntries, setJournalEntries] = useState(() => {
-        try { const s = localStorage.getItem('meridian_journal'); return s ? JSON.parse(s) : []; } catch { return []; }
-      });
+      const [selectedForToday, setSelectedForToday] = useLocalStorageState('meridian_selected_today', []);
+      const [deferredItems, setDeferredItems] = useLocalStorageState('meridian_deferred', []);
+      const [backlogItems, setBacklogItems] = useLocalStorageState('meridian_backlog', []);
+      const [brainDumpEntries, setBrainDumpEntries] = useLocalStorageState('meridian_brain_dump', []);
+      const [journalEntries, setJournalEntries] = useLocalStorageState('meridian_journal', []);
 
       const [waypointOpen, setWaypointOpen]       = useState(false);
       const [waypointContext, setWaypointContext] = useState(null);
@@ -171,8 +155,8 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
       const [onwardClickedItem, setOnwardClickedItem] = useState(null);
       const [selectedOnwardDate, setSelectedOnwardDate] = useState(null);
       const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-      const [sunId, setSunId] = useState(() => localStorage.getItem('meridian_sun_id') || null);
-      const [companionName, setCompanionName] = useState(() => localStorage.getItem('meridian_companion_name') || 'AI Companion');
+      const [sunId, setSunId] = useLocalStorageState('meridian_sun_id', null);
+      const [companionName, setCompanionName] = useLocalStorageState('meridian_companion_name', 'AI Companion');
 
       const {
         novaState, setNovaState,
@@ -205,12 +189,9 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
 
       const [renamingGoalId, setRenamingGoalId] = useState(null);
       const [renameValue, setRenameValue] = useState('');
-      const [topGoals, setTopGoals] = useState(() => {
-        try { const s = localStorage.getItem('meridian_top_goals'); return s ? JSON.parse(s) : []; } catch { return []; }
-      });
+      const [topGoals, setTopGoals] = useLocalStorageState('meridian_top_goals', []);
       // Deadline notifier
-      const [showDeadlineNotifier, setShowDeadlineNotifier] = useState(false);
-      const [deadlineAlerts, setDeadlineAlerts] = useState([]);
+      const { showDeadlineNotifier, deadlineAlerts, dismissAlerts } = useDeadlineAlerts(projects, loaded);
 
       // XP-based skills (separate from slider-based skills used by canvas/SkillsPanel)
       const [xpSkills, setXpSkills] = useState(() => {
@@ -220,7 +201,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
           const parsed = JSON.parse(saved);
           
           // Migration: convert old XP-based format to new evidence-based format
-          const needsMigration = Object.values(parsed).some(g => 
+          const needsMigration = Object.values(parsed).some(g =>
             Object.values(g.skills || {}).some(s => s.xp !== undefined)
           );
           
@@ -249,12 +230,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
       });
 
       // Streak tracking
-      const [streakDays, setStreakDays]         = useState(() => {
-        try { return parseInt(localStorage.getItem('meridian_streak_days') || '0', 10); } catch { return 0; }
-      });
-      const [lastActiveDate, setLastActiveDate] = useState(() => {
-        try { return localStorage.getItem('meridian_last_active') || null; } catch { return null; }
-      });
+      const { streakDays, lastActiveDate, updateStreak } = useStreak();
 
       const openWaypoint = (context) => {
         setWaypointContext(context);
@@ -417,14 +393,6 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                           useNovaInteractionStore.getState().fireEvent('app_opened', {});
                         }, 1000);
 
-            // Calculate deadline alerts after loading
-            setTimeout(() => {
-              const alerts = calculateDeadlineAlerts(projects);
-              if (alerts.length > 0) {
-                setDeadlineAlerts(alerts);
-                setShowDeadlineNotifier(true);
-              }
-            }, 500);
           }).catch(err => {
             console.error('[DEBUG] App loading failed (falling back to localStorage):', err);
             // Still set loaded to true so the UI renders
@@ -446,8 +414,6 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
         [freeformTasks, 'meridian_freeform_tasks'],
         [xpSkills, 'meridian_skills'],
         [companionName, 'meridian_companion_name'],
-        [streakDays, 'meridian_streak_days'],
-        [lastActiveDate, 'meridian_last_active'],
         [selectedForToday, 'meridian_selected_today'],
         [deferredItems, 'meridian_deferred'],
         [backlogItems, 'meridian_backlog'],
@@ -467,61 +433,32 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
         return () => window.removeEventListener('keydown', onKey);
       }, [focusMode]);
 
-      function updateStreak() {
-        const today = new Date().toDateString();
-        if (lastActiveDate === today) return;
-        const yesterday = new Date(Date.now() - 86_400_000).toDateString();
-        setStreakDays(prev => lastActiveDate === yesterday ? prev + 1 : 1);
-        setLastActiveDate(today);
-      }
+      // ── Sync refs (single effect keeps all canvas refs current) ──
+      useEffect(() => {
+        projectsRef.current     = projects;
+        selectedIdRef.current   = selectedId;
+        panRef.current          = pan;
+        draggingRef.current     = dragging;
+        activePageRef.current   = activePage;
+        onwardItemsRef.current  = onwardItems;
+        draggedTaskRef.current  = draggedTask;
+        pendingDropRef.current  = pendingDrop;
+        dragOverHourRef.current = dragOverHour;
+        resizeDragRef.current   = resizeDrag;
+        skillsRef.current       = skills;
+        hoveredWeekRef.current  = hoveredWeek;
+        selectedSkillRef.current = selectedSkillId;
+        topGoalsRef.current     = topGoals;
+      }, [
+        projects, selectedId, pan, dragging, activePage,
+        onwardItems, draggedTask, pendingDrop, dragOverHour, resizeDrag,
+        skills, hoveredWeek, selectedSkillId, topGoals,
+      ]);
 
-      // Calculate deadline alerts for startup notifier
-      function calculateDeadlineAlerts(projectsList) {
-        const now = new Date();
-        const alerts = [];
-        
-        projectsList.forEach(p => {
-          if (!p.deadline || p.subtasks?.every(s => s.done)) return;
-          
-          const deadline = new Date(p.deadline);
-          const diffDays = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
-          
-          if (diffDays < 0) {
-            alerts.push({ id: p.id, title: p.title, days: diffDays, type: 'overdue', color: '#f77171', priority: p.priority });
-          } else if (diffDays <= 3) {
-            alerts.push({ id: p.id, title: p.title, days: diffDays, type: 'urgent', color: '#f0b429', priority: p.priority });
-          } else if (diffDays <= 7) {
-            alerts.push({ id: p.id, title: p.title, days: diffDays, type: 'upcoming', color: '#53aaff', priority: p.priority });
-          }
-        });
-        
-        return alerts.sort((a, b) => {
-          if (a.type === 'overdue' && b.type !== 'overdue') return -1;
-          if (b.type === 'overdue' && a.type !== 'overdue') return 1;
-          return a.days - b.days;
-        });
-      }
-
-      // Sync refs
-      useEffect(() => { projectsRef.current   = projects;      }, [projects]);
-      useEffect(() => { apiKeyRef.current     = apiKey;        }, [apiKey]);
+      // ── Persist apiKey/model/sunId to localStorage (side-effect writes) ──
       useEffect(() => { if (apiKey) localStorage.setItem('meridian_api_key', apiKey); }, [apiKey]);
       useEffect(() => { if (model) localStorage.setItem('meridian_model', model); }, [model]);
-      useEffect(() => { selectedIdRef.current = selectedId;    }, [selectedId]);
-      useEffect(() => { panRef.current        = pan;           }, [pan]);
-      useEffect(() => { draggingRef.current   = dragging;      }, [dragging]);
-      useEffect(() => { activePageRef.current = activePage;    }, [activePage]);
-      
-      useEffect(() => { onwardItemsRef.current = onwardItems;  }, [onwardItems]);
-      useEffect(() => { draggedTaskRef.current = draggedTask;  }, [draggedTask]);
-      useEffect(() => { pendingDropRef.current = pendingDrop;  }, [pendingDrop]);
-      useEffect(() => { dragOverHourRef.current = dragOverHour;  }, [dragOverHour]);
-      useEffect(() => { resizeDragRef.current = resizeDrag; }, [resizeDrag]);
-      useEffect(() => { skillsRef.current     = skills;        }, [skills]);
-      useEffect(() => { hoveredWeekRef.current = hoveredWeek;  }, [hoveredWeek]);
-      useEffect(() => { selectedSkillRef.current = selectedSkillId; }, [selectedSkillId]);
       useEffect(() => { sunIdRef.current = sunId; if (sunId) localStorage.setItem('meridian_sun_id', sunId); }, [sunId]);
-      useEffect(() => { topGoalsRef.current = topGoals; }, [topGoals]);
       
       // Scroll to current time + resize canvas when waypoint opens (extracted hook)
       useOnwardScroll(activePage, canvasRef, resizeRef);
@@ -571,8 +508,6 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
           if (rect.width === 0 || rect.height === 0) return;
 
           const isOnward = activePageRef.current === 'onward';
-          const TOTAL_ROWS = 19;
-          const VISIBLE_HOURS = 5.75;
           const visibleHeight = rect.height;
           const rowHeightPx = visibleHeight / VISIBLE_HOURS;
 
@@ -1067,12 +1002,9 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
             const itemId = hit.resizeItemId;
             const item = onwardItemsRef.current.find(it => it.id === itemId);
             if (item) {
-              const ROW_START = 6;
-              const VISIBLE_HOURS = 5.75;
               const parent = canvas.parentElement;
-              const clientH = parent ? parent.clientHeight : 800;
+              const clientH = parent ? parent.clientHeight : DEFAULT_CLIENT_HEIGHT;
               const rowHcss = clientH / VISIBLE_HOURS;
-              const PAD = 24;
               const minuteOffset = item.hour % 60;
               const minuteFrac = minuteOffset / 60;
               const itemTopY = PAD + (Math.floor(item.hour / 60) - ROW_START) * rowHcss + minuteFrac * rowHcss;
@@ -1087,12 +1019,9 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
             const itemId = hit.id;
             const item = onwardItemsRef.current.find(it => it.id === itemId);
             if (item) {
-              const ROW_START = 6;
-              const VISIBLE_HOURS = 5.75;
               const parent = canvas.parentElement;
-              const clientH = parent ? parent.clientHeight : 800;
+              const clientH = parent ? parent.clientHeight : DEFAULT_CLIENT_HEIGHT;
               const rowHcss = clientH / VISIBLE_HOURS;
-              const PAD = 24;
               const minuteOffset = item.hour % 60;
               const minuteFrac = minuteOffset / 60;
               const itemTopY = PAD + (Math.floor(item.hour / 60) - ROW_START) * rowHcss + minuteFrac * rowHcss;
@@ -1159,9 +1088,8 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
             const rect = canvas.getBoundingClientRect();
             const cy = e.clientY - rect.top;
             const dy = cy - rd.startY;
-            const VISIBLE_HOURS = 5.75;
             const parent = canvas.parentElement;
-            const clientH = parent ? parent.clientHeight : 800;
+            const clientH = parent ? parent.clientHeight : DEFAULT_CLIENT_HEIGHT;
             const rowHcss = clientH / VISIBLE_HOURS;
             // Convert pixel delta to minutes (1 hour = rowHcss pixels)
             const deltaMinutes = Math.round(dy / rowHcss * 60);
@@ -1223,12 +1151,8 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
         const rect = canvas.getBoundingClientRect();
         const cy = e.clientY - rect.top;
         // Calculate which hour row is being hovered (cy is absolute canvas CSS Y)
-        const PAD = 24;
-        const ROW_START = 6;
-        const ROW_END = 24;
-        const VISIBLE_HOURS = 5.75;
         const parent = canvas.parentElement;
-        const clientH = parent ? parent.clientHeight : 800;
+        const clientH = parent ? parent.clientHeight : DEFAULT_CLIENT_HEIGHT;
         const rowHcss = clientH / VISIBLE_HOURS;
         const totalRows = ROW_END - ROW_START;
         const hi = Math.floor((cy - PAD) / rowHcss);
@@ -1265,13 +1189,9 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
         // Commit onward card drag if active
         if (onwardDragRef.current) {
           const od = onwardDragRef.current;
-          const ROW_START = 6;
-          const ROW_END = 24;
-          const VISIBLE_HOURS = 5.75;
           const parent = canvasRef.current?.parentElement;
-          const clientH = parent ? parent.clientHeight : 800;
+          const clientH = parent ? parent.clientHeight : DEFAULT_CLIENT_HEIGHT;
           const rowHcss = clientH / VISIBLE_HOURS;
-          const PAD = 24;
 
           // Calculate drop position
           const dropY = od.itemTopY + od.offsetY;
@@ -1763,9 +1683,9 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                 )}
                 <div style={{ display:'flex', gap:4 }}>
                   {[
-                    { page:'tracking',  label:'Track',    color:T.blue,   icon: () => <svg width="14" height="14" viewBox="0 0 16 16"><path d="M2 12 L5.5 7 L9 10 L14 4" fill="none" stroke={T.blue} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><circle cx="14" cy="4" r="1.8" fill={T.blue}/></svg> },
-                    { page:'settings',  label:'Settings', color:T.purple, icon: () => <svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke={T.purple} strokeWidth="1.6"/><circle cx="8" cy="8" r="2" fill={T.purple}/><path d="M8 2.5v1M8 12.5v1M2.5 8h1M12.5 8h1" stroke={T.purple} strokeWidth="1.4" strokeLinecap="round"/></svg> },
-                    { page:'mindcheck', label:'Mind',     color:T.green,  icon: () => <svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 13C8 13 2.5 9.2 2.5 5.8a3.5 3.5 0 016.5-1.8 3.5 3.5 0 016.5 1.8C15.5 9.2 8 13 8 13z" fill="none" stroke={T.green} strokeWidth="1.6"/><path d="M5.5 6.5l1.8 1.8L10 5.5" fill="none" stroke={T.green} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+                    { page:'tracking',  label:'Track',    color:T.blue,   icon: () => <TrackIcon color={T.blue} /> },
+                    { page:'settings',  label:'Settings', color:T.purple, icon: () => <SettingsIcon color={T.purple} /> },
+                    { page:'mindcheck', label:'Mind',     color:T.green,  icon: () => <MindIcon color={T.green} /> },
                   ].map(({ page, label, color, icon }) => {
                     const isActive = mainPage === page;
                     return (
@@ -2137,7 +2057,7 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
                 {!waypointContext && (
                   <div className="wp-await">
                     <div className="wp-await-ico">
-                      <svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="7" fill="none" stroke={T.muted} strokeWidth="1.5"/><path d="M9 6v3l2 1" fill="none" stroke={T.muted} strokeWidth="1.4" strokeLinecap="round"/></svg>
+                      <ClockIcon color={T.muted} />
                     </div>
                     <div className="wp-await-txt">Select a goal or focus area to view details.</div>
                   </div>
@@ -2206,8 +2126,8 @@ import StartupCanvas from './components/nova/StartupCanvas.jsx';
           {showDeadlineNotifier && deadlineAlerts.length > 0 && (
             <DeadlineNotifier
               deadlineAlerts={deadlineAlerts}
-              onDismiss={() => setShowDeadlineNotifier(false)}
-              onViewInMap={() => { setShowDeadlineNotifier(false); setActivePage('map'); }}
+              onDismiss={dismissAlerts}
+              onViewInMap={() => { dismissAlerts(); setActivePage('map'); }}
             />
           )}
 
