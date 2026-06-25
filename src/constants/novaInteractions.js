@@ -508,6 +508,27 @@ const F4_SKILL_MILESTONE = {
   },
 };
 
+const D5_QUADRANT_IMBALANCE = {
+  id: 'D5_quadrant_imbalance',
+  trigger: {
+    source: 'performance_signal',
+    event: 'quadrant_imbalance',
+    conditions: {},
+  },
+  cooldown: { type: 'per-pattern', durationMs: 600_000 },
+  priority: 'medium',
+  presentation: 'waypoint',
+  template: {
+    title: 'Quadrant imbalance detected',
+    body: 'You have {q1Count} urgent goals but only {q2Count} growth goals. Consider whether everything in Q1 truly belongs there, or if some could be scheduled in Q2 for better balance.',
+    action: { label: 'Review Goals', type: 'open_goals', payload: {} },
+  },
+  variables: {
+    q1Count: { source: 'state', path: 'quadrantCounts.q1' },
+    q2Count: { source: 'state', path: 'quadrantCounts.q2' },
+  },
+};
+
 // ── Export all patterns ──
 
 export const PATTERNS = [
@@ -525,6 +546,7 @@ export const PATTERNS = [
   D2_GOAL_CREATED,
   D3_DEADLINE_URGENT,
   D4_LOW_COMPLETION,
+  D5_QUADRANT_IMBALANCE,
   E1_PAGE_TIP,
   E2_GOAL_INSIGHT,
   F1_SKILL_IMPROVED,

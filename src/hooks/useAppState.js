@@ -430,6 +430,14 @@ export default function useAppState() {
 
   // ── Sync app state into NOVA interaction store ──
   useEffect(() => {
+    // Compute quadrant counts for NOVA interaction patterns (D5_QUADRANT_IMBALANCE)
+    const quadrantCounts = { q1: 0, q2: 0, q3: 0, q4: 0 };
+    projects.filter(p => !p.completedAt).forEach(p => {
+      if (p.quadrant && quadrantCounts[p.quadrant] !== undefined) {
+        quadrantCounts[p.quadrant]++;
+      }
+    });
+
     novaInteractions.syncAppState({
       currentStreak: streakDays,
       todayCompletedCount: onwardItems.filter(it => it.done && it.date === new Date().toDateString()).length,
@@ -442,6 +450,7 @@ export default function useAppState() {
       sessions,
       deferredItems: deferredItems.length,
       backlogItems: backlogItems.length,
+      quadrantCounts,
     });
   }, [
     streakDays,

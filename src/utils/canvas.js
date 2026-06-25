@@ -61,6 +61,128 @@ export function drawCheckpointNode(ctx, x, y, sz, color, done, dpr) {
   }
 }
 
+/**
+ * Draw the Eisenhower Matrix quadrant background fills, axes, and labels.
+ *
+ * Drawing order:
+ *   1. Quadrant background tints (subtle per-quadrant color)
+ *   2. Axis lines (solid, prominent)
+ *   3. Axis labels ("URGENCY →" on X-axis, "IMPORTANCE →" on Y-axis)
+ *   4. Quadrant header labels (top-left of each quadrant)
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} dpr - Device pixel ratio
+ * @param {number} w - Canvas width (CSS pixels)
+ * @param {number} h - Canvas height (CSS pixels)
+ * @param {object} quadrants - Quadrant config object (QUADRANTS from helpers.js)
+ * @param {number} axisX - X-coordinate of the vertical divider
+ * @param {number} axisY - Y-coordinate of the horizontal divider
+ */
+export function drawMatrixAxes(ctx, dpr, w, h, quadrants, axisX, axisY) {
+  // ── 1. Quadrant background tints ──
+  // axisX, axisY, w, h are all in physical (dpr-scaled) pixels — no * dpr needed
+  const quadConfigs = [
+    { q: quadrants.q1, x: axisX, y: 0,       w: w - axisX, h: axisY },
+    { q: quadrants.q2, x: 0,      y: 0,       w: axisX,     h: axisY },
+    { q: quadrants.q3, x: axisX,  y: axisY,   w: w - axisX, h: h - axisY },
+    { q: quadrants.q4, x: 0,      y: axisY,   w: axisX,     h: h - axisY },
+  ];
+
+  for (const { q, x, y, w: qw, h: qh } of quadConfigs) {
+    ctx.save();
+    ctx.fillStyle = rgba(q.color, 0.03);
+    ctx.fillRect(x, y, qw, qh);
+    ctx.restore();
+  }
+
+  // ── 2. Axis lines ──
+  ctx.save();
+  ctx.strokeStyle = 'rgba(214,226,245,0.15)';
+  ctx.lineWidth = 1.5 * dpr;
+
+  // Vertical axis (urgency divider)
+  ctx.beginPath();
+  ctx.moveTo(axisX, 0);
+  ctx.lineTo(axisX, h);
+  ctx.stroke();
+
+  // Horizontal axis (importance divider)
+  ctx.beginPath();
+  ctx.moveTo(0, axisY);
+  ctx.lineTo(w, axisY);
+  ctx.stroke();
+  ctx.restore();
+
+  // ── 3. Axis labels ──
+  const labelFont = `600 ${9 * dpr}px 'IBM Plex Mono',monospace`;
+  const labelColor = 'rgba(214,226,245,0.12)';
+
+  // X-axis: "URGENCY →" at the right edge, just above the horizontal axis line
+  ctx.save();
+  ctx.font = labelFont;
+  ctx.fillStyle = labelColor;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('URGENCY →', w - 12 * dpr, axisY - 6 * dpr);
+  ctx.restore();
+
+  // Y-axis: "IMPORTANCE →" rotated, positioned further down so the full word is visible
+  ctx.save();
+  ctx.translate(axisX - 6 * dpr, 80 * dpr);
+  ctx.rotate(-Math.PI / 2);
+  ctx.font = labelFont;
+  ctx.fillStyle = labelColor;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('IMPORTANCE →', 0, 0);
+  ctx.restore();
+
+  // ── 4. Quadrant header labels ──
+  // Offsets (16px) are in CSS pixels, multiply by dpr to convert to physical
+  const headerConfigs = [
+    { q: quadrants.q1, x: axisX + 16 * dpr, y: 16 * dpr },
+    { q: quadrants.q2, x: 16 * dpr,         y: 16 * dpr },
+    { q: quadrants.q3, x: axisX + 16 * dpr, y: axisY + 16 * dpr },
+    { q: quadrants.q4, x: 16 * dpr,         y: axisY + 16 * dpr },
+  ];
+
+  for (const { q, x, y } of headerConfigs) {
+    drawQuadrantLabel(ctx, dpr, q.title, q.subtitle, q.color, x, y);
+  }
+}
+
+/**
+ * Draw a single quadrant header label (title + subtitle).
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} dpr
+ * @param {string} title - Quadrant title (e.g. "DO FIRST")
+ * @param {string} subtitle - Quadrant subtitle (e.g. "Urgent + Important")
+ * @param {string} color - Quadrant accent color
+ * @param {number} x - X position (physical/dpr-scaled pixels)
+ * @param {number} y - Y position (physical/dpr-scaled pixels)
+ */
+export function drawQuadrantLabel(ctx, dpr, title, subtitle, color, x, y) {
+  // x, y are already in physical (dpr-scaled) pixels — no * dpr needed
+  // Title
+  ctx.save();
+  ctx.font = `700 ${10 * dpr}px 'Syne',sans-serif`;
+  ctx.fillStyle = rgba(color, 0.5);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(title, x, y);
+  ctx.restore();
+
+  // Subtitle
+  ctx.save();
+  ctx.font = `${7.5 * dpr}px 'IBM Plex Mono',monospace`;
+  ctx.fillStyle = rgba(color, 0.25);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(subtitle, x, y + 14 * dpr);
+  ctx.restore();
+}
+
 export function rrect(ctx, x, y, w, h, r) {
   if (ctx.roundRect) {
     ctx.beginPath(); ctx.roundRect(x, y, w, h, r);

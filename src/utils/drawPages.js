@@ -1,6 +1,6 @@
 import { T } from './theme.js';
-import { hexToRgb, rgba, drawGlow, drawProgressArc, rrect, drawSubtaskNode, drawCheckpointNode } from './canvas.js';
-import { progress } from './helpers.js';
+import { hexToRgb, rgba, drawGlow, drawProgressArc, rrect, drawSubtaskNode, drawCheckpointNode, drawMatrixAxes } from './canvas.js';
+import { progress, QUADRANTS, calculateQuadrant } from './helpers.js';
 
 // ── Onward page ──────────────────────────────────────────────────────────────
 // scrollY: canvas.parentElement.scrollTop * dpr (computed in frame() before call)
@@ -909,19 +909,25 @@ export function drawGoalsPage(ctx, dpr, w, h, t, refs) {
   const hitAreas = [];
   const projs = projectsRef.current.filter(p => !p.completedAt);
   const selId = selectedIdRef.current;
-  const pan = panRef.current;
   const drag = draggingRef.current;
   const topGoalIds = topGoalsRef?.current || [];
   const gd = goalDragRef?.current;
 
+  // ── Eisenhower Matrix axes ──────────────────────────────────────────
+  // Axes split the canvas at its center (in CSS pixels, before dpr scaling).
+  // Viewport is locked — axes are fixed and never pan.
+  const axisX = w / 2;
+  const axisY = h / 2;
+  drawMatrixAxes(ctx, dpr, w, h, QUADRANTS, axisX, axisY);
+
   // ── Background nebula glow ──────────────────────────────────────────
   if (projs.length > 0) {
-    // Compute bounding box of all goals
+    // Compute bounding box of all goals (no pan offset — viewport is locked)
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     projs.forEach((p, i) => {
       const pos = p.pos || { x: 240 + i * 440, y: 270 };
-      const px = pos.x + pan.x * dpr;
-      const py = pos.y + pan.y * dpr;
+      const px = pos.x * dpr;
+      const py = pos.y * dpr;
       if (px < minX) minX = px; if (px > maxX) maxX = px;
       if (py < minY) minY = py; if (py > maxY) maxY = py;
     });
@@ -944,7 +950,7 @@ export function drawGoalsPage(ctx, dpr, w, h, t, refs) {
   if (projs.length >= 2) {
     const positions = projs.map((p, i) => {
       const pos = p.pos || { x: 240 + i * 440, y: 270 };
-      return { x: pos.x + pan.x * dpr, y: pos.y + pan.y * dpr, color: p.color };
+      return { x: pos.x * dpr, y: pos.y * dpr, color: p.color };
     });
     // Connect goals that are within 600px of each other
     for (let i = 0; i < positions.length; i++) {
@@ -970,15 +976,6 @@ export function drawGoalsPage(ctx, dpr, w, h, t, refs) {
     }
   }
 
-  // Heading
-  ctx.save();
-  ctx.font = `700 ${13*dpr}px 'Syne',sans-serif`;
-  ctx.fillStyle = T.accent;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillText('GOALS', 24*dpr, 10*dpr);
-  ctx.restore();
-
   if (!projs.length) {
     // Empty state
     ctx.save();
@@ -996,8 +993,8 @@ export function drawGoalsPage(ctx, dpr, w, h, t, refs) {
   // Deterministic particles based on goal positions for visual depth
   projs.forEach((p, i) => {
     const pos = p.pos || { x: 240 + i * 440, y: 270 };
-    const px = pos.x + pan.x * dpr;
-    const py = pos.y + pan.y * dpr;
+    const px = pos.x * dpr;
+    const py = pos.y * dpr;
     // Scatter tiny dots around each goal
     for (let d = 0; d < 4; d++) {
       const angle = t * 0.3 + i * 1.8 + d * 1.2;
@@ -1020,8 +1017,8 @@ export function drawGoalsPage(ctx, dpr, w, h, t, refs) {
     // Apply drag offset if this goal is being dragged
     const dragOffX = (gd && gd.id === p.id) ? gd.offsetX : 0;
     const dragOffY = (gd && gd.id === p.id) ? gd.offsetY : 0;
-    const px = pos.x + pan.x * dpr + dragOffX;
-    const py = pos.y + pan.y * dpr + dragOffY;
+    const px = pos.x * dpr + dragOffX;
+    const py = pos.y * dpr + dragOffY;
     const nodeR = 28 * dpr; // Fixed node radius
     const isSel = p.id === selId;
     const isTopGoal = topGoalIds.includes(p.id);
@@ -1117,6 +1114,18 @@ export function drawGoalsPage(ctx, dpr, w, h, t, refs) {
     ctx.textBaseline = 'top';
     ctx.fillText(label, px, py + nodeR + 5*dpr);
     ctx.restore();
+
+    // Quadrant badge (tiny label below title)
+    if (p.quadrant) {
+      const q = QUADRANTS[p.quadrant];
+      ctx.save();
+      ctx.font = `${5.5*dpr}px 'IBM Plex Mono',monospace`;
+      ctx.fillStyle = rgba(q.color, 0.4);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(q.title, px, py + nodeR + 18*dpr);
+      ctx.restore();
+    }
 
     // Hit area (circle)
     hitAreas.push({ id: p.id, x: px/dpr, y: py/dpr, R: nodeR/dpr });

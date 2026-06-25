@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { T } from '../utils/theme.js';
-import { projectPos } from '../utils/helpers.js';
+import { projectPos, calculateQuadrant } from '../utils/helpers.js';
 import { drawOnwardPage, drawMapPage, drawPathsPage, drawSkillsPage, drawGoalsPage } from '../utils/drawPages.js';
 import { isCanvasPage } from '../constants/programs.js';
 import { ROW_START, ROW_END, VISIBLE_HOURS, TOTAL_ROWS, PAD, DEFAULT_CLIENT_HEIGHT } from '../constants/layout.js';
@@ -232,25 +232,22 @@ export default function useAppCanvas({
 
     if (activePageRef.current !== 'goals') return;
 
-    const pan    = panRef.current;
     const projs  = projectsRef.current;
 
+    // Goals page: viewport is locked (no pan). Only goal nodes are draggable.
     const clickedProj = projs.find((p, pi) => {
       const pp = p.pos || projectPos(pi);
-      return Math.hypot(cx - (pp.x + pan.x), cy - (pp.y + pan.y)) < 44;
+      return Math.hypot(cx - pp.x, cy - pp.y) < 44;
     });
 
     if (clickedProj) {
       const pi = projs.indexOf(clickedProj);
       const pp = clickedProj.pos || projectPos(pi);
-      const d  = { type: 'node', id: clickedProj.id, ox: cx - pan.x - pp.x, oy: cy - pan.y - pp.y };
-      draggingRef.current = d;
-      setDragging(d);
-    } else {
-      const d = { type: 'pan', sx: e.clientX - pan.x, sy: e.clientY - pan.y };
+      const d  = { type: 'node', id: clickedProj.id, ox: cx - pp.x, oy: cy - pp.y };
       draggingRef.current = d;
       setDragging(d);
     }
+    // If no goal was clicked, do nothing — no pan on the goals page.
   };
 
   const onCanvasMouseMove = (e) => {
@@ -307,28 +304,23 @@ export default function useAppCanvas({
     if (activePageRef.current !== 'goals') return;
 
     const d = draggingRef.current;
-    if (!d) return;
-    if (d.type === 'pan') {
-      const newPan = { x: e.clientX - d.sx, y: e.clientY - d.sy };
-      panRef.current = newPan;
-      setPan(newPan);
-    } else if (d.type === 'node') {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const cx   = e.clientX - rect.left;
-      const cy   = e.clientY - rect.top;
-      if (mouseDownPos.current) {
-        const dist = Math.hypot(cx - mouseDownPos.current.cx, cy - mouseDownPos.current.cy);
-        if (dist > 4) nodeDragged.current = true;
-      }
-      if (nodeDragged.current) {
-        const pan = panRef.current;
-        setProjects(prev => prev.map(p => p.id === d.id
-          ? { ...p, pos: { x: cx - pan.x - d.ox, y: cy - pan.y - d.oy } }
-          : p
-        ));
-      }
+    if (!d || d.type !== 'node') return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const cx   = e.clientX - rect.left;
+    const cy   = e.clientY - rect.top;
+    if (mouseDownPos.current) {
+      const dist = Math.hypot(cx - mouseDownPos.current.cx, cy - mouseDownPos.current.cy);
+      if (dist > 4) nodeDragged.current = true;
+    }
+    if (nodeDragged.current) {
+      // Viewport is locked (no pan), so position is directly canvas-relative
+      setProjects(prev => prev.map(p => p.id === d.id
+        ? { ...p, pos: { x: cx - d.ox, y: cy - d.oy } }
+        : p
+      ));
     }
   };
 
@@ -493,6 +485,30 @@ export default function useAppCanvas({
           }
           draggingRef.current = null; mouseDownPos.current = null; setDragging(null);
           return;
+        }
+      }
+    }
+
+    // ── Quadrant calculation on drop ──
+    // If a goal was dragged (not a click), calculate its quadrant from final position.
+    // During drag, onCanvasMouseMove already updates pos via setProjects, so we just
+    // need to derive the quadrant from the current pos in state.
+    if (activePageRef.current === 'goals' && !wasClick && draggingRef.current?.type === 'node') {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const axisX = rect.width / 2;
+        const axisY = rect.height / 2;
+        const draggedId = draggingRef.current.id;
+        // Find the goal in the ref (most up-to-date position) and calculate quadrant
+        const goal = projectsRef.current.find(p => p.id === draggedId);
+        if (goal && goal.pos) {
+          const quadrant = calculateQuadrant(goal.pos, axisX, axisY);
+          if (quadrant !== goal.quadrant) {
+            setProjects(prev => prev.map(p =>
+              p.id === draggedId ? { ...p, quadrant } : p
+            ));
+          }
         }
       }
     }

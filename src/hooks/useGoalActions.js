@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { T } from '../utils/theme.js';
 import { askAI } from '../utils/api.js';
-import { uid, projectPos } from '../utils/helpers.js';
+import { uid, projectPos, inferInitialQuadrant, quadrantCenter } from '../utils/helpers.js';
 import { addSkillEvidence, updateSkillMeta } from '../constants/skills.js';
 import { buildLightKnowledgeContext } from '../utils/knowledge.js';
 
@@ -70,9 +70,14 @@ export default function useGoalActions({
   const createGoalFromModal = useCallback((goalData) => {
     const id    = uid();
     const color = colorFor(projects.length);
-    const pos   = projectPos(projects.length);
+    // Infer initial quadrant from goal metadata (deadline, priority, scale)
+    const quadrant = inferInitialQuadrant(goalData);
+    // Place goal in the center of its inferred quadrant
+    // Use a default canvas size of 1200x800 for initial placement;
+    // the actual canvas dimensions will recalculate on first render
+    const pos = quadrantCenter(quadrant, 600, 400);
     const newProject = {
-      id, color, pos,
+      id, color, pos, quadrant,
       title:       goalData.title || 'Untitled Goal',
       desc:        goalData.desc || '',
       measurable:  goalData.measurable || '',

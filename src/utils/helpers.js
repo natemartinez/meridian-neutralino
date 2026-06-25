@@ -4,6 +4,85 @@ export const uid = () => Math.random().toString(36).slice(2, 9);
 
 export const projectPos = (i) => ({ x: 240 + i * 440, y: 270 });
 
+/**
+ * Quadrant constants for Eisenhower Matrix.
+ * Maps quadrant IDs to human-readable labels and colors.
+ */
+export const QUADRANTS = {
+  q1: { id: 'q1', title: 'DO FIRST',   subtitle: 'Urgent + Important',          color: '#f77171' },
+  q2: { id: 'q2', title: 'SCHEDULE',   subtitle: 'Not Urgent + Important',      color: '#53aaff' },
+  q3: { id: 'q3', title: 'DELEGATE',   subtitle: 'Urgent + Not Important',      color: '#f0b429' },
+  q4: { id: 'q4', title: 'ELIMINATE',  subtitle: 'Not Urgent + Not Important',  color: '#56687f' },
+};
+
+/**
+ * Calculate which Eisenhower quadrant a position falls into.
+ * The canvas is divided by two perpendicular axes at (axisX, axisY).
+ *
+ * Quadrant layout:
+ *   Q2 (Schedule)     |  Q1 (Do First)
+ *   Not Urgent+Imp    |  Urgent+Imp
+ *   ------------------+------------------
+ *   Q4 (Eliminate)    |  Q3 (Delegate)
+ *   Not Urgent+NotImp |  Urgent+NotImp
+ *
+ * @param {{ x: number, y: number }} pos - Goal position in canvas coordinates
+ * @param {number} axisX - X-coordinate of the vertical (urgency) divider
+ * @param {number} axisY - Y-coordinate of the horizontal (importance) divider
+ * @returns {'q1'|'q2'|'q3'|'q4'}
+ */
+export function calculateQuadrant(pos, axisX, axisY) {
+  if (pos.x >= axisX && pos.y < axisY) return 'q1';
+  if (pos.x < axisX  && pos.y < axisY) return 'q2';
+  if (pos.x >= axisX && pos.y >= axisY) return 'q3';
+  return 'q4';
+}
+
+/**
+ * Infer the initial Eisenhower quadrant for a newly created goal
+ * based on its deadline proximity and priority/scale.
+ *
+ * Heuristic:
+ *   - Urgent (deadline ≤ 7 days) + Important (high priority or long scale) → Q1
+ *   - Not urgent + Important → Q2
+ *   - Urgent + Not important → Q3
+ *   - Neither → Q4
+ *
+ * @param {{ deadline?: string, priority?: string, scale?: string }} goalData
+ * @returns {'q1'|'q2'|'q3'|'q4'}
+ */
+export function inferInitialQuadrant(goalData) {
+  const isUrgent = !!goalData.deadline &&
+    (new Date(goalData.deadline) - new Date()) / 86400000 <= 7;
+  const isImportant = goalData.priority === 'high' || goalData.scale === 'long';
+
+  if (isUrgent && isImportant) return 'q1';
+  if (!isUrgent && isImportant) return 'q2';
+  if (isUrgent && !isImportant) return 'q3';
+  return 'q4';
+}
+
+/**
+ * Get the center position for a given quadrant, relative to the matrix axes.
+ * Useful for placing newly created goals in the center of their inferred quadrant.
+ *
+ * @param {'q1'|'q2'|'q3'|'q4'} quadrant
+ * @param {number} axisX - X-coordinate of the vertical divider
+ * @param {number} axisY - Y-coordinate of the horizontal divider
+ * @returns {{ x: number, y: number }}
+ */
+export function quadrantCenter(quadrant, axisX, axisY) {
+  const cx = axisX / 2;
+  const cy = axisY / 2;
+  switch (quadrant) {
+    case 'q1': return { x: axisX + cx, y: cy };
+    case 'q2': return { x: cx,         y: cy };
+    case 'q3': return { x: axisX + cx, y: axisY + cy };
+    case 'q4': return { x: cx,         y: axisY + cy };
+    default:   return { x: axisX,      y: axisY };
+  }
+}
+
 export const progress = (p) => {
   const total = p.subtasks.length + p.checkpoints.length;
   if (!total) return 0;

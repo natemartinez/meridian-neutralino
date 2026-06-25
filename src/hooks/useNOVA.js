@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { chatWithNOVA, askAI } from '../utils/api.js';
-import { uid, progress } from '../utils/helpers.js';
+import { uid, progress, QUADRANTS } from '../utils/helpers.js';
 import { buildFullKnowledgeBlock, buildLightKnowledgeContext, buildStructuredKnowledgeBlock, decayKnowledge, markEntriesUsed } from '../utils/knowledge.js';
 import { computePlanningConfidence, NOVA_DEFAULT, validateNOVAResponse, updatePlanAccuracyHistory } from '../utils/nova.js';
 import { useNovaRetry } from './useNovaRetry.js';
@@ -169,8 +169,22 @@ export function useNOVA({ apiKey, model, projects, focus, waypointContext, loade
   }, []);
 
   const buildNOVASystemPrompt = useCallback((programId) => {
-    const goalsSummary = projects.filter(p => !p.completedAt)
-      .map(p => `"${p.title}" (${progress(p)}% done)`).join(', ') || 'none';
+    const activeGoals = projects.filter(p => !p.completedAt);
+    // Build quadrant distribution summary for NOVA context
+    const quadrantCounts = { q1: 0, q2: 0, q3: 0, q4: 0 };
+    activeGoals.forEach(p => {
+      if (p.quadrant && quadrantCounts[p.quadrant] !== undefined) {
+        quadrantCounts[p.quadrant]++;
+      }
+    });
+    const quadrantSummary = Object.entries(quadrantCounts)
+      .filter(([, count]) => count > 0)
+      .map(([q, count]) => `${QUADRANTS[q].title} (${q.toUpperCase()}): ${count} goals`)
+      .join(', ');
+
+    const goalsSummary = activeGoals
+      .map(p => `"${p.title}" (${progress(p)}% done${p.quadrant ? `, ${p.quadrant.toUpperCase()}` : ''})`).join(', ') || 'none';
+    const quadrantBlock = quadrantSummary ? `\nEisenhower Matrix distribution: ${quadrantSummary}.` : '';
     const focusSummary = focus.filter(Boolean).join(', ') || 'none';
     const confidence   = computePlanningConfidence(novaState.syncEvents);
     const routineNote  = novaState.routine ? `Known pattern: ${novaState.routine.summary}` : '';
@@ -183,7 +197,7 @@ export function useNOVA({ apiKey, model, projects, focus, waypointContext, loade
     if (kbResult.usedEntryIds?.length > 0) {
       lastUsedEntryIdsRef.current = kbResult.usedEntryIds;
     }
-    const base = `You are NOVA, a productivity companion and psychological coach. Planning confidence with this user: ${confidence}%. ${confidence < 30 ? 'Ask more questions to learn their patterns.' : confidence > 70 ? 'You know this user well — make bold, specific suggestions.' : 'Balance questions with suggestions.'} Active goals: ${goalsSummary}. Today's focus: ${focusSummary}. ${routineNote} Psychological coaching scope: stress reduction, task breakdown, work tips only — not personal therapy.${knowledgeBlock}
+    const base = `You are NOVA, a productivity companion and psychological coach. Planning confidence with this user: ${confidence}%. ${confidence < 30 ? 'Ask more questions to learn their patterns.' : confidence > 70 ? 'You know this user well — make bold, specific suggestions.' : 'Balance questions with suggestions.'} Active goals: ${goalsSummary}.${quadrantBlock} Today's focus: ${focusSummary}. ${routineNote} Psychological coaching scope: stress reduction, task breakdown, work tips only — not personal therapy.${knowledgeBlock}
 
 After your message, include 3 multiple-choice reply options in this format:
 [OPTIONS]
@@ -631,7 +645,7 @@ These should represent the 3 most likely ways the user would respond. Make them 
     }
     const startTimeMinutes = startHour * 60 + startMinute;
 
-    const system = (`You are NOVA, an AI planning engine. Return ONLY a raw JSON array — no markdown, no explanation. Each item: { "title": string (max 60 chars), "goalId": string|null, "goalTitle": string|null, "estimatedMinutes": number (15-120), "complexity": "low"|"medium"|"high", "rationale": string (max 80 chars) }. Generate exactly 5 to 7 tasks. Mix urgent deadline work with steady progress on longer goals.${lightCtx ? ' ' + lightCtx : ''}`).trim();
+    const system = (`You are NOVA, an AI planning engine. Return ONLY a raw JSON array — no markdown, no explanation. Each item: { "title": string (max 60 chars), "goalId": string|null, "goalTitle": string|null, "estimatedMinutes": number (15-120), "complexity": "low"|"medium"|"high", "rationale": string (max 80 chars) }. Generate exactly 5 to 7 tasks. Prioritize using the Eisenhower Matrix: Q1 (Do First) > Q2 (Schedule) > Q3 (Delegate) > Q4 (Eliminate). Focus on urgent+important and important+not-urgent goals first.${lightCtx ? ' ' + lightCtx : ''}`).trim();
 
     const priorityContext = userPriorities && userPriorities.trim()
       ? `\n\nUSER'S PRIORITIES:\n${userPriorities.trim()}`
