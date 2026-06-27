@@ -5,10 +5,12 @@ const PROGRAMS = [
   {
     id: 'briefing',
     label: 'Goals',
-    desc: 'Full debrief to start your day',
+    desc: 'Morning debrief',
     color: '#F59E0B',
     defaultPage: 'goals',
-    subNavs: [],
+    subNavs: [
+      { id: 'briefing', label: 'BRIEFING' },
+    ],
     icon: (
       <svg width="16" height="16" viewBox="0 0 13 13">
         <circle cx="6.5" cy="6.5" r="5" fill="none" stroke="#F59E0B" strokeWidth="1.4"/>
@@ -19,7 +21,7 @@ const PROGRAMS = [
   {
     id: 'focus',
     label: 'Focus',
-    desc: 'Quick sprint, get locked in',
+    desc: 'Deep focus',
     color: T.blue,
     defaultPage: 'onward',
     subNavs: [
@@ -36,7 +38,7 @@ const PROGRAMS = [
   {
     id: 'regroup',
     label: 'Re-group',
-    desc: 'Reset and recalibrate',
+    desc: 'Reset & refocus',
     color: T.purple,
     defaultPage: null,
     subNavs: [],
@@ -52,7 +54,7 @@ const PROGRAMS = [
   {
     id: 'preview',
     label: 'Preview',
-    desc: 'Plan the next day',
+    desc: 'Plan ahead',
     color: T.cyan,
     defaultPage: 'map',
     subNavs: [],
@@ -67,7 +69,7 @@ const PROGRAMS = [
   {
     id: 'calibration',
     label: 'Paths',
-    desc: 'Personal projects & roadmaps',
+    desc: 'Long-term vision',
     color: T.accent,
     defaultPage: 'paths',
     subNavs: [],
@@ -90,8 +92,8 @@ export default function ProgramsList({ mainPage, onOpenProgram, onBackToHQ, addS
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'space-evenly',
-      padding: collapsed ? '8px 6px' : '8px 14px',
-      gap: 4,
+      padding: collapsed ? '8px 0' : '14px 14px',
+      gap: 22,
     }}>
 
       {PROGRAMS.map(prog => {
@@ -121,66 +123,66 @@ export default function ProgramsList({ mainPage, onOpenProgram, onBackToHQ, addS
               }}
               style={{
                 display:'flex', alignItems:'center', gap: collapsed ? 0 : 12,
-                padding: collapsed ? '8px 0' : '10px 14px',
-                justifyContent: collapsed ? 'flex-end' : 'flex-start',
+                padding: collapsed ? '6px 0' : '14px 14px',
+                justifyContent: 'flex-start',
                 borderRadius:10, cursor:'pointer', userSelect:'none',
-                background: isActive ? `${prog.color}15` : 'transparent',
-                border: isActive ? `1px solid ${prog.color}40` : '1px solid transparent',
-                transition:'all .18s',
+                background: (!collapsed && isActive) ? `${prog.color}15` : 'transparent',
+                border: (!collapsed && isActive) ? `1px solid ${prog.color}40` : '1px solid transparent',
+                transition: collapsed ? 'none' : 'all .18s',
               }}
               onMouseEnter={e => {
-                if (!isActive) {
+                if (collapsed) {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.borderColor = 'transparent';
+                } else if (!isActive) {
                   e.currentTarget.style.background = `${T.surface}80`;
                   e.currentTarget.style.borderColor = `${T.border}80`;
                 }
               }}
               onMouseLeave={e => {
-                if (!isActive) {
+                if (collapsed) {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.borderColor = 'transparent';
+                } else if (!isActive) {
                   e.currentTarget.style.background = 'transparent';
                   e.currentTarget.style.borderColor = 'transparent';
                 }
               }}
             >
               <div style={{
-                width: collapsed ? 28 : 34, height: collapsed ? 28 : 34, borderRadius:8,
+                width: collapsed ? 32 : 38, height: collapsed ? 32 : 38, borderRadius:9,
                 background:`${prog.color}18`,
                 border:`1px solid ${prog.color}30`,
                 display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+                boxShadow: (collapsed && (isActive || isHovered)) ? `0 0 12px 2px ${prog.color}50` : 'none',
+                transition:'box-shadow .2s ease',
               }}>
-                {prog.icon}
+                <div style={{ transform:'scale(1.25)', transformOrigin:'center' }}>{prog.icon}</div>
               </div>
               {!collapsed && (
-                <div style={{ flex:1, overflow:'hidden' }}>
+                <div className="prg-txt" style={{ flex:1, minWidth:0 }}>
                   <div style={{
                     fontFamily:"'Syne',sans-serif",
-                    fontSize:18, fontWeight:700,
+                    fontSize:'clamp(14px, 1.3vw, 19px)', fontWeight:700,
                     color: isActive ? prog.color : T.text,
                     letterSpacing:'.02em',
+                    lineHeight:1.2,
                   }}>{prog.label}</div>
                   <div style={{
-                    fontFamily:"'IBM Plex Mono',monospace",
-                    fontSize:10, color:T.muted, marginTop:2,
-                    overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                  }}>{prog.desc}</div>
+                    overflow:'hidden',
+                    maxHeight: isHovered ? 28 : 0,
+                    opacity: isHovered ? 1 : 0,
+                    transition:'all 0.2s ease',
+                  }}>
+                    <div style={{
+                      fontFamily:"'IBM Plex Mono',monospace",
+                      fontSize:'clamp(9px, 0.8vw, 11px)', color:T.muted, marginTop:2,
+                      lineHeight:1.3,
+                    }}>{prog.desc}</div>
+                  </div>
                 </div>
               )}
             </div>
-
-            {/* ── Hover-reveal label tooltip (collapsed mode) ── */}
-            {collapsed && isHovered && (
-              <div style={{
-                position:'absolute', left:'100%', top:'50%', transform:'translateY(-50%)',
-                marginLeft:8, zIndex:50,
-                background:T.card, border:`1px solid ${T.border}`, borderRadius:6,
-                padding:'5px 10px', whiteSpace:'nowrap',
-                fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:700,
-                color: isActive ? prog.color : T.text,
-                boxShadow:'0 4px 12px rgba(0,0,0,.3)',
-                pointerEvents:'none',
-              }}>
-                {prog.label}
-              </div>
-            )}
 
             {/* ── Hover-reveal sub-nav chips ── */}
             {!collapsed && hasSubNavs && (

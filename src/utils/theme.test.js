@@ -24,7 +24,7 @@ describe('T (theme object)', () => {
   });
 
   it('bg is a dark color', () => {
-    expect(T.bg).toBe('#07090f');
+    expect(T.bg).toBe('#0c111a');
   });
 
   it('surface is slightly lighter than bg', () => {

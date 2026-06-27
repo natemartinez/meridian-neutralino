@@ -32,15 +32,6 @@ export function drawOnwardPage(ctx, dpr, w, viewH, t, scrollY, refs) {
   const resizeDrag = resizeDragRef?.current || null;
   const onwardDrag = onwardDragRef?.current || null;
 
-  // Page heading (fixed at top of viewport, doesn't scroll with content)
-  ctx.save();
-  ctx.font = `700 ${13*dpr}px 'Syne',sans-serif`;
-  ctx.fillStyle = T.accent;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillText('ONWARD', PAD + LEFT, PAD * 0.4 + scrollY);
-  ctx.restore();
-
   // Draw current time indicator line across visible area
   if (curH >= firstVisibleHour && curH <= lastVisibleHour) {
     const lineY = getY(curH);

@@ -173,46 +173,63 @@ export default function AppRouter({
     <>
       {appStyles}
 
-      <div className="app-shell">
+      <div className="app-shell" style={{ position:'relative' }}>
         {/* ═══ SIGNAL ═══ */}
         <div className={`sig${sidebarCollapsed ? ' collapsed' : ''}`}>
-          {/* ── Collapse toggle on the right edge of the sidebar ── */}
+          <div className="sig-inner">
+            <NovaSidebarBlock
+              novaState={novaState}
+              mainPage={mainPage}
+              onOpenInsights={() => setMainPage('nova-insights')}
+              onBackToHQ={() => setMainPage('hq')}
+            />
+            <ProgramsList
+              collapsed={sidebarCollapsed}
+              mainPage={mainPage}
+              onOpenProgram={(id) => setMainPage(`program-${id}`)}
+              onBackToHQ={() => setMainPage('hq')}
+              addSyncEvent={addSyncEvent}
+              onOpenProgramWithPage={onOpenProgramWithPage}
+              onSubNavNavigate={(programId, subNavId) => {
+                setMainPage(`program-${programId}`);
+                // Map 'briefing' sub-nav to 'briefing-chat' page
+                const page = (programId === 'briefing' && subNavId === 'briefing') ? 'briefing-chat' : subNavId;
+                setTimeout(() => onSubNav(page), 50);
+              }}
+            />
+          </div>
+
+          {/* ── Full-height collapse toggle strip on the right edge of .sig ── */}
           <button
             onClick={() => setSidebarCollapsed(v => !v)}
             title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             style={{
               position:'absolute',
-              right: sidebarCollapsed ? -14 : -14,
-              top: 12,
+              right: -18,
+              top: 0,
+              bottom: 0,
               zIndex: 60,
-              background:'none', border:'none',
-              color: T.muted, cursor:'pointer', fontSize:10,
-              fontFamily:"'IBM Plex Mono',monospace", lineHeight:1,
-              padding:'4px 2px',
-              transition:'all .14s', opacity:0.4,
+              width: 18,
+              height: '100%',
+              display:'flex',
+              alignItems:'center',
+              justifyContent:'center',
+              background: `${T.surface}`,
+              border: `1px solid ${T.border}`,
+              borderLeft: 'none',
+              borderRadius: 0,
+              color: T.muted,
+              cursor:'pointer',
+              fontSize: 11,
+              fontFamily:"'IBM Plex Mono',monospace",
+              lineHeight:1,
+              padding:0,
+              transition:'opacity .2s ease',
+              opacity:0.5,
             }}
-            onMouseEnter={e => { e.currentTarget.style.opacity='1'; e.currentTarget.style.color=T.text; }}
-            onMouseLeave={e => { e.currentTarget.style.opacity='0.4'; e.currentTarget.style.color=T.muted; }}
+            onMouseEnter={e => { e.currentTarget.style.opacity='1'; e.currentTarget.style.color=T.text; e.currentTarget.style.borderColor='#7a8ba3'; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity='0.5'; e.currentTarget.style.color=T.muted; e.currentTarget.style.borderColor=T.border; }}
           >{sidebarCollapsed ? '▸' : '◂'}</button>
-
-          <NovaSidebarBlock
-            novaState={novaState}
-            mainPage={mainPage}
-            onOpenInsights={() => setMainPage('nova-insights')}
-            onBackToHQ={() => setMainPage('hq')}
-          />
-          <ProgramsList
-            collapsed={sidebarCollapsed}
-            mainPage={mainPage}
-            onOpenProgram={(id) => setMainPage(`program-${id}`)}
-            onBackToHQ={() => setMainPage('hq')}
-            addSyncEvent={addSyncEvent}
-            onOpenProgramWithPage={onOpenProgramWithPage}
-            onSubNavNavigate={(programId, subNavId) => {
-              setMainPage(`program-${programId}`);
-              setTimeout(() => onSubNav(subNavId), 50);
-            }}
-          />
         </div>
 
         {/* ═══ COMMAND ═══ */}
@@ -220,17 +237,33 @@ export default function AppRouter({
           {/* Top bar — nav buttons */}
           <div className="ctb" style={{ justifyContent: isProgram(mainPage) ? 'space-between' : 'flex-end' }}>
             {isProgram(mainPage) && (
-              <button
-                className="cbtn"
-                onClick={() => { setMainPage('hq'); setShowStartupCanvas(true); }}
-                style={{
-                  background: 'transparent',
-                  borderColor: T.border,
-                  color: T.text,
-                }}
-              >
-                ← Back
-              </button>
+              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <button
+                  className="cbtn"
+                  onClick={() => { setMainPage('hq'); setShowStartupCanvas(true); closeWaypoint(); }}
+                  style={{
+                    background: 'transparent',
+                    borderColor: T.border,
+                    color: T.text,
+                  }}
+                >
+                  ← Back
+                </button>
+                {(() => {
+                  const progId = extractProgId(mainPage);
+                  const labelMap = { briefing:'Goals', focus:'Focus', regroup:'Re-group', preview:'Preview', calibration:'Paths' };
+                  const label = labelMap[progId];
+                  if (!label) return null;
+                  return (
+                    <span style={{
+                      fontFamily:"'Syne',sans-serif",
+                      fontSize:16,
+                      fontWeight:700,
+                      color:T.accent,
+                    }}>{label}</span>
+                  );
+                })()}
+              </div>
             )}
             <div style={{ display:'flex', gap:4 }}>
               {[
@@ -243,7 +276,7 @@ export default function AppRouter({
                   <button
                     key={page}
                     className="cbtn"
-                    onClick={() => { setMainPage(page); closeWaypoint(); }}
+                    onClick={() => { setMainPage(page); }}
                     style={{
                       background: isActive ? `${color}18` : 'transparent',
                       borderColor: isActive ? `${color}50` : undefined,
@@ -274,6 +307,19 @@ export default function AppRouter({
                   if (page === 'program-briefing') {
                     setActivePage('briefing-chat');
                     activePageRef.current = 'briefing-chat';
+                    closeWaypoint();
+                  } else if (page === 'program-focus') {
+                    setActivePage('onward');
+                    activePageRef.current = 'onward';
+                    openWaypoint({ type: 'canvas-panel', id: 'onward' });
+                  } else if (page === 'program-preview') {
+                    setActivePage('map');
+                    activePageRef.current = 'map';
+                    openWaypoint({ type: 'canvas-panel', id: 'map' });
+                  } else if (page === 'program-calibration') {
+                    setActivePage('paths');
+                    activePageRef.current = 'paths';
+                    closeWaypoint();
                   }
                 }}
                 onResumeFocus={() => {
@@ -289,7 +335,7 @@ export default function AppRouter({
                 T={T}
               />
             ) : isCanvasPage(mainPage) && (
-              <div className="cv" style={{ cursor: activePage === 'goals' ? (dragging ? 'grabbing' : 'grab') : activePage === 'onward' ? 'default' : 'pointer', position: 'relative', overflow: activePage === 'onward' ? 'auto' : 'hidden', width: (activePage === 'onward' && waypointOpen) ? 'calc(100% - 244px)' : '100%', transition: 'width 0.4s cubic-bezier(.4,0,.2,1)', scrollbarWidth: 'thin', scrollbarColor: `${T.border} ${T.bg}` }}>
+              <div className="cv" style={{ cursor: activePage === 'goals' ? (dragging ? 'grabbing' : 'grab') : activePage === 'onward' ? 'default' : 'pointer', position: 'relative', overflow: activePage === 'onward' ? 'auto' : 'hidden', width: waypointOpen ? 'calc(100% - 244px)' : '100%', transition: 'width 0.4s cubic-bezier(.4,0,.2,1)', scrollbarWidth: 'thin', scrollbarColor: `${T.border} ${T.bg}` }}>
                 <canvas
                   ref={canvasRef}
                   style={{ position:'absolute', top:0, left:0 }}
@@ -302,24 +348,24 @@ export default function AppRouter({
                   onDrop={onCanvasDrop}
                 />
                 {activePage === 'skills' && (
-                  <div style={{ position: 'absolute', inset: 0, background: '#07090f', overflowY: 'auto', zIndex: 10 }}>
+                  <div style={{ position: 'absolute', inset: 0, background: '#0c111a', overflowY: 'auto', zIndex: 10 }}>
                     <SkillsView skills={xpSkills} goals={projects} streakDays={streakDays} onUpdateSkillMeta={handleUpdateSkillMeta} />
                   </div>
                 )}
                 {activePage === 'paths' && (
-                  <div style={{ position: 'absolute', inset: 0, background: '#07090f', overflowY: 'auto', zIndex: 10 }}>
+                  <div style={{ position: 'absolute', inset: 0, background: '#0c111a', overflowY: 'auto', zIndex: 10 }}>
                     <PathsView />
                   </div>
                 )}
                 {activePage === 'worklogs' && (
-                  <div style={{ position: 'absolute', inset: 0, background: '#07090f', overflowY: 'auto', zIndex: 10 }}>
+                  <div style={{ position: 'absolute', inset: 0, background: '#0c111a', overflowY: 'auto', zIndex: 10 }}>
                     <WorkLogsView />
                   </div>
                 )}
                 {activePage === 'briefing-chat' && isProgram(mainPage) && (() => {
                   const progId = extractProgId(mainPage);
                   return (
-                    <div style={{ position: 'absolute', inset: 0, background: '#07090f', zIndex: 10, display: 'flex', flexDirection: 'column', padding: 16 }}>
+                    <div style={{ position: 'absolute', inset: 0, background: '#0c111a', zIndex: 10, display: 'flex', flexDirection: 'column', padding: 16 }}>
                       <NOVAProgramPanel
                         progId={progId}
                         novaState={novaState}
@@ -360,52 +406,6 @@ export default function AppRouter({
                 })()}
               </div>
             )}
-            {/* ── Program Sub-Nav Overlay ── */}
-            {isProgram(mainPage) && PROGRAMS_WITH_CANVAS.includes(mainPage) && (() => {
-              const progId = extractProgId(mainPage);
-              const SUB_NAVS = {
-                briefing:    [{ id: 'briefing', label: 'BRIEFING', action: 'chat' }],
-                focus:       [{ id: 'onward',   label: 'ONWARD',   action: 'subnav' }, { id: 'worklogs', label: 'WORK LOGS', action: 'subnav' }],
-              };
-              const subNavs = SUB_NAVS[progId] || [];
-              return (
-                <div style={{
-                  position: 'absolute',
-                  top: 0, left: 0, right: 0,
-                  zIndex: 15,
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: 10,
-                  padding: '10px 18px',
-                  pointerEvents: 'auto',
-                }}>
-                  {subNavs.map(sub => (
-                    <button
-                      key={sub.id}
-                      onClick={() => {
-                        if (sub.action === 'chat') {
-                          onSubNav('briefing-chat');
-                        } else {
-                          onSubNav(sub.id);
-                        }
-                      }}
-                      style={{
-                        background: 'none',
-                        border: `1px solid ${T.border}`,
-                        borderRadius: 4,
-                        color: T.muted,
-                        cursor: 'pointer',
-                        fontSize: 9,
-                        padding: '2px 8px',
-                        fontFamily: "'IBM Plex Mono',monospace",
-                        letterSpacing: '.05em',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >{sub.label}</button>
-                  ))}
-                </div>
-              );
-            })()}
             {mainPage === 'tracking' && (
               <TrackingPage
                 projects={projects}

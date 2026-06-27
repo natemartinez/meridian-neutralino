@@ -152,7 +152,7 @@ export default function FocusScreen({
     return (
       <div style={{
         position:'fixed', inset:0, zIndex:500,
-        background: '#07090f',
+        background: '#0c111a',
         display:'flex', flexDirection:'column',
         alignItems:'center', justifyContent:'center',
         color: T.text,
@@ -255,7 +255,7 @@ export default function FocusScreen({
   return (
     <div style={{
       position:'fixed', inset:0, zIndex:500,
-      background: '#07090f',
+      background: '#0c111a',
       display:'flex', flexDirection:'column',
       alignItems:'center', justifyContent:'center',
       color: T.text,

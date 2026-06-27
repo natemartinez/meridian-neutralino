@@ -94,7 +94,7 @@ export default function useAppCanvas({
       const rowHeightPx = visibleHeight / VISIBLE_HOURS;
 
       if (isOnward) {
-        const contentHeight = (TOTAL_ROWS + VISIBLE_HOURS) * rowHeightPx + 48;
+        const contentHeight = TOTAL_ROWS * rowHeightPx + 48;
         canvas.width  = rect.width  * dpr;
         canvas.height = contentHeight * dpr;
         canvas.style.width  = rect.width  + 'px';

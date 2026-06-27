@@ -103,10 +103,10 @@ function NOVAProgramPanel({
 
   const PROG_META = {
     briefing:    { label:'Goals',       color:'#F59E0B', desc:'Morning debrief' },
-    focus:       { label:'Focus',       color: T.blue,   desc:'Lock in plan' },
-    regroup:     { label:'Re-group',    color: T.purple, desc:'Recalibrate' },
-    preview:     { label:'Preview',     color: T.cyan,   desc:'Plan the next day' },
-    calibration: { label:'Paths', color: T.accent, desc:'Personal projects & roadmaps' },
+    focus:       { label:'Focus',       color: T.blue,   desc:'Deep focus' },
+    regroup:     { label:'Re-group',    color: T.purple, desc:'Reset & refocus' },
+    preview:     { label:'Preview',     color: T.cyan,   desc:'Plan ahead' },
+    calibration: { label:'Paths', color: T.accent, desc:'Roadmaps & projects' },
   };
   const meta     = PROG_META[progId] || PROG_META.briefing;
   const history  = novaState.programChats[progId] || [];

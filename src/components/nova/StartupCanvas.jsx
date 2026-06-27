@@ -4,10 +4,10 @@ import NOVAMessageBlock from './NOVAMessageBlock.jsx';
 
 const PROG_META = {
   briefing:    { label:'Goals',       color:'#F59E0B', icon:'☀', desc:'Morning debrief' },
-  focus:       { label:'Focus',       color:T.blue,    icon:'◎', desc:'Lock in plan' },
-  regroup:     { label:'Re-group',    color:T.purple,  icon:'⟳', desc:'Recalibrate' },
-  preview:     { label:'Preview',     color:T.cyan,    icon:'◷', desc:'Plan the next day' },
-  calibration: { label:'Paths', color:T.accent,  icon:'◆', desc:'Personal projects & roadmaps' },
+  focus:       { label:'Focus',       color:T.blue,    icon:'◎', desc:'Deep focus' },
+  regroup:     { label:'Re-group',    color:T.purple,  icon:'⟳', desc:'Reset & refocus' },
+  preview:     { label:'Preview',     color:T.cyan,    icon:'◷', desc:'Plan ahead' },
+  calibration: { label:'Paths', color:T.accent,  icon:'◆', desc:'Roadmaps & projects' },
 };
 
 /**
@@ -380,7 +380,7 @@ export default function StartupCanvas({
 
   /** First Launch state — welcome message + quick-start buttons */
   const renderFirstLaunch = () => (
-    <div style={styles.card}>
+    <div style={{ ...styles.card, background: 'transparent', borderColor: 'transparent' }}>
       <div style={{
         padding: '60px 28px 48px',
         display: 'flex',

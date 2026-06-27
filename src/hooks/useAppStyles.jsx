@@ -19,8 +19,9 @@ export default function useAppStyles() {
       .app-shell{display:flex;height:100vh;overflow:hidden;background:${T.bg};color:${T.text};font-family:'Syne',sans-serif;}
 
       /* ── SIGNAL ── */
-      .sig{width:180px;flex-shrink:0;background:transparent;display:flex;flex-direction:column;overflow:hidden;transition:width .2s;padding:12px 0;position:relative;}
-      .sig.collapsed{width:48px;}
+      .sig{width:180px;flex-shrink:0;background:transparent;display:flex;flex-direction:column;transition:width .25s cubic-bezier(.4,0,.2,1);padding:12px 0;position:relative;}
+      .sig-inner{overflow:hidden;display:flex;flex-direction:column;}
+      .sig.collapsed{width:48px;padding:12px 0;margin-left:18px;margin-right:12px;}
       .sig.collapsed .sec,
       .sig.collapsed .wp-ttl,
       .sig.collapsed .wp-badge,
@@ -32,9 +33,11 @@ export default function useAppStyles() {
       .sig.collapsed .plan-item-meta,
       .sig.collapsed .plan-refresh-btn,
       .sig.collapsed .prg-lbl,
-      .sig.collapsed .prg-desc{display:none;}
-      .sig.collapsed .nova-block{display:flex;justify-content:center;}
-      .sig.collapsed .nova-block > div{margin:0 auto;}
+      .sig.collapsed .prg-desc,
+      .sig.collapsed .sig-brand,
+      .sig.collapsed .sig-subt{display:none;}
+      .sig.collapsed .nova-block{display:none !important;}
+      .sig.collapsed .prg-txt{display:none !important;}
       .sec{padding:10px 11px 6px;}
       .secl{font-size:7.5px;color:${T.muted};text-transform:uppercase;letter-spacing:.12em;display:flex;align-items:center;gap:5px;margin-bottom:8px;}
       .pip{width:5px;height:5px;border-radius:50%;flex-shrink:0;}

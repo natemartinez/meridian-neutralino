@@ -3,8 +3,8 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 
 const T = {
-  bg:     '#07090f',
-  card:   '#0d1017',
+  bg:     '#0c111a',
+  card:   '#111620',
   border: '#1b2336',
   text:   '#d6e2f5',
   muted:  '#56687f',

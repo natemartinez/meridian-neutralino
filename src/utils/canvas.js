@@ -166,7 +166,7 @@ export function drawQuadrantLabel(ctx, dpr, title, subtitle, color, x, y) {
   // x, y are already in physical (dpr-scaled) pixels — no * dpr needed
   // Title
   ctx.save();
-  ctx.font = `700 ${10 * dpr}px 'Syne',sans-serif`;
+  ctx.font = `700 ${12 * dpr}px 'Syne',sans-serif`;
   ctx.fillStyle = rgba(color, 0.5);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
@@ -179,7 +179,7 @@ export function drawQuadrantLabel(ctx, dpr, title, subtitle, color, x, y) {
   ctx.fillStyle = rgba(color, 0.25);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText(subtitle, x, y + 14 * dpr);
+  ctx.fillText(subtitle, x, y + 16 * dpr);
   ctx.restore();
 }
 

@@ -13,7 +13,7 @@ import { useOnwardScroll } from './useOnwardScroll.js';
 import { useNovaInteractions } from './useNovaInteractions.js';
 import { registerPatterns, useNovaInteractionStore } from '../store/novaInteractionStore.js';
 import { PATTERNS } from '../constants/novaInteractions.js';
-import { PROGRAM_DEFAULT_PAGES } from '../constants/programs.js';
+import { PROGRAM_DEFAULT_PAGES, isProgram } from '../constants/programs.js';
 
 export default function useAppState() {
   // ── Core state ──
@@ -128,6 +128,10 @@ export default function useAppState() {
   const [onwardClickedItem, setOnwardClickedItem] = useState(null);
   const [selectedOnwardDate, setSelectedOnwardDate] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Tracks whether the sidebar was auto-collapsed by openWaypoint,
+  // so closeWaypoint only restores it if it was auto-collapsed,
+  // not when the user manually collapsed it.
+  const sidebarAutoCollapsedRef = useRef(false);
   const [sunId, setSunId] = useLocalStorageState('meridian_sun_id', null);
   const [companionName, setCompanionName] = useLocalStorageState('meridian_companion_name', 'AI Companion');
 
@@ -248,29 +252,71 @@ export default function useAppState() {
   const openWaypoint = (context) => {
     setWaypointContext(context);
     setWaypointOpen(true);
+    // Auto-collapse the left sidebar when the right sidebar opens
+    sidebarAutoCollapsedRef.current = true;
+    setSidebarCollapsed(true);
     if (context.type === 'goal') setSelectedId(context.id);
   };
 
   const closeWaypoint = () => {
     setWaypointOpen(false);
+    // Only restore the sidebar if it was auto-collapsed by openWaypoint,
+    // not if the user manually collapsed it.
+    if (sidebarAutoCollapsedRef.current) {
+      setSidebarCollapsed(false);
+    }
+    sidebarAutoCollapsedRef.current = false;
   };
+
+  // ── Program-aware waypoint opener: maps a program's default page to the right waypoint context ──
+  const openWaypointForProgram = useCallback((defaultPage) => {
+    if (!defaultPage) { closeWaypoint(); return; }
+    // Pages that should open the waypoint with a canvas-panel context.
+    // Only 'onward' has a full task-creation panel; 'map' and 'skills' have
+    // lightweight info panels. 'paths', 'goals', 'worklogs', 'briefing-chat'
+    // do not open the waypoint.
+    const waypointPages = ['onward', 'map', 'skills'];
+    if (waypointPages.includes(defaultPage)) {
+      openWaypoint({ type: 'canvas-panel', id: defaultPage });
+    } else {
+      closeWaypoint();
+    }
+  }, [openWaypoint, closeWaypoint]);
+
+  // ── Auto-close waypoint when navigating away from programs ──
+  // Uses a ref to track whether we're in the middle of a program switch
+  // (which is handled by onOpenProgramWithPage) vs. a non-program navigation.
+  const isSwitchingProgramRef = useRef(false);
+  useEffect(() => {
+    // If we navigated to a non-program page, close the waypoint
+    if (!isProgram(mainPage) && mainPage !== 'hq') {
+      closeWaypoint();
+    }
+  }, [mainPage, closeWaypoint]);
 
   // ── Program open handler: sets activePage to the program's default canvas page ──
   const onOpenProgramWithPage = useCallback((progId, defaultPage) => {
+    isSwitchingProgramRef.current = true;
     setMainPage(`program-${progId}`);
     if (defaultPage) {
       setActivePage(defaultPage);
       activePageRef.current = defaultPage;
+      // Open the appropriate waypoint for this program's default page
+      openWaypointForProgram(defaultPage);
     }
     setShowStartupCanvas(false);
-  }, [setMainPage, setActivePage, setShowStartupCanvas]);
+    // Reset the flag after state settles
+    setTimeout(() => { isSwitchingProgramRef.current = false; }, 0);
+  }, [setMainPage, setActivePage, setShowStartupCanvas, openWaypointForProgram]);
 
   // ── Sub-nav handler: called from NOVAProgramPanel sub-nav buttons ──
   const onSubNav = useCallback((page) => {
     setActivePage(page);
     activePageRef.current = page;
     novaInteractions.fireEvent('page_navigated', { page });
-    if (page !== 'goals' && page !== 'worklogs' && page !== 'briefing-chat') {
+    // Use the same program-aware logic for sub-nav navigation
+    const waypointPages = ['onward', 'map', 'skills'];
+    if (waypointPages.includes(page)) {
       openWaypoint({ type: 'canvas-panel', id: page });
     } else {
       closeWaypoint();

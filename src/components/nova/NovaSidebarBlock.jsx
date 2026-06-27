@@ -13,7 +13,7 @@ export default function NovaSidebarBlock({
   return (
     <div className="sec nova-block">
       <div
-        style={{ borderRadius:7, border:`1px solid ${insightsOpen ? T.accent : T.border}`, background:T.card, overflow:'hidden', cursor:'pointer', transition:'border-color .2s' }}
+        style={{ width:'100%', borderRadius:7, border:`1px solid ${insightsOpen ? T.accent : T.border}`, background:T.card, overflow:'hidden', cursor:'pointer', transition:'border-color .2s', margin:'0 4px' }}
         onClick={() => insightsOpen ? onBackToHQ() : onOpenInsights()}
       >
         {/* Confidence header */}

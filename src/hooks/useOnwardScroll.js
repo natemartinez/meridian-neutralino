@@ -19,7 +19,7 @@ export function useOnwardScroll(activePage, canvasRef, resizeRef) {
       const PAD = 24;
       const rowHeightPx = parent.clientHeight / VISIBLE_HOURS;
       const targetY = PAD + (curH - ROW_START) * rowHeightPx - (parent.clientHeight / 2) + (VISIBLE_HOURS * rowHeightPx / 2);
-      const maxScroll = (TOTAL_ROWS + VISIBLE_HOURS) * rowHeightPx + PAD * 2 - parent.clientHeight;
+      const maxScroll = TOTAL_ROWS * rowHeightPx + PAD * 2 - parent.clientHeight;
 
       parent.scrollTo({ top: Math.max(0, Math.min(targetY, maxScroll)), behavior: 'smooth' });
     }, 100);

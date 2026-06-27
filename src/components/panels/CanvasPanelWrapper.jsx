@@ -13,13 +13,16 @@ export default function CanvasPanelWrapper({ panelId, ...props }) {
       .filter(Boolean);
   }, [props.topGoals, props.projects]);
 
+  const isOnward = panelId === 'onward';
+
   return (
     <>
-      <div className="wp-accent" style={{ background: T.accent }} />
-      <div className="wp-hd">
-        <button className="wp-close" onClick={props.closeWaypoint}>×</button>
-        <div className="wp-badge"><span style={{ color:T.muted }}>Canvas</span></div>
-        <div className="wp-ttl" style={{ color:T.accent }}>{panelId.toUpperCase()}</div>
+      {!isOnward && <div className="wp-accent" style={{ background: T.accent }} />}
+      <div className="wp-hd" style={isOnward ? { borderBottom:'none', paddingBottom:0 } : undefined}>
+        {!isOnward && <button className="wp-close" onClick={props.closeWaypoint}>×</button>}
+        {!isOnward && (
+          <div className="wp-badge"><span style={{ color:T.muted }}>Canvas</span></div>
+        )}
       </div>
       <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column' }}>
         {panelId === 'onward' && (
