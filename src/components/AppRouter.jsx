@@ -181,13 +181,13 @@ export default function AppRouter({
               novaState={novaState}
               mainPage={mainPage}
               onOpenInsights={() => setMainPage('nova-insights')}
-              onBackToHQ={() => setMainPage('hq')}
+              onBackToHQ={() => { setMainPage('hq'); setShowStartupCanvas(true); closeWaypoint(); }}
             />
             <ProgramsList
               collapsed={sidebarCollapsed}
               mainPage={mainPage}
               onOpenProgram={(id) => setMainPage(`program-${id}`)}
-              onBackToHQ={() => setMainPage('hq')}
+              onBackToHQ={() => { setMainPage('hq'); setShowStartupCanvas(true); closeWaypoint(); }}
               addSyncEvent={addSyncEvent}
               onOpenProgramWithPage={onOpenProgramWithPage}
               onSubNavNavigate={(programId, subNavId) => {
@@ -238,17 +238,6 @@ export default function AppRouter({
           <div className="ctb" style={{ justifyContent: isProgram(mainPage) ? 'space-between' : 'flex-end' }}>
             {isProgram(mainPage) && (
               <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                <button
-                  className="cbtn"
-                  onClick={() => { setMainPage('hq'); setShowStartupCanvas(true); closeWaypoint(); }}
-                  style={{
-                    background: 'transparent',
-                    borderColor: T.border,
-                    color: T.text,
-                  }}
-                >
-                  ← Back
-                </button>
                 {(() => {
                   const progId = extractProgId(mainPage);
                   const labelMap = { briefing:'Goals', focus:'Focus', regroup:'Re-group', preview:'Preview', calibration:'Paths' };
@@ -335,10 +324,10 @@ export default function AppRouter({
                 T={T}
               />
             ) : isCanvasPage(mainPage) && (
-              <div className="cv" style={{ cursor: activePage === 'goals' ? (dragging ? 'grabbing' : 'grab') : activePage === 'onward' ? 'default' : 'pointer', position: 'relative', overflow: activePage === 'onward' ? 'auto' : 'hidden', width: waypointOpen ? 'calc(100% - 244px)' : '100%', transition: 'width 0.4s cubic-bezier(.4,0,.2,1)', scrollbarWidth: 'thin', scrollbarColor: `${T.border} ${T.bg}` }}>
+              <div className="cv" style={{ cursor: activePage === 'goals' ? (dragging ? 'grabbing' : 'grab') : activePage === 'onward' ? 'default' : 'pointer', position: 'relative', overflow: activePage === 'onward' ? 'auto' : 'hidden', width: waypointOpen ? 'calc(100% - 244px)' : '100%', scrollbarWidth: 'thin', scrollbarColor: `${T.border} ${T.bg}` }}>
                 <canvas
                   ref={canvasRef}
-                  style={{ position:'absolute', top:0, left:0 }}
+                  style={{ position:'absolute', top:0, left:20 }}
                   onMouseDown={onCanvasMouseDown}
                   onMouseMove={onCanvasMouseMove}
                   onMouseUp={onCanvasMouseUp}

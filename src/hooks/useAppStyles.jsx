@@ -19,7 +19,7 @@ export default function useAppStyles() {
       .app-shell{display:flex;height:100vh;overflow:hidden;background:${T.bg};color:${T.text};font-family:'Syne',sans-serif;}
 
       /* ── SIGNAL ── */
-      .sig{width:180px;flex-shrink:0;background:transparent;display:flex;flex-direction:column;transition:width .25s cubic-bezier(.4,0,.2,1);padding:12px 0;position:relative;}
+      .sig{width:168px;flex-shrink:0;background:transparent;display:flex;flex-direction:column;transition:width .25s cubic-bezier(.4,0,.2,1);padding:12px 0;position:relative;}
       .sig-inner{overflow:hidden;display:flex;flex-direction:column;}
       .sig.collapsed{width:48px;padding:12px 0;margin-left:18px;margin-right:12px;}
       .sig.collapsed .sec,
@@ -180,7 +180,7 @@ export default function useAppStyles() {
       .plan-refresh-btn{font-size:8px;}
 
       /* Base sizes (1440px - 1919px) */
-      .sig{width:252px;}
+      .sig{width:235px;}
       .sec{padding:14px 14px 10px;}
       .sig-add{margin:6px 14px 10px;padding:9px;}
       .wp.open{width:345px;}
@@ -201,7 +201,7 @@ export default function useAppStyles() {
       .wp-close{width:24px;height:24px;font-size:14px;}
 
       @media (max-width: 1439px) {
-        .sig{width:230px;}
+        .sig{width:216px;}
         .wp.open{width:299px;}
         .wpi{width:299px;}
         .sec{padding:12px 12px 8px;}
@@ -220,7 +220,7 @@ export default function useAppStyles() {
       }
 
       @media (max-width: 1365px) {
-        .sig{width:206px;}
+        .sig{width:193px;}
         .wp.open{width:276px;}
         .wpi{width:276px;}
         .sec{padding:10px 10px 6px;}
@@ -240,7 +240,7 @@ export default function useAppStyles() {
       }
 
       @media (min-width: 1920px) {
-        .sig{width:298px;}
+        .sig{width:278px;}
         .wp.open{width:391px;}
         .wpi{width:391px;}
         .sec{padding:18px 18px 12px;}
@@ -269,7 +269,7 @@ export default function useAppStyles() {
       }
 
       @media (min-width: 2560px) {
-        .sig{width:276px;}
+        .sig{width:259px;}
         .wp.open{width:460px;}
         .wpi{width:460px;}
         .sec{padding:22px 22px 16px;}
@@ -300,7 +300,7 @@ export default function useAppStyles() {
       }
 
       @media (max-width: 1200px) {
-        .sig{width:138px;}
+        .sig{width:129px;}
         .wp.open{width:253px;}
         .wpi{width:253px;}
         .sec{padding:8px 9px 5px;}

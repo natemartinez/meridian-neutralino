@@ -3,6 +3,20 @@ import { T } from '../../utils/theme.js';
 
 const PROGRAMS = [
   {
+    id: 'hq',
+    label: 'HQ',
+    desc: 'Command center',
+    color: T.accent,
+    defaultPage: null,
+    subNavs: [],
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 13 13">
+        <path d="M6.5 1.5 L12 6 L11 6 L11 11.5 L2 11.5 L2 6 L1 6 Z" fill="none" stroke={T.accent} strokeWidth="1.3" strokeLinejoin="round"/>
+        <path d="M4.5 11.5 L4.5 7 L8.5 7 L8.5 11.5" fill="none" stroke={T.accent} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+  },
+  {
     id: 'briefing',
     label: 'Goals',
     desc: 'Morning debrief',
@@ -97,7 +111,8 @@ export default function ProgramsList({ mainPage, onOpenProgram, onBackToHQ, addS
     }}>
 
       {PROGRAMS.map(prog => {
-        const isActive = mainPage === `program-${prog.id}`;
+        const isHq = prog.id === 'hq';
+        const isActive = isHq ? mainPage === 'hq' : mainPage === `program-${prog.id}`;
         const isHovered = hoveredId === prog.id;
         const hasSubNavs = prog.subNavs.length > 0;
         return (
@@ -112,6 +127,9 @@ export default function ProgramsList({ mainPage, onOpenProgram, onBackToHQ, addS
             <div
               onClick={() => {
                 if (isActive) { onBackToHQ(); }
+                else if (isHq) {
+                  onBackToHQ();
+                }
                 else {
                   if (onOpenProgramWithPage) {
                     onOpenProgramWithPage(prog.id, prog.defaultPage);

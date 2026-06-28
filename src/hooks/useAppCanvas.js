@@ -83,11 +83,24 @@ export default function useAppCanvas({
     if (!canvas) return;
     const dpr = window.devicePixelRatio || 1;
 
-    function resize() {
+    // Track last known dimensions to avoid unnecessary canvas clears during animation
+    let lastW = -1;
+    let lastH = -1;
+
+    function syncSize() {
       const parent = canvas.parentElement;
-      if (!parent) return;
+      if (!parent) return false;
       const rect = parent.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) return;
+      if (rect.width === 0 || rect.height === 0) return false;
+
+      const newW = Math.round(rect.width * dpr);
+      const newH = Math.round(rect.height * dpr);
+
+      // Skip if dimensions haven't changed — avoids clearing the canvas buffer
+      if (newW === lastW && newH === lastH) return false;
+
+      lastW = newW;
+      lastH = newH;
 
       const isOnward = activePageRef.current === 'onward';
       const visibleHeight = rect.height;
@@ -95,13 +108,13 @@ export default function useAppCanvas({
 
       if (isOnward) {
         const contentHeight = TOTAL_ROWS * rowHeightPx + 48;
-        canvas.width  = rect.width  * dpr;
-        canvas.height = contentHeight * dpr;
+        canvas.width  = newW;
+        canvas.height = Math.round(contentHeight * dpr);
         canvas.style.width  = rect.width  + 'px';
         canvas.style.height = contentHeight + 'px';
       } else {
-        canvas.width  = rect.width  * dpr;
-        canvas.height = rect.height * dpr;
+        canvas.width  = newW;
+        canvas.height = newH;
         canvas.style.width  = rect.width  + 'px';
         canvas.style.height = rect.height + 'px';
       }
@@ -114,11 +127,12 @@ export default function useAppCanvas({
         ts:   Math.random() * 1.2 + .3,
         to:   Math.random() * Math.PI * 2,
       }));
+
+      return true;
     }
-    resizeRef.current = resize;
-    resize();
-    roRef.current = new ResizeObserver(resize);
-    roRef.current.observe(canvas.parentElement);
+
+    // Initial size sync
+    syncSize();
     const ctx = canvas.getContext('2d');
 
     const refs = {
@@ -136,6 +150,9 @@ export default function useAppCanvas({
 
     function frame() {
       animT.current += .016;
+      // Check for size changes once per frame instead of using ResizeObserver
+      // This avoids clearing the canvas multiple times during CSS transitions
+      syncSize();
       const t    = animT.current;
       const w    = canvas.width;
       const h    = canvas.height;
@@ -173,7 +190,6 @@ export default function useAppCanvas({
     animRef.current = requestAnimationFrame(frame);
     return () => {
       cancelAnimationFrame(animRef.current);
-      roRef.current?.disconnect();
     };
   }, [loaded, apiKey, mainPage]);
 

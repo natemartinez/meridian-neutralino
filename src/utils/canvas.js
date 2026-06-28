@@ -164,10 +164,10 @@ export function drawMatrixAxes(ctx, dpr, w, h, quadrants, axisX, axisY) {
  */
 export function drawQuadrantLabel(ctx, dpr, title, subtitle, color, x, y) {
   // x, y are already in physical (dpr-scaled) pixels — no * dpr needed
-  // Title
+  // Title — increased opacity and font size for readability
   ctx.save();
-  ctx.font = `700 ${12 * dpr}px 'Syne',sans-serif`;
-  ctx.fillStyle = rgba(color, 0.5);
+  ctx.font = `700 ${14 * dpr}px 'Syne',sans-serif`;
+  ctx.fillStyle = rgba(color, 0.75);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillText(title, x, y);
@@ -175,11 +175,11 @@ export function drawQuadrantLabel(ctx, dpr, title, subtitle, color, x, y) {
 
   // Subtitle
   ctx.save();
-  ctx.font = `${7.5 * dpr}px 'IBM Plex Mono',monospace`;
-  ctx.fillStyle = rgba(color, 0.25);
+  ctx.font = `${8 * dpr}px 'IBM Plex Mono',monospace`;
+  ctx.fillStyle = rgba(color, 0.75);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText(subtitle, x, y + 16 * dpr);
+  ctx.fillText(subtitle, x, y + 18 * dpr);
   ctx.restore();
 }
 
