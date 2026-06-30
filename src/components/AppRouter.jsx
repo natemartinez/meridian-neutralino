@@ -243,7 +243,35 @@ export default function AppRouter({
                   const labelMap = { briefing:'Goals', focus:'Focus', regroup:'Re-group', preview:'Preview', calibration:'Paths' };
                   const label = labelMap[progId];
                   if (!label) return null;
-                  return (
+                  const isBriefing = progId === 'briefing';
+                  return isBriefing ? (
+                    <button
+                      onClick={() => setModal(true)}
+                      style={{
+                        fontFamily:"'IBM Plex Mono',monospace",
+                        fontSize:11,
+                        fontWeight:600,
+                        color:T.text,
+                        background:`${T.accent}18`,
+                        border:`1px solid ${T.accent}40`,
+                        borderRadius:8,
+                        padding:'5px 12px',
+                        cursor:'pointer',
+                        letterSpacing:'0.04em',
+                        transition:'all .14s',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = `${T.accent}28`;
+                        e.currentTarget.style.borderColor = `${T.accent}70`;
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = `${T.accent}18`;
+                        e.currentTarget.style.borderColor = `${T.accent}40`;
+                      }}
+                    >
+                      + Create Goal
+                    </button>
+                  ) : (
                     <span style={{
                       fontFamily:"'Syne',sans-serif",
                       fontSize:16,
@@ -317,10 +345,37 @@ export default function AppRouter({
                     setShowStartupCanvas(false);
                   }
                 }}
+                onSendPreCraftedPrompt={(programId, promptText) => {
+                  // 1. Navigate to the target program page
+                  const page = `program-${programId}`;
+                  setMainPage(page);
+                  setShowStartupCanvas(false);
+                  if (programId === 'briefing') {
+                    setActivePage('briefing-chat');
+                    activePageRef.current = 'briefing-chat';
+                    closeWaypoint();
+                  } else if (programId === 'focus') {
+                    setActivePage('onward');
+                    activePageRef.current = 'onward';
+                    openWaypoint({ type: 'canvas-panel', id: 'onward' });
+                  } else if (programId === 'calibration') {
+                    setActivePage('paths');
+                    activePageRef.current = 'paths';
+                    closeWaypoint();
+                  }
+                  // 2. Brief delay to ensure the program panel is mounted, then send the prompt
+                  setTimeout(() => {
+                    sendNOVAMessage(programId, promptText);
+                  }, 100);
+                }}
+                onNewSession={(programId) => {
+                  if (onNewSession) onNewSession(programId);
+                }}
                 streakDays={streakDays}
                 lastActiveDate={lastActiveDate}
                 onwardItems={onwardItems}
                 projects={projects}
+                selectedForToday={selectedForToday}
                 T={T}
               />
             ) : isCanvasPage(mainPage) && (

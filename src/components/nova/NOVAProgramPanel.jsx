@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import RegroupPanel from './RegroupPanel.jsx';
 import RetryFeedback from './RetryFeedback.jsx';
 import NOVAMessageBlock from './NOVAMessageBlock.jsx';
+import TypewriterMessageBlock from './TypewriterMessageBlock.jsx';
 import { parseDeferClue } from '../../utils/helpers.js';
 import { useNovaInteractionStore } from '../../store/novaInteractionStore.js';
 
@@ -635,7 +636,7 @@ function NOVAProgramPanel({
         /* ── Briefing / Preview / Calibration Chat ── */
         <div style={{ flex:1, overflowY:'auto', padding:'0 12px', display:'flex', flexDirection:'column', gap:8 }}>
           {history.length === 0 && (
-            <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:T.muted, textAlign:'center', padding:'20px 0', lineHeight:1.8 }}>
+            <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:13, color:T.muted, textAlign:'center', padding:'20px 0', lineHeight:1.8 }}>
               {isPreview ? 'Plan your next day with NOVA.' : isCalibration ? 'Manage your personal projects and roadmaps.' : 'Start your morning debrief with NOVA.'}
             </div>
           )}
@@ -647,14 +648,16 @@ function NOVAProgramPanel({
                 border: `1px solid ${msg.role === 'user' ? meta.color + '44' : T.border}`,
               }}>
                 {msg.role === 'user' ? (
-                  <span style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:11, color:T.text, lineHeight:1.6, whiteSpace:'pre-wrap' }}>
+                  <span style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:14, color:T.text, lineHeight:1.6, whiteSpace:'pre-wrap' }}>
                     {msg.content}
                   </span>
                 ) : (
-                  <NOVAMessageBlock
+                  <TypewriterMessageBlock
                     content={msg.content}
                     color={meta.color}
                     onOptionSelect={handleOptionSelect}
+                    isLatest={i === history.length - 1}
+                    typewriterDelay={8}
                   />
                 )}
               </div>
@@ -662,7 +665,7 @@ function NOVAProgramPanel({
           ))}
           {novaLoading && (
             <div style={{ display:'flex', alignItems:'flex-start' }}>
-              <div style={{ padding:'7px 12px', borderRadius:'8px 8px 8px 2px', background:T.card, border:`1px solid ${T.border}`, fontFamily:"'IBM Plex Mono',monospace", fontSize:11, color:T.muted }}>
+              <div style={{ padding:'7px 12px', borderRadius:'8px 8px 8px 2px', background:T.card, border:`1px solid ${T.border}`, fontFamily:"'IBM Plex Mono',monospace", fontSize:14, color:T.muted }}>
                 ···
               </div>
             </div>

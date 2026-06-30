@@ -41,3 +41,9 @@ html, body, #root { margin: 0; padding: 0; height: 100%; background: #0c111a; }
     transform: translateY(0) scale(1);
   }
 }
+
+/* Typewriter blinking cursor animation */
+@keyframes typewriterBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}

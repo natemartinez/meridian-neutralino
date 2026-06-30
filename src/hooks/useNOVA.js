@@ -168,7 +168,7 @@ export function useNOVA({ apiKey, model, projects, focus, waypointContext, loade
     }));
   }, []);
 
-  const buildNOVASystemPrompt = useCallback((programId) => {
+  const buildNOVASystemPrompt = useCallback((programId, isPreCraftedPrompt) => {
     const activeGoals = projects.filter(p => !p.completedAt);
     // Build quadrant distribution summary for NOVA context
     const quadrantCounts = { q1: 0, q2: 0, q3: 0, q4: 0 };
@@ -206,7 +206,14 @@ Option 2 text
 Option 3 text
 These should represent the 3 most likely ways the user would respond. Make them specific to your message, not generic. Do NOT include [OPTIONS] if the user is expected to type a free-form response (e.g., rating scales, open-ended reflection).`;
 
-    if (programId === 'briefing') return `${base} This is a morning Briefing. Your FIRST message must be EXACTLY this mindset check-in: "On a scale of 1–5, how's your headspace going into today?" Use their score to calibrate: 1-2 = more coaching and task breakdown; 3 = balanced; 4-5 = jump straight to daily planning. Plan only for TODAY — not the week, not the month. Ask one question at a time. When the user says they feel ready, end your message with the exact token: [READY]`;
+    if (programId === 'briefing') {
+      // If the user sent a pre-crafted prompt (from startup action buttons),
+      // skip the headspace check and respond directly to their specific intent.
+      if (isPreCraftedPrompt) {
+        return `${base} The user has sent a specific request to start the conversation. Respond directly to their request without asking "On a scale of 1–5, how's your headspace?" — they've already told you what they want. If they want a briefing, run through their goals, priorities, and help set 3 key objectives. If they want a goal rundown, list all goals with progress. If they want to log a task, help them schedule it. Be concise and actionable. When the user seems satisfied, end with the exact token: [READY]`;
+      }
+      return `${base} This is a morning Briefing. Your FIRST message must be EXACTLY this mindset check-in: "On a scale of 1–5, how's your headspace going into today?" Use their score to calibrate: 1-2 = more coaching and task breakdown; 3 = balanced; 4-5 = jump straight to daily planning. Plan only for TODAY — not the week, not the month. Ask one question at a time. When the user says they feel ready, end your message with the exact token: [READY]`;
+    }
 
     if (programId === 'focus') return `${base} The user wants to lock in on a task. Respond with ONLY a clean bulleted action plan (3–7 steps). No preamble, no sign-off, no conversation. Start each bullet with an action verb. If the task sounds overwhelming, silently break it into smaller steps.`;
 
@@ -467,7 +474,10 @@ These should represent the 3 most likely ways the user would respond. Make them 
     if (!text || novaLoading || !apiKey) return;
     if (!overrideText) setNovaChatInput('');
 
-    const systemPrompt = buildNOVASystemPrompt(programId);
+    // When overrideText is provided (from startup action buttons), it's a pre-crafted prompt.
+    // Pass this flag so buildNOVASystemPrompt can skip the headspace check for briefing.
+    const isPreCraftedPrompt = !!overrideText;
+    const systemPrompt = buildNOVASystemPrompt(programId, isPreCraftedPrompt);
     const currentHistory = novaState.programChats[programId] || [];
 
     if (programId === 'focus') {

@@ -298,3 +298,105 @@ export function getLastActiveProgram(programChats) {
 
   return lastActive;
 }
+
+/**
+ * Build a deterministic session summary from app state.
+ * No AI calls — purely computed from existing data.
+ *
+ * @param {Object} opts
+ * @param {Object}  opts.lastProgram       - Result of getLastActiveProgram()
+ * @param {Object}  opts.novaState         - Full novaState object
+ * @param {Array}   opts.selectedForToday  - Array of selected objective items
+ * @param {Array}   opts.onwardItems       - Array of onward items (tasks)
+ * @param {number}  opts.streakDays        - Current streak count
+ * @returns {Object} SummaryObject
+ */
+export function buildSessionSummary({ lastProgram, novaState, selectedForToday, onwardItems, streakDays }) {
+  if (!lastProgram) {
+    return {
+      programName: '',
+      programIcon: '',
+      programColor: '',
+      lastActiveLabel: '',
+      selectedCount: 0,
+      completedCount: 0,
+      totalCount: 0,
+      streakDays: 0,
+      lastMessageSnippet: '',
+      messageCount: 0,
+    };
+  }
+
+  // Compute relative time label
+  const lastTs = lastProgram.lastMessage?.ts || lastProgram.lastMessage?.timestamp || 0;
+  const now = Date.now();
+  const diffMs = now - lastTs;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  let lastActiveLabel;
+  if (diffMins < 1) lastActiveLabel = 'Just now';
+  else if (diffMins < 60) lastActiveLabel = `${diffMins} min ago`;
+  else if (diffHours < 24) lastActiveLabel = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  else if (diffDays < 7) lastActiveLabel = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  else lastActiveLabel = new Date(lastTs).toLocaleDateString();
+
+  // Count selected objectives
+  const selectedCount = Array.isArray(selectedForToday) ? selectedForToday.length : 0;
+
+  // Count completed vs total from onwardItems
+  const items = Array.isArray(onwardItems) ? onwardItems : [];
+  const totalCount = items.length;
+  const completedCount = items.filter(item => item.done).length;
+
+  // Get last message snippet (assistant message, truncated to 2 lines)
+  const chat = novaState?.programChats?.[lastProgram.progId];
+  const messages = Array.isArray(chat) ? chat : [];
+  const assistantMessages = messages.filter(m => m.role === 'assistant' || m.role === 'nova');
+  const lastMsg = assistantMessages[assistantMessages.length - 1];
+  const lastMessageSnippet = lastMsg?.content
+    ? lastMsg.content.split('\n').slice(0, 2).join('\n').substring(0, 120)
+    : '';
+
+  return {
+    programName: lastProgram.progId.charAt(0).toUpperCase() + lastProgram.progId.slice(1),
+    programIcon: '',
+    programColor: '',
+    lastActiveLabel,
+    selectedCount,
+    completedCount,
+    totalCount,
+    streakDays: streakDays || 0,
+    lastMessageSnippet,
+    messageCount: messages.length,
+  };
+}
+
+/**
+ * Select a time-appropriate greeting string.
+ * Returns a deterministic greeting based on the current hour and streak.
+ *
+ * @param {number} hour       - Current hour (0-23)
+ * @param {number} streakDays - Current streak count
+ * @returns {string} Greeting text
+ */
+export function selectGreeting(hour, streakDays) {
+  let greeting;
+
+  if (hour >= 5 && hour < 12) {
+    greeting = "Good morning. I'm NOVA, your productivity partner.";
+  } else if (hour >= 12 && hour < 17) {
+    greeting = 'Good afternoon. Ready to make progress?';
+  } else if (hour >= 17 && hour < 22) {
+    greeting = 'Good evening. Want to preview tomorrow?';
+  } else {
+    greeting = "Late night session. What's on your mind?";
+  }
+
+  if (streakDays > 0) {
+    greeting += ` You're on a ${streakDays}-day streak — impressive momentum.`;
+  }
+
+  return greeting;
+}

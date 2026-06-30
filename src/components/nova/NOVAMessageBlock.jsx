@@ -103,7 +103,7 @@ function ParagraphBlock({ content, accentColor }) {
   const tokens = useMemo(() => parseInlineFormatting(content), [content]);
 
   return (
-    <div style={{ lineHeight: 1.7, fontSize: 11, color: T.text }}>
+    <div style={{ lineHeight: 1.7, fontSize: 14, color: T.text }}>
       {tokens.map((token, i) =>
         token.bold ? (
           <strong
@@ -139,7 +139,7 @@ function BulletListBlock({ items, accentColor }) {
             display: 'flex',
             gap: 6,
             lineHeight: 1.6,
-            fontSize: 11,
+            fontSize: 14,
             color: T.text,
           }}
         >
@@ -169,7 +169,7 @@ function NumberedListBlock({ items, accentColor }) {
             display: 'flex',
             gap: 6,
             lineHeight: 1.6,
-            fontSize: 11,
+            fontSize: 14,
             color: T.text,
           }}
         >
@@ -178,7 +178,7 @@ function NumberedListBlock({ items, accentColor }) {
               color: accentColor,
               flexShrink: 0,
               fontFamily: "'IBM Plex Mono', monospace",
-              fontSize: 9,
+              fontSize: 11,
               minWidth: 16,
               textAlign: 'right',
               userSelect: 'none',
@@ -201,7 +201,7 @@ function HeaderBlock({ content, accentColor }) {
     <div
       style={{
         fontFamily: "'IBM Plex Mono', monospace",
-        fontSize: 9,
+        fontSize: 11,
         color: accentColor,
         letterSpacing: '0.06em',
         textTransform: 'uppercase',
@@ -252,7 +252,7 @@ function CodeBlock({ content, language }) {
         style={{
           margin: 0,
           fontFamily: "'IBM Plex Mono', monospace",
-          fontSize: 10,
+          fontSize: 13,
           color: T.text,
           lineHeight: 1.6,
           whiteSpace: 'pre-wrap',
@@ -293,7 +293,7 @@ function OptionsBlock({ items, accentColor, onOptionSelect }) {
             cursor: 'pointer',
             textAlign: 'left',
             fontFamily: "'IBM Plex Mono', monospace",
-            fontSize: 10,
+            fontSize: 13,
             color: T.text,
             lineHeight: 1.5,
             transition: 'all .14s',
@@ -319,7 +319,7 @@ function OptionsBlock({ items, accentColor, onOptionSelect }) {
               alignItems: 'center',
               justifyContent: 'center',
               fontFamily: "'IBM Plex Mono', monospace",
-              fontSize: 9,
+              fontSize: 11,
               fontWeight: 700,
               color: accentColor,
               flexShrink: 0,

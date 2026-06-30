@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { T, NODE_PALETTE } from '../utils/theme.js';
 import { uid, projectPos, DEFAULT_SKILLS } from '../utils/helpers.js';
 import { INITIAL_SKILLS, addSkillEvidence, updateSkillMeta } from '../constants/skills.js';
-import { computePlanningConfidence, determineAutoStartProgram } from '../utils/nova.js';
+import { determineAutoStartProgram } from '../utils/nova.js';
+import { compileBlackboard, buildInteractionSyncPayload, getBlackboardDeps } from '../utils/blackboard.js';
 import { useNOVA } from './useNOVA.js';
 import useTracking from './useTracking.js';
 import useLocalStorageSync from './useLocalStorageSync.js';
@@ -474,37 +475,62 @@ export default function useAppState() {
   // ── Scroll to current time + resize canvas when waypoint opens ──
   useOnwardScroll(activePage, canvasRef, resizeRef);
 
-  // ── Sync app state into NOVA interaction store ──
+  // ── Clock heartbeat: prevents stale time-context fields ──
+  // Without this, currentHour/dayOfWeek/isAfterMidnight would only update
+  // when app state changes (e.g. task check-off). A 60s interval ensures
+  // the Blackboard's clock fields stay fresh even if the app sits open
+  // across midnight.
+  const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    // Compute quadrant counts for NOVA interaction patterns (D5_QUADRANT_IMBALANCE)
-    const quadrantCounts = { q1: 0, q2: 0, q3: 0, q4: 0 };
-    projects.filter(p => !p.completedAt).forEach(p => {
-      if (p.quadrant && quadrantCounts[p.quadrant] !== undefined) {
-        quadrantCounts[p.quadrant]++;
-      }
-    });
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
-    novaInteractions.syncAppState({
-      currentStreak: streakDays,
-      todayCompletedCount: onwardItems.filter(it => it.done && it.date === new Date().toDateString()).length,
-      activePage,
-      waypointContext,
-      knowledgePool,
-      confidence: computePlanningConfidence(knowledgePool?.syncEvents || []),
-      projects,
-      onwardItems,
-      sessions,
-      deferredItems: deferredItems.length,
-      backlogItems: backlogItems.length,
-      quadrantCounts,
-    });
-  }, [
-    streakDays,
-    activePage,
-    waypointContext,
-    knowledgePool,
+  // ── Blackboard Adapter: Read-only state aggregate ──
+  // Compiled via pure functions in src/utils/blackboard.js.
+  // This is the single source of truth for all LLM-facing state.
+  const blackboard = useMemo(() => compileBlackboard({
     projects,
     onwardItems,
+    selectedForToday,
+    streakDays,
+    lastActiveDate,
+    syncEvents: novaState.syncEvents,
+    knowledgePool,
+    activeSession,
+    mainPage,
+    getTodayStats,
+    now,
+  }), getBlackboardDeps({
+    projects,
+    onwardItems,
+    selectedForToday,
+    streakDays,
+    lastActiveDate,
+    syncEvents: novaState.syncEvents,
+    knowledgePool,
+    activeSession,
+    mainPage,
+    getTodayStats,
+  }));
+
+  // ── Sync app state into NOVA interaction store (via Blackboard) ──
+  // Gap 10 resolution: Uses buildInteractionSyncPayload to derive the sync
+  // payload from the Blackboard, ensuring a single source of truth.
+  useEffect(() => {
+    novaInteractions.syncAppState(buildInteractionSyncPayload(blackboard, {
+      projects,
+      activePage,
+      waypointContext,
+      sessions,
+      deferredItemsCount: deferredItems.length,
+      backlogItemsCount: backlogItems.length,
+    }));
+  }, [
+    blackboard,
+    activePage,
+    waypointContext,
+    projects,
     sessions,
     deferredItems.length,
     backlogItems.length,
@@ -584,6 +610,9 @@ export default function useAppState() {
     goalHitAreasRef, topGoalsRef, goalDragRef,
     draggedTaskRef, pendingDropRef, dragOverHourRef,
     resizeDragRef, onwardDragRef,
+
+    // Blackboard (read-only state aggregate)
+    blackboard,
 
     // NOVA
     novaState, setNovaState,

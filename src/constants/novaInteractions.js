@@ -529,6 +529,48 @@ const D5_QUADRANT_IMBALANCE = {
   },
 };
 
+/**
+ * D6 — New Session Greeting
+ * Fires on app launch when no prior session is detected.
+ * Presentation is 'inline' (not toast) since it renders in StartupCanvas.
+ */
+const D6_NEW_SESSION_GREETING = {
+  id: 'D6_NEW_SESSION_GREETING',
+  trigger: {
+    event: 'app_opened',
+    conditions: { isNewSession: true },
+  },
+  cooldown: { type: 'once-per-session', durationMs: 0 },
+  priority: 'high',
+  presentation: 'inline',
+  template: {
+    title: 'New Session Greeting',
+    body: 'NOVA proactive greeting with action buttons',
+    action: { type: 'show_greeting', payload: {} },
+  },
+};
+
+/**
+ * D7 — Session Summary
+ * Fires on app launch when a prior session is detected.
+ * Presentation is 'inline' (not toast) since it renders in StartupCanvas.
+ */
+const D7_SESSION_SUMMARY = {
+  id: 'D7_SESSION_SUMMARY',
+  trigger: {
+    event: 'app_opened',
+    conditions: { hasPriorSession: true },
+  },
+  cooldown: { type: 'once-per-session', durationMs: 0 },
+  priority: 'high',
+  presentation: 'inline',
+  template: {
+    title: 'Session Summary',
+    body: 'Summary of the last active program session',
+    action: { type: 'show_summary', payload: {} },
+  },
+};
+
 // ── Export all patterns ──
 
 export const PATTERNS = [
@@ -547,6 +589,8 @@ export const PATTERNS = [
   D3_DEADLINE_URGENT,
   D4_LOW_COMPLETION,
   D5_QUADRANT_IMBALANCE,
+  D6_NEW_SESSION_GREETING,
+  D7_SESSION_SUMMARY,
   E1_PAGE_TIP,
   E2_GOAL_INSIGHT,
   F1_SKILL_IMPROVED,

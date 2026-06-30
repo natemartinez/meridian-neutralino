@@ -1,5 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { T } from '../../utils/theme.js';
+import { selectGreeting, buildSessionSummary } from '../../utils/nova.js';
+import { ACTION_BUTTONS, SESSION_DECISION_BUTTONS } from '../../constants/novaStartupActions.js';
 import NOVAMessageBlock from './NOVAMessageBlock.jsx';
 
 const PROG_META = {
@@ -15,24 +17,26 @@ const PROG_META = {
  *
  * States:
  *   1. Auto-Start in Progress — NOVA is loading its first message
- *   2. Has Last Program — shows last chat messages + "Continue Conversation"
- *   3. Has Focus Session — shows focus task card with "Resume Task"
- *   4. First Launch / No Context — welcome message with quick-start buttons
+ *   2. Has Focus Session — shows focus task card with "Resume Task"
+ *   3. Has Last Program — shows session summary card (Scenario B)
+ *   4. New Session / No Context — NOVA proactive greeting with action buttons (Scenario A)
  *
  * Props:
- *   lastProgram     — result of getLastActiveProgram() or null
- *   focusMode       — { active, taskTitle, taskId, goalId } | null
- *   novaState       — full NOVA state (for program chats)
- *   novaLoading     — whether NOVA is currently loading
- *   pendingAutoStart — which program is auto-starting (or null)
- *   onDismiss       — () => void  (dismiss canvas, show HQ)
- *   onNavigate      — (page) => void  (navigate & dismiss)
- *   onResumeFocus   — () => void  (re-enter focus mode)
- *   streakDays      — number
- *   lastActiveDate  — string | null
- *   onwardItems     — array
- *   projects        — array
- *   T               — theme object
+ *   lastProgram          — result of getLastActiveProgram() or null
+ *   focusMode            — { active, taskTitle, taskId, goalId } | null
+ *   novaState            — full NOVA state (for program chats)
+ *   novaLoading          — whether NOVA is currently loading
+ *   pendingAutoStart     — which program is auto-starting (or null)
+ *   onDismiss            — () => void
+ *   onNavigate           — (page) => void
+ *   onResumeFocus        — () => void
+ *   onSendPreCraftedPrompt — (programId, promptText) => void
+ *   onNewSession         — (programId) => void
+ *   streakDays           — number
+ *   lastActiveDate       — string | null
+ *   onwardItems          — array
+ *   projects             — array
+ *   selectedForToday     — array
  */
 export default function StartupCanvas({
   lastProgram,
@@ -43,21 +47,45 @@ export default function StartupCanvas({
   onDismiss,
   onNavigate,
   onResumeFocus,
+  onSendPreCraftedPrompt,
+  onNewSession,
   streakDays,
   lastActiveDate,
   onwardItems,
   projects,
+  selectedForToday,
   // ── Future sidebar integration props ──
   mainPage,
   addSyncEvent,
 }) {
+  // ── Local state ──
+  const [showActionPalette, setShowActionPalette] = useState(false);
+
   // ── Derived data ──
   const isAutoStarting = !!pendingAutoStart;
   const autoMeta = isAutoStarting ? PROG_META[pendingAutoStart] : null;
   const lastMeta = lastProgram ? PROG_META[lastProgram.progId] : null;
   const isFocusResume = !isAutoStarting && focusMode?.active;
   const hasLastProgram = !isAutoStarting && !isFocusResume && !!lastProgram;
-  const isFirstLaunch = !isAutoStarting && !isFocusResume && !lastProgram;
+  const isNewSession = !isAutoStarting && !isFocusResume && !lastProgram;
+
+  // Greeting text (time-aware)
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    return selectGreeting(hour, streakDays || 0);
+  }, [streakDays]);
+
+  // Session summary (deterministic, no AI)
+  const sessionSummary = useMemo(() => {
+    if (!lastProgram) return null;
+    return buildSessionSummary({
+      lastProgram,
+      novaState,
+      selectedForToday: selectedForToday || [],
+      onwardItems: onwardItems || [],
+      streakDays: streakDays || 0,
+    });
+  }, [lastProgram, novaState, selectedForToday, onwardItems, streakDays]);
 
   // Last messages from the last active program's chat
   const lastMessages = useMemo(() => {
@@ -65,7 +93,6 @@ export default function StartupCanvas({
     const chat = novaState.programChats[lastProgram.progId];
     if (!chat) return [];
     const messages = Array.isArray(chat) ? chat : [chat];
-    // Get last 2-3 assistant messages
     const assistantMsgs = messages.filter(m => m.role === 'assistant');
     return assistantMsgs.slice(-3);
   }, [lastProgram, novaState]);
@@ -81,6 +108,42 @@ export default function StartupCanvas({
     if (!projects) return 0;
     return projects.filter(p => !p.done).length;
   }, [projects]);
+
+  // Filter buttons based on context
+  const visibleButtons = useMemo(() => {
+    const hasProjects = Array.isArray(projects) && projects.length > 0;
+    return ACTION_BUTTONS.filter(btn => !btn.contextRequired || hasProjects);
+  }, [projects]);
+
+  // ── Handlers ──
+  const handleActionButtonClick = (button) => {
+    if (novaLoading || isAutoStarting) return; // Disable during loading
+    if (onSendPreCraftedPrompt) {
+      onSendPreCraftedPrompt(button.targetProgram, button.prompt);
+    }
+  };
+
+  const handleDecisionButton = (decision) => {
+    switch (decision.action) {
+      case 'navigate':
+        if (lastProgram) onNavigate(`program-${lastProgram.progId}`);
+        break;
+      case 'new_session':
+        if (lastProgram && onNewSession) {
+          onNewSession(lastProgram.progId);
+          onNavigate(`program-${lastProgram.progId}`);
+        }
+        break;
+      case 'toggle_palette':
+        setShowActionPalette(true);
+        break;
+      case 'dismiss':
+        if (onDismiss) onDismiss();
+        break;
+      default:
+        break;
+    }
+  };
 
   // ── Shared styles ──
   const styles = {
@@ -136,6 +199,25 @@ export default function StartupCanvas({
       letterSpacing: '.08em',
       marginTop: 2,
     },
+    actionButton: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      padding: '16px 12px',
+      borderRadius: 10,
+      border: '1px solid transparent',
+      cursor: 'pointer',
+      transition: 'all .14s',
+      minWidth: 130,
+      flex: 1,
+    },
+    actionButtonDisabled: {
+      opacity: 0.4,
+      cursor: 'not-allowed',
+      pointerEvents: 'none',
+    },
   };
 
   // ── Render helpers ──
@@ -143,7 +225,6 @@ export default function StartupCanvas({
   /** Auto-Start in Progress state */
   const renderAutoStart = () => (
     <div style={styles.card}>
-      {/* Program header */}
       <div style={{
         padding: '18px 24px',
         borderBottom: `1px solid ${T.border}`,
@@ -176,7 +257,6 @@ export default function StartupCanvas({
         </div>
       </div>
 
-      {/* Loading / first message */}
       <div style={{ padding: '24px' }}>
         {novaLoading ? (
           <div style={{
@@ -200,7 +280,6 @@ export default function StartupCanvas({
           </div>
         ) : (
           <div style={{ opacity: 0.9 }}>
-            {/* Show the last assistant message if available */}
             {(() => {
               const chat = novaState?.programChats?.[pendingAutoStart];
               const messages = Array.isArray(chat) ? chat : [];
@@ -222,7 +301,7 @@ export default function StartupCanvas({
     </div>
   );
 
-  /** Focus Resume state — large card with prominent Resume Task button */
+  /** Focus Resume state */
   const renderFocusResume = () => (
     <div style={styles.card}>
       <div style={{
@@ -232,7 +311,6 @@ export default function StartupCanvas({
         alignItems: 'center',
         gap: 16,
       }}>
-        {/* Focus icon */}
         <div style={{
           width: 48, height: 48, borderRadius: 12,
           background: `${T.blue}20`,
@@ -242,7 +320,6 @@ export default function StartupCanvas({
           ◎
         </div>
 
-        {/* Label */}
         <div style={{
           fontFamily: "'IBM Plex Mono',monospace",
           fontSize: 9, fontWeight: 700, color: T.muted,
@@ -251,7 +328,6 @@ export default function StartupCanvas({
           ACTIVE FOCUS SESSION
         </div>
 
-        {/* Task title */}
         <div style={{
           fontSize: 22, fontWeight: 700, color: T.text,
           textAlign: 'center',
@@ -261,7 +337,6 @@ export default function StartupCanvas({
           {focusMode.taskTitle}
         </div>
 
-        {/* Resume button — large and prominent */}
         <button
           onClick={onResumeFocus}
           style={{
@@ -288,172 +363,390 @@ export default function StartupCanvas({
     </div>
   );
 
-  /** Last Program state — shows chat history + Continue button */
-  const renderLastProgram = () => (
-    <div style={styles.card}>
-      {/* Program header */}
-      <div style={{
-        padding: '18px 24px',
-        borderBottom: `1px solid ${T.border}`,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-      }}>
+  /** Session Summary card — replaces renderLastProgram (Scenario B) */
+  const renderSessionSummary = () => {
+    if (!sessionSummary || !lastMeta) return null;
+
+    const progressPercent = sessionSummary.totalCount > 0
+      ? Math.round((sessionSummary.completedCount / sessionSummary.totalCount) * 100)
+      : 0;
+
+    return (
+      <div style={styles.card}>
+        {/* Program header */}
         <div style={{
-          width: 36, height: 36, borderRadius: 8,
-          background: `${lastMeta.color}20`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 18,
+          padding: '18px 24px',
+          borderBottom: `1px solid ${T.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
         }}>
-          {lastMeta.icon}
-        </div>
-        <div>
           <div style={{
-            fontFamily: "'IBM Plex Mono',monospace",
-            fontSize: 13, fontWeight: 700, color: lastMeta.color,
-            letterSpacing: '.06em',
+            width: 36, height: 36, borderRadius: 8,
+            background: `${lastMeta.color}20`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 18,
           }}>
-            {lastMeta.label}
+            {lastMeta.icon}
           </div>
-          <div style={{
-            fontFamily: "'IBM Plex Mono',monospace",
-            fontSize: 9, color: T.muted, marginTop: 2,
-          }}>
-            {lastProgram.messageCount} messages · {lastMeta.desc}
-          </div>
-        </div>
-      </div>
-
-      {/* Last messages */}
-      <div style={{ padding: '16px 24px', maxHeight: 280, overflow: 'auto' }}>
-        {lastMessages.length === 0 ? (
-          <div style={{
-            fontFamily: "'IBM Plex Mono',monospace",
-            fontSize: 10, color: T.muted, fontStyle: 'italic',
-          }}>
-            No previous messages
-          </div>
-        ) : (
-          lastMessages.map((msg, i) => (
-            <div key={i} style={{
-              marginBottom: i < lastMessages.length - 1 ? 14 : 0,
-              opacity: i < lastMessages.length - 1 ? 0.6 : 1,
+          <div>
+            <div style={{
+              fontFamily: "'IBM Plex Mono',monospace",
+              fontSize: 13, fontWeight: 700, color: lastMeta.color,
+              letterSpacing: '.06em',
             }}>
-              <NOVAMessageBlock content={msg.content} color={lastMeta.color} />
+              {lastMeta.label}
             </div>
-          ))
-        )}
-      </div>
+            <div style={{
+              fontFamily: "'IBM Plex Mono',monospace",
+              fontSize: 9, color: T.muted, marginTop: 2,
+            }}>
+              {sessionSummary.lastActiveLabel} · {sessionSummary.messageCount} messages
+            </div>
+          </div>
+        </div>
 
-      {/* Continue button */}
-      <div style={{
-        padding: '14px 24px',
-        borderTop: `1px solid ${T.border}`,
-        display: 'flex',
-        justifyContent: 'center',
-      }}>
-        <button
-          onClick={() => onNavigate(`program-${lastProgram.progId}`)}
-          style={{
-            background: `${lastMeta.color}18`,
-            border: `1px solid ${lastMeta.color}40`,
+        {/* Session Summary content */}
+        <div style={{ padding: '20px 24px' }}>
+          <div style={{
+            background: T.surface,
             borderRadius: 8,
-            padding: '10px 28px',
-            fontFamily: "'IBM Plex Mono',monospace",
-            fontSize: 11,
-            fontWeight: 700,
-            color: lastMeta.color,
-            cursor: 'pointer',
-            letterSpacing: '.06em',
-            transition: 'all .14s',
-            width: '100%',
-            maxWidth: 300,
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = `${lastMeta.color}28`; e.currentTarget.style.borderColor = `${lastMeta.color}70`; }}
-          onMouseLeave={e => { e.currentTarget.style.background = `${lastMeta.color}18`; e.currentTarget.style.borderColor = `${lastMeta.color}40`; }}
-        >
-          Continue Conversation →
-        </button>
-      </div>
-    </div>
-  );
+            border: `1px solid ${T.border}`,
+            padding: '16px 20px',
+          }}>
+            <div style={{
+              fontFamily: "'IBM Plex Mono',monospace",
+              fontSize: 9, fontWeight: 700, color: T.muted,
+              letterSpacing: '.1em',
+              marginBottom: 12,
+            }}>
+              SESSION SUMMARY
+            </div>
 
-  /** First Launch state — welcome message + quick-start buttons */
-  const renderFirstLaunch = () => (
-    <div style={{ ...styles.card, background: 'transparent', borderColor: 'transparent' }}>
+            {/* Selected objectives */}
+            {sessionSummary.selectedCount > 0 && (
+              <div style={{
+                fontSize: 12, color: T.text, lineHeight: 1.6,
+                marginBottom: 10,
+              }}>
+                You selected <strong style={{ color: lastMeta.color }}>{sessionSummary.selectedCount}</strong> objective{sessionSummary.selectedCount !== 1 ? 's' : ''} for today.
+              </div>
+            )}
+
+            {/* Progress */}
+            {sessionSummary.totalCount > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontFamily: "'IBM Plex Mono',monospace",
+                  fontSize: 9, color: T.muted,
+                  marginBottom: 4,
+                }}>
+                  <span>Progress</span>
+                  <span>{sessionSummary.completedCount}/{sessionSummary.totalCount} completed</span>
+                </div>
+                <div style={{
+                  width: '100%', height: 4,
+                  background: T.dim,
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    width: `${progressPercent}%`,
+                    height: '100%',
+                    background: progressPercent === 100 ? T.green : lastMeta.color,
+                    borderRadius: 2,
+                    transition: 'width 0.3s ease',
+                  }} />
+                </div>
+                {sessionSummary.completedCount === sessionSummary.totalCount && sessionSummary.totalCount > 0 && (
+                  <div style={{
+                    fontSize: 11, color: T.green, marginTop: 6,
+                    fontWeight: 600,
+                  }}>
+                    All objectives completed! 🎉
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Streak */}
+            <div style={{
+              fontFamily: "'IBM Plex Mono',monospace",
+              fontSize: 9, color: sessionSummary.streakDays > 0 ? T.accent : T.muted,
+            }}>
+              {sessionSummary.streakDays > 0
+                ? `Streak: ${sessionSummary.streakDays} day${sessionSummary.streakDays > 1 ? 's' : ''}`
+                : 'No active streak'}
+            </div>
+
+            {/* Last message snippet */}
+            {sessionSummary.lastMessageSnippet && (
+              <div style={{
+                marginTop: 10,
+                padding: '8px 10px',
+                background: T.dim,
+                borderRadius: 6,
+                fontFamily: "'IBM Plex Mono',monospace",
+                fontSize: 9, color: T.muted,
+                fontStyle: 'italic',
+                lineHeight: 1.5,
+                maxHeight: 40,
+                overflow: 'hidden',
+              }}>
+                "{sessionSummary.lastMessageSnippet}"
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Decision buttons */}
+        <div style={{
+          padding: '14px 24px',
+          borderTop: `1px solid ${T.border}`,
+          display: 'flex',
+          gap: 8,
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+        }}>
+          {SESSION_DECISION_BUTTONS.map(btn => (
+            <button
+              key={btn.id}
+              onClick={() => handleDecisionButton(btn)}
+              disabled={novaLoading || isAutoStarting}
+              style={{
+                background: btn.id === 'continue'
+                  ? `${lastMeta.color}18`
+                  : 'transparent',
+                border: `1px solid ${btn.id === 'continue' ? `${lastMeta.color}40` : T.border}`,
+                borderRadius: 8,
+                padding: '8px 16px',
+                fontFamily: "'IBM Plex Mono',monospace",
+                fontSize: 9,
+                fontWeight: 700,
+                color: btn.id === 'continue' ? lastMeta.color : T.text,
+                cursor: (novaLoading || isAutoStarting) ? 'not-allowed' : 'pointer',
+                letterSpacing: '.06em',
+                transition: 'all .14s',
+                opacity: (novaLoading || isAutoStarting) ? 0.4 : 1,
+              }}
+              onMouseEnter={e => {
+                if (!novaLoading && !isAutoStarting) {
+                  e.currentTarget.style.background = `${lastMeta.color}28`;
+                  e.currentTarget.style.borderColor = `${lastMeta.color}70`;
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = btn.id === 'continue' ? `${lastMeta.color}18` : 'transparent';
+                e.currentTarget.style.borderColor = btn.id === 'continue' ? `${lastMeta.color}40` : T.border;
+              }}
+            >
+              {btn.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  /** Shared action button palette (used by both Scenario A and "Different Action" toggle) */
+  const renderActionPalette = (showBackToSummary) => (
+    <div style={styles.card}>
+      {/* NOVA Greeting header */}
       <div style={{
-        padding: '60px 28px 48px',
+        padding: '24px 24px 16px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 16,
+        gap: 8,
       }}>
-        {/* Welcome icon */}
         <div style={{
-          width: 56, height: 56, borderRadius: 14,
+          width: 48, height: 48, borderRadius: 12,
           background: `${T.accent}18`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 26,
+          fontSize: 22,
         }}>
           ✦
         </div>
-
         <div style={{
-          fontSize: 22, fontWeight: 700, color: T.text,
+          fontSize: 18, fontWeight: 700, color: T.text,
           textAlign: 'center',
         }}>
-          Welcome to Meridian
+          {greeting}
         </div>
-
         <div style={{
           fontFamily: "'IBM Plex Mono',monospace",
-          fontSize: 11, color: T.muted,
+          fontSize: 10, color: T.muted,
           textAlign: 'center',
           maxWidth: 380,
-          lineHeight: 1.6,
+          lineHeight: 1.5,
         }}>
-          Your personal productivity system. Let NOVA help you plan, focus, and reflect.
+          Pick a direction and I'll jump right in.
         </div>
+      </div>
 
-        {/* Quick-start buttons */}
-        <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+      {/* Action buttons grid */}
+      <div style={{
+        padding: '8px 24px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+      }}>
+        <div style={{
+          display: 'flex',
+          gap: 8,
+          flexWrap: 'wrap',
+        }}>
+          {visibleButtons.slice(0, 3).map(btn => (
+            <button
+              key={btn.id}
+              onClick={() => handleActionButtonClick(btn)}
+              disabled={novaLoading || isAutoStarting}
+              style={{
+                ...styles.actionButton,
+                background: `${btn.color}12`,
+                borderColor: `${btn.color}30`,
+                color: btn.color,
+                opacity: (novaLoading || isAutoStarting) ? 0.4 : 1,
+                cursor: (novaLoading || isAutoStarting) ? 'not-allowed' : 'pointer',
+              }}
+              onMouseEnter={e => {
+                if (!novaLoading && !isAutoStarting) {
+                  e.currentTarget.style.background = `${btn.color}20`;
+                  e.currentTarget.style.borderColor = `${btn.color}60`;
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = `${btn.color}12`;
+                e.currentTarget.style.borderColor = `${btn.color}30`;
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <span style={{ fontSize: 20 }}>{btn.icon}</span>
+              <span style={{
+                fontFamily: "'IBM Plex Mono',monospace",
+                fontSize: 10, fontWeight: 700,
+                letterSpacing: '.04em',
+              }}>
+                {btn.label}
+              </span>
+              <span style={{
+                fontFamily: "'IBM Plex Mono',monospace",
+                fontSize: 8, color: T.muted,
+              }}>
+                {btn.sublabel}
+              </span>
+            </button>
+          ))}
+        </div>
+        <div style={{
+          display: 'flex',
+          gap: 8,
+          flexWrap: 'wrap',
+        }}>
+          {visibleButtons.slice(3).map(btn => (
+            <button
+              key={btn.id}
+              onClick={() => handleActionButtonClick(btn)}
+              disabled={novaLoading || isAutoStarting}
+              style={{
+                ...styles.actionButton,
+                background: `${btn.color}12`,
+                borderColor: `${btn.color}30`,
+                color: btn.color,
+                opacity: (novaLoading || isAutoStarting) ? 0.4 : 1,
+                cursor: (novaLoading || isAutoStarting) ? 'not-allowed' : 'pointer',
+              }}
+              onMouseEnter={e => {
+                if (!novaLoading && !isAutoStarting) {
+                  e.currentTarget.style.background = `${btn.color}20`;
+                  e.currentTarget.style.borderColor = `${btn.color}60`;
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = `${btn.color}12`;
+                e.currentTarget.style.borderColor = `${btn.color}30`;
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <span style={{ fontSize: 20 }}>{btn.icon}</span>
+              <span style={{
+                fontFamily: "'IBM Plex Mono',monospace",
+                fontSize: 10, fontWeight: 700,
+                letterSpacing: '.04em',
+              }}>
+                {btn.label}
+              </span>
+              <span style={{
+                fontFamily: "'IBM Plex Mono',monospace",
+                fontSize: 8, color: T.muted,
+              }}>
+                {btn.sublabel}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Back to Summary button (only when toggled from session summary) */}
+      {showBackToSummary && (
+        <div style={{
+          padding: '0 24px 16px',
+          display: 'flex',
+          justifyContent: 'center',
+        }}>
           <button
-            onClick={() => onNavigate('program-briefing')}
+            onClick={() => setShowActionPalette(false)}
             style={{
-              background: `${PROG_META.briefing.color}18`,
-              border: `1px solid ${PROG_META.briefing.color}40`,
+              background: 'transparent',
+              border: `1px solid ${T.border}`,
               borderRadius: 8,
-              padding: '10px 22px',
+              padding: '8px 20px',
               fontFamily: "'IBM Plex Mono',monospace",
-              fontSize: 10,
+              fontSize: 9,
               fontWeight: 700,
-              color: PROG_META.briefing.color,
+              color: T.muted,
               cursor: 'pointer',
               letterSpacing: '.06em',
               transition: 'all .14s',
             }}
+            onMouseEnter={e => { e.currentTarget.style.color = T.text; e.currentTarget.style.borderColor = T.muted; }}
+            onMouseLeave={e => { e.currentTarget.style.color = T.muted; e.currentTarget.style.borderColor = T.border; }}
           >
-            ☀ Start Briefing
-          </button>
-          <button
-            onClick={() => onNavigate('hq')}
-            style={{
-              background: `${T.green}18`,
-              border: `1px solid ${T.green}40`,
-              borderRadius: 8,
-              padding: '10px 22px',
-              fontFamily: "'IBM Plex Mono',monospace",
-              fontSize: 10,
-              fontWeight: 700,
-              color: T.green,
-              cursor: 'pointer',
-              letterSpacing: '.06em',
-              transition: 'all .14s',
-            }}
-          >
-            ✦ Explore Goals
+            ← Back to Summary
           </button>
         </div>
+      )}
+    </div>
+  );
+
+  /** NOVA Greeting card — replaces renderFirstLaunch (Scenario A) */
+  const renderNovaGreeting = () => renderActionPalette(false);
+
+  /** Today's summary bar (extracted from inline code) */
+  const renderSummaryBar = () => (
+    <div style={{
+      ...styles.summaryRow,
+      animation: 'fadeInUp 0.35s ease-out 0.1s both',
+    }}>
+      <div style={styles.summaryItem}>
+        <div style={styles.summaryValue}>{todayTasks}</div>
+        <div style={styles.summaryLabel}>TASKS TODAY</div>
+      </div>
+      <div style={{ width: 1, background: T.border }} />
+      <div style={styles.summaryItem}>
+        <div style={{ ...styles.summaryValue, color: streakDays > 0 ? T.accent : T.muted }}>
+          {streakDays || 0}
+        </div>
+        <div style={styles.summaryLabel}>DAY STREAK</div>
+      </div>
+      <div style={{ width: 1, background: T.border }} />
+      <div style={styles.summaryItem}>
+        <div style={styles.summaryValue}>{goalsInProgress}</div>
+        <div style={styles.summaryLabel}>GOALS ACTIVE</div>
       </div>
     </div>
   );
@@ -462,7 +755,6 @@ export default function StartupCanvas({
 
   return (
     <>
-      {/* Inject keyframes for pulse animation */}
       <style>{`
         @keyframes novaPulse {
           0%, 100% { opacity: 0.3; transform: scale(0.9); }
@@ -475,9 +767,7 @@ export default function StartupCanvas({
       `}</style>
 
       <div style={styles.container}>
-        {/* ── Body ── */}
         <div style={styles.body}>
-          {/* Main card */}
           <div style={{
             width: '100%',
             maxWidth: 640,
@@ -485,34 +775,13 @@ export default function StartupCanvas({
           }}>
             {isAutoStarting && renderAutoStart()}
             {isFocusResume && renderFocusResume()}
-            {hasLastProgram && renderLastProgram()}
-            {isFirstLaunch && renderFirstLaunch()}
+            {hasLastProgram && !showActionPalette && renderSessionSummary()}
+            {hasLastProgram && showActionPalette && renderActionPalette(true)}
+            {isNewSession && renderNovaGreeting()}
           </div>
 
           {/* Today's Summary (hidden during auto-start) */}
-          {!isAutoStarting && (
-            <div style={{
-              ...styles.summaryRow,
-              animation: 'fadeInUp 0.35s ease-out 0.1s both',
-            }}>
-              <div style={styles.summaryItem}>
-                <div style={styles.summaryValue}>{todayTasks}</div>
-                <div style={styles.summaryLabel}>TASKS TODAY</div>
-              </div>
-              <div style={{ width: 1, background: T.border }} />
-              <div style={styles.summaryItem}>
-                <div style={{ ...styles.summaryValue, color: streakDays > 0 ? T.accent : T.muted }}>
-                  {streakDays || 0}
-                </div>
-                <div style={styles.summaryLabel}>DAY STREAK</div>
-              </div>
-              <div style={{ width: 1, background: T.border }} />
-              <div style={styles.summaryItem}>
-                <div style={styles.summaryValue}>{goalsInProgress}</div>
-                <div style={styles.summaryLabel}>GOALS ACTIVE</div>
-              </div>
-            </div>
-          )}
+          {!isAutoStarting && renderSummaryBar()}
         </div>
       </div>
     </>
