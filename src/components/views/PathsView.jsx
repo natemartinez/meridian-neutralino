@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { PROJECT_COLORS } from '../../constants/colors';
+import { uid, quadrantCenter } from '../../utils/helpers.js';
 
 function AddMilestoneInline({ projectId, onAdd, color }) {
   const [value, setValue] = useState('');
@@ -20,7 +21,7 @@ function AddMilestoneInline({ projectId, onAdd, color }) {
   );
 }
 
-export default function PathsView() {
+export default function PathsView({ setGoalsProjects, goalsProjects, onNavigateToGoals }) {
   const [projects, setProjects] = useState(() => {
     try { return JSON.parse(localStorage.getItem('meridian_projects') || '[]'); }
     catch { return []; }
@@ -37,6 +38,28 @@ export default function PathsView() {
   useEffect(() => {
     localStorage.setItem('meridian_projects', JSON.stringify(projects));
   }, [projects]);
+
+  // ── Sync subtasks from goals back to Paths milestones ──
+  // Whenever goalsProjects changes, update the local projects' milestones
+  // to reflect any subtask changes made in the goals page.
+  useEffect(() => {
+    if (!goalsProjects || !goalsProjects.length) return;
+    setProjects(prev => prev.map(p => {
+      const matchingGoal = goalsProjects.find(g => g.id === p.id);
+      if (!matchingGoal) return p;
+      // Map goal subtasks to milestones (preserving existing milestone IDs where possible)
+      const syncedMilestones = matchingGoal.subtasks.map(st => {
+        const existing = p.milestones.find(m => m.title === st.title);
+        return {
+          id: existing?.id || uid(),
+          title: st.title,
+          completed: st.done,
+          date: existing?.date || null,
+        };
+      });
+      return { ...p, milestones: syncedMilestones };
+    }));
+  }, [goalsProjects]);
 
   function createProject() {
     if (!title.trim()) return;
@@ -63,6 +86,47 @@ export default function PathsView() {
     setProjects(prev => prev.map(p =>
       p.id !== projectId ? p : { ...p, milestones: [...p.milestones, { id: Date.now(), title: title.trim(), completed: false, date: null }] }
     ));
+  }
+
+  function addToGoals(project) {
+    if (!setGoalsProjects) return;
+
+    // Check if this project already exists as a goal
+    const existingGoal = goalsProjects?.find(g => g.id === project.id);
+    if (existingGoal) {
+      // Already added — just navigate to goals page
+      if (onNavigateToGoals) onNavigateToGoals(project.id);
+      return;
+    }
+
+    // Create a new goal from this project
+    const mirroredGoal = {
+      id: project.id,
+      color: project.color,
+      pos: quadrantCenter('q2', 600, 400),
+      quadrant: 'q2',
+      title: project.title,
+      desc: project.description || '',
+      measurable: '',
+      achievable: '',
+      relevant: '',
+      deadline: '',
+      priority: 'low',
+      scale: 'medium',
+      inFocus: false,
+      completedAt: null,
+      subtasks: project.milestones.map(m => ({
+        id: uid(),
+        title: m.title,
+        done: m.completed || false,
+        skill: null,
+      })),
+      checkpoints: [],
+    };
+    setGoalsProjects(prev => [mirroredGoal, ...prev]);
+
+    // Navigate to goals page with this goal selected
+    if (onNavigateToGoals) onNavigateToGoals(project.id);
   }
 
   function getProgress(project) {
@@ -98,6 +162,7 @@ export default function PathsView() {
         const isExpanded = expandedId === project.id;
         const progress   = getProgress(project);
         const done       = project.milestones.filter(m => m.completed).length;
+        const isInGoals  = goalsProjects?.some(g => g.id === project.id);
 
         return (
           <div key={project.id} style={{ background: '#0d1017', border: `1px solid ${isExpanded ? project.color + '55' : '#1b2336'}`, borderRadius: 10, marginBottom: 12, overflow: 'hidden', transition: 'border-color 0.2s' }}>
@@ -111,6 +176,11 @@ export default function PathsView() {
                   <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 9, padding: '1px 6px', borderRadius: 3, border: `1px solid ${project.color}44`, color: project.status === 'completed' ? '#3ecf7e' : project.status === 'paused' ? '#56687f' : project.color }}>
                     {project.status.toUpperCase()}
                   </span>
+                  {isInGoals && (
+                    <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 8, padding: '1px 5px', borderRadius: 3, background: '#53aaff22', color: '#53aaff', border: '1px solid #53aaff44' }}>
+                      IN GOALS
+                    </span>
+                  )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ flex: 1, height: 3, background: '#1b2336', borderRadius: 2, overflow: 'hidden' }}>
@@ -147,13 +217,30 @@ export default function PathsView() {
 
                 <AddMilestoneInline projectId={project.id} onAdd={addMilestone} color={project.color} />
 
-                <div style={{ display: 'flex', gap: 6, marginTop: 14 }}>
+                <div style={{ display: 'flex', gap: 6, marginTop: 14, alignItems: 'center' }}>
                   {['active', 'paused', 'completed'].map(s => (
                     <button key={s} onClick={() => setProjects(prev => prev.map(p => p.id === project.id ? { ...p, status: s } : p))}
                             style={{ background: project.status === s ? project.color + '22' : 'transparent', border: `1px solid ${project.status === s ? project.color : '#1b2336'}`, borderRadius: 4, color: project.status === s ? project.color : '#56687f', padding: '3px 10px', fontFamily: 'IBM Plex Mono', fontSize: 9, cursor: 'pointer', letterSpacing: 1 }}>
                       {s.toUpperCase()}
                     </button>
                   ))}
+                  <div style={{ flex: 1 }} />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); addToGoals(project); }}
+                    style={{
+                      background: isInGoals ? '#53aaff22' : 'transparent',
+                      border: `1px solid ${isInGoals ? '#53aaff' : '#53aaff66'}`,
+                      borderRadius: 4,
+                      color: isInGoals ? '#53aaff' : '#53aaffcc',
+                      padding: '3px 10px',
+                      fontFamily: 'IBM Plex Mono',
+                      fontSize: 9,
+                      cursor: 'pointer',
+                      letterSpacing: 1,
+                    }}
+                  >
+                    {isInGoals ? 'Open in Goals →' : '+ Add to Goals'}
+                  </button>
                 </div>
               </div>
             )}

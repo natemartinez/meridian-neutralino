@@ -181,13 +181,13 @@ export default function AppRouter({
               novaState={novaState}
               mainPage={mainPage}
               onOpenInsights={() => setMainPage('nova-insights')}
-              onBackToHQ={() => { setMainPage('hq'); setShowStartupCanvas(true); closeWaypoint(); }}
+              onBackToHQ={() => { setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; setShowStartupCanvas(true); closeWaypoint(); }}
             />
             <ProgramsList
               collapsed={sidebarCollapsed}
               mainPage={mainPage}
               onOpenProgram={(id) => setMainPage(`program-${id}`)}
-              onBackToHQ={() => { setMainPage('hq'); setShowStartupCanvas(true); closeWaypoint(); }}
+              onBackToHQ={() => { setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; setShowStartupCanvas(true); closeWaypoint(); }}
               addSyncEvent={addSyncEvent}
               onOpenProgramWithPage={onOpenProgramWithPage}
               onSubNavNavigate={(programId, subNavId) => {
@@ -317,7 +317,7 @@ export default function AppRouter({
                 novaState={novaState}
                 novaLoading={novaLoading}
                 pendingAutoStart={pendingAutoStart}
-                onDismiss={() => setShowStartupCanvas(false)}
+                onDismiss={() => { setShowStartupCanvas(false); setActivePage('goals'); activePageRef.current = 'goals'; }}
                 onNavigate={(page) => {
                   setMainPage(page);
                   setShowStartupCanvas(false);
@@ -398,7 +398,20 @@ export default function AppRouter({
                 )}
                 {activePage === 'paths' && (
                   <div style={{ position: 'absolute', inset: 0, background: '#0c111a', overflowY: 'auto', zIndex: 10 }}>
-                    <PathsView />
+                    <PathsView
+                      setGoalsProjects={setProjects}
+                      goalsProjects={projects}
+                      onNavigateToGoals={(goalId) => {
+                        // Navigate to HQ goals page
+                        setMainPage('hq');
+                        setActivePage('goals');
+                        activePageRef.current = 'goals';
+                        setShowStartupCanvas(false);
+                        // Select the goal and open the waypoint
+                        setSelectedId(goalId);
+                        openWaypoint({ type: 'goal', id: goalId });
+                      }}
+                    />
                   </div>
                 )}
                 {activePage === 'worklogs' && (
@@ -515,7 +528,7 @@ export default function AppRouter({
               <NovaInsightsPanel
                 novaState={novaState}
                 apiKey={apiKey}
-                onBack={() => setMainPage('hq')}
+                onBack={() => { setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; }}
                 generateNovaPlan={generateNovaPlan}
                 calcStreak={calcStreak}
                 getWeeklyData={getWeeklyData}
