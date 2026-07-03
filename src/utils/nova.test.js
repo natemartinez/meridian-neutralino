@@ -6,13 +6,14 @@
  *   - 35% acceptance rate (tasks accepted vs total decisions)
  *   - 45% completion rate (tasks completed vs accepted)
  *   - 20% richness (meaningful events / saturation point of 40)
+ * - validateNOVAResponse: schema-based JSON validation (replaced heuristic text parsing)
  * - computeSkillImprovements: keyword-based skill inference from completed tasks
  * - getNeglectedSkills: identifies skills not used recently
  * - NOVA_DEFAULT: default state object
  */
 
 import { describe, it, expect } from 'vitest';
-import { computePlanningConfidence, computeSkillImprovements, getNeglectedSkills, NOVA_DEFAULT } from './nova.js';
+import { computePlanningConfidence, validateNOVAResponse, computeSkillImprovements, getNeglectedSkills, NOVA_DEFAULT } from './nova.js';
 
 // ============================================================
 // computePlanningConfidence
@@ -125,6 +126,87 @@ describe('computePlanningConfidence', () => {
 });
 
 // ============================================================
+// validateNOVAResponse (schema-based)
+// ============================================================
+describe('validateNOVAResponse', () => {
+  it('rejects empty/too-short responses', () => {
+    expect(validateNOVAResponse('', 'briefing').valid).toBe(false);
+    expect(validateNOVAResponse('short', 'briefing').valid).toBe(false);
+    expect(validateNOVAResponse(null, 'briefing').valid).toBe(false);
+    expect(validateNOVAResponse(undefined, 'briefing').valid).toBe(false);
+  });
+
+  it('rejects non-JSON text', () => {
+    const result = validateNOVAResponse('Hello, how are you?', 'briefing');
+    expect(result.valid).toBe(false);
+    expect(result.reason).toContain('not valid JSON');
+  });
+
+  it('accepts valid JSON matching CHAT_SCHEMA for briefing', () => {
+    const json = JSON.stringify({ content: 'Hello!', options: null, ready: false });
+    const result = validateNOVAResponse(json, 'briefing');
+    expect(result.valid).toBe(true);
+  });
+
+  it('rejects JSON missing required field for CHAT_SCHEMA', () => {
+    const json = JSON.stringify({ content: 'Hello' }); // missing "ready"
+    const result = validateNOVAResponse(json, 'briefing');
+    expect(result.valid).toBe(false);
+    expect(result.reason).toContain('ready');
+  });
+
+  it('accepts valid JSON matching CHAT_SCHEMA for regroup', () => {
+    const json = JSON.stringify({ content: 'What happened?', options: ['Option 1'], ready: false });
+    const result = validateNOVAResponse(json, 'regroup');
+    expect(result.valid).toBe(true);
+  });
+
+  it('accepts valid JSON matching CHAT_SCHEMA for preview', () => {
+    const json = JSON.stringify({ content: 'Plan for tomorrow', options: null, ready: false });
+    const result = validateNOVAResponse(json, 'preview');
+    expect(result.valid).toBe(true);
+  });
+
+  it('accepts valid JSON matching CHAT_SCHEMA for calibration', () => {
+    const json = JSON.stringify({ content: 'Tell me about your goals', options: null, ready: false });
+    const result = validateNOVAResponse(json, 'calibration');
+    expect(result.valid).toBe(true);
+  });
+
+  it('accepts valid JSON matching CHAT_SCHEMA for focus', () => {
+    const json = JSON.stringify({ content: 'Step 1: Do this', options: null, ready: true });
+    const result = validateNOVAResponse(json, 'focus');
+    expect(result.valid).toBe(true);
+  });
+
+  it('accepts valid JSON matching PLAN_SCHEMA for plan responses', () => {
+    const json = JSON.stringify({
+      tasks: [
+        { title: 'Task 1', goalId: null, goalTitle: null, estimatedMinutes: 30, complexity: 'medium', rationale: 'Important' },
+      ],
+    });
+    // Use a program ID that maps to CHAT_SCHEMA (plan uses askAI, not chatWithNOVA)
+    // validateNOVAResponse uses getPlainSchemaForProgram which returns CHAT_SCHEMA for all programs
+    const result = validateNOVAResponse(json, 'briefing');
+    // CHAT_SCHEMA requires content + ready, so this should fail (tasks not in CHAT_SCHEMA)
+    expect(result.valid).toBe(false);
+  });
+
+  it('rejects JSON with wrong types', () => {
+    const json = JSON.stringify({ content: 123, options: null, ready: false });
+    const result = validateNOVAResponse(json, 'briefing');
+    expect(result.valid).toBe(false);
+    expect(result.reason).toContain('content');
+  });
+
+  it('returns valid for unknown program IDs (falls back to CHAT_SCHEMA)', () => {
+    const json = JSON.stringify({ content: 'Hello', options: null, ready: true });
+    const result = validateNOVAResponse(json, 'unknown_program');
+    expect(result.valid).toBe(true);
+  });
+});
+
+// ============================================================
 // NOVA_DEFAULT
 // ============================================================
 describe('NOVA_DEFAULT', () => {
@@ -133,7 +215,7 @@ describe('NOVA_DEFAULT', () => {
       syncScore: 0,
       syncEvents: [],
       routine: null,
-      programChats: { briefing: [], focus: null, regroup: [], preview: [] },
+      programChats: { briefing: [], focus: null, regroup: [], preview: [], calibration: [] },
       suggestedTasks: [],
       dailyPlan: null,
       planGenLoading: false,

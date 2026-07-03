@@ -2,8 +2,16 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { chatWithNOVA, askAI } from '../utils/api.js';
 import { uid, progress, QUADRANTS } from '../utils/helpers.js';
 import { buildFullKnowledgeBlock, buildLightKnowledgeContext, buildStructuredKnowledgeBlock, decayKnowledge, markEntriesUsed } from '../utils/knowledge.js';
-import { computePlanningConfidence, NOVA_DEFAULT, validateNOVAResponse, updatePlanAccuracyHistory } from '../utils/nova.js';
+import { computePlanningConfidence, NOVA_DEFAULT, updatePlanAccuracyHistory } from '../utils/nova.js';
 import { useNovaRetry } from './useNovaRetry.js';
+import {
+  CHAT_SCHEMA_OPENROUTER,
+  INSIGHT_SCHEMA_OPENROUTER,
+  PLAN_SCHEMA_OPENROUTER,
+  KNOWLEDGE_INFERENCE_SCHEMA_OPENROUTER,
+  WEEKLY_SCAN_SCHEMA_OPENROUTER,
+  getSchemaForProgram,
+} from '../schemas/nova-schemas.js';
 
 export function useNOVA({ apiKey, model, projects, focus, waypointContext, loaded, pendingAutoStart, setPendingAutoStart }) {
   const [novaState, setNovaState] = useState(() => {
@@ -168,9 +176,70 @@ export function useNOVA({ apiKey, model, projects, focus, waypointContext, loade
     }));
   }, []);
 
+  /**
+   * Build the STATIC system prompt — contains only behavioral directives and
+   * JSON schema instructions. NO volatile Blackboard data.
+   * This maximizes OpenRouter's server-side prompt caching (exact byte-identity
+   * required for cache hits).
+   *
+   * The volatile Blackboard snapshot is injected separately via
+   * buildBlackboardUserMessage() as a user-role message.
+   */
   const buildNOVASystemPrompt = useCallback((programId, isPreCraftedPrompt) => {
+    const confidence = computePlanningConfidence(novaState.syncEvents);
+    const routineNote = novaState.routine ? `Known pattern: ${novaState.routine.summary}` : '';
+
+    // Static base — no volatile data, only behavioral directives
+    const base = `You are NOVA, a productivity companion and psychological coach. Planning confidence with this user: ${confidence}%. ${confidence < 30 ? 'Ask more questions to learn their patterns.' : confidence > 70 ? 'You know this user well — make bold, specific suggestions.' : 'Balance questions with suggestions.'} ${routineNote} Psychological coaching scope: stress reduction, task breakdown, work tips only — not personal therapy.
+
+Respond with a valid JSON object matching this schema:
+{
+  "content": "Your message text here",
+  "options": ["Option 1", "Option 2", "Option 3"] | null,
+  "ready": false
+}
+- "content": Your main message to the user.
+- "options": 3 specific multiple-choice reply options the user can pick, or null if free-form input is expected (e.g., rating scales, open-ended reflection).
+- "ready": Set to true when the user seems satisfied with this phase and the program should terminate.`;
+
+    if (programId === 'briefing') {
+      if (isPreCraftedPrompt) {
+        return `${base} The user has sent a specific request to start the conversation. Respond directly to their request without asking "On a scale of 1–5, how's your headspace?" — they've already told you what they want. If they want a briefing, run through their goals, priorities, and help set 3 key objectives. If they want a goal rundown, list all goals with progress. If they want to log a task, help them schedule it. Be concise and actionable. Set "ready" to true when the user seems satisfied.`;
+      }
+      return `${base} This is a morning Briefing. Your FIRST message must be EXACTLY this mindset check-in: "On a scale of 1–5, how's your headspace going into today?" Use their score to calibrate: 1-2 = more coaching and task breakdown; 3 = balanced; 4-5 = jump straight to daily planning. Plan only for TODAY — not the week, not the month. Ask one question at a time. Set "ready" to true when the user says they feel ready.`;
+    }
+
+    if (programId === 'focus') return `${base} The user wants to lock in on a task. Respond with a JSON object where "content" contains a clean bulleted action plan (3–7 steps). No preamble, no sign-off, no conversation. Start each bullet with an action verb. If the task sounds overwhelming, silently break it into smaller steps. Set "options" to null — the user will type free-form.`;
+
+    if (programId === 'regroup') return `${base} The user has lost momentum. Your FIRST message must be: "What happened — did something interrupt you, or did you just lose the thread?" Be grounding, not motivational. Ask one question at a time. If you detect stress signals, offer one brief tip (breathing, task reframing, or size reduction).`;
+
+    if (programId === 'preview') {
+      return `${base} The user is planning ahead. Your FIRST message must be a concise planning question. Suggest 2-4 specific tasks based on active goals and what's unfinished. Ask one question at a time. Set "ready" to true when the user seems satisfied.`;
+    }
+
+    if (programId === 'calibration') {
+      let directive;
+      if (confidence < 30) {
+        directive = `Your confidence with this user is very low (${confidence}%). Your ONLY goal is to understand them. Ask fundamental questions one at a time: What are their main goals? What does their ideal work day look like? What tools do they prefer? What are their biggest challenges? Do NOT make suggestions. Do NOT try to plan. Just learn.`;
+      } else if (confidence < 55) {
+        directive = `Your confidence with this user is moderate (${confidence}%). Ask targeted follow-up questions to fill gaps in your understanding. Reference what you already know and ask for clarification or elaboration. One question at a time.`;
+      } else {
+        directive = `Your confidence with this user is good (${confidence}%). Summarize what you understand about them and ask them to confirm. If they confirm accuracy, set "ready" to true. If they correct you, learn from the correction and continue.`;
+      }
+
+      return `${base}\n\nThis is a Paths session. ${directive}\n\nRules:\n- Ask ONE question at a time\n- Never repeat a question already answered\n- Reference what you already know to show understanding\n- Set "ready" to true when the user confirms understanding is accurate`;
+    }
+
+    return base;
+  }, [novaState.syncEvents, novaState.routine]);
+
+  /**
+   * Build the VOLATILE user message containing Blackboard data.
+   * This changes every turn and is NOT cached — it's injected as a user-role
+   * message separate from the static system prompt.
+   */
+  const buildBlackboardUserMessage = useCallback((programId, userInput, blackboard) => {
     const activeGoals = projects.filter(p => !p.completedAt);
-    // Build quadrant distribution summary for NOVA context
     const quadrantCounts = { q1: 0, q2: 0, q3: 0, q4: 0 };
     activeGoals.forEach(p => {
       if (p.quadrant && quadrantCounts[p.quadrant] !== undefined) {
@@ -186,50 +255,24 @@ export function useNOVA({ apiKey, model, projects, focus, waypointContext, loade
       .map(p => `"${p.title}" (${progress(p)}% done${p.quadrant ? `, ${p.quadrant.toUpperCase()}` : ''})`).join(', ') || 'none';
     const quadrantBlock = quadrantSummary ? `\nEisenhower Matrix distribution: ${quadrantSummary}.` : '';
     const focusSummary = focus.filter(Boolean).join(', ') || 'none';
-    const confidence   = computePlanningConfidence(novaState.syncEvents);
-    const routineNote  = novaState.routine ? `Known pattern: ${novaState.routine.summary}` : '';
-    // Use structured bullet-point format for weaker models, prose for stronger ones
+
+    // Knowledge pool context (volatile — changes as entries are added/decayed)
     const kbResult = buildStructuredKnowledgeBlock(knowledgePool);
     const knowledgeBlock = kbResult.text || buildFullKnowledgeBlock(knowledgePool).text || '';
-    // Track which entries were used for decay purposes — store in ref to apply
-    // in a useEffect (NOT during render, to avoid React 19 concurrent rendering error:
-    // "Cannot update a component while rendering a different component")
     if (kbResult.usedEntryIds?.length > 0) {
       lastUsedEntryIdsRef.current = kbResult.usedEntryIds;
     }
-    const base = `You are NOVA, a productivity companion and psychological coach. Planning confidence with this user: ${confidence}%. ${confidence < 30 ? 'Ask more questions to learn their patterns.' : confidence > 70 ? 'You know this user well — make bold, specific suggestions.' : 'Balance questions with suggestions.'} Active goals: ${goalsSummary}.${quadrantBlock} Today's focus: ${focusSummary}. ${routineNote} Psychological coaching scope: stress reduction, task breakdown, work tips only — not personal therapy.${knowledgeBlock}
 
-After your message, include 3 multiple-choice reply options in this format:
-[OPTIONS]
-Option 1 text
-Option 2 text
-Option 3 text
-These should represent the 3 most likely ways the user would respond. Make them specific to your message, not generic. Do NOT include [OPTIONS] if the user is expected to type a free-form response (e.g., rating scales, open-ended reflection).`;
-
-    if (programId === 'briefing') {
-      // If the user sent a pre-crafted prompt (from startup action buttons),
-      // skip the headspace check and respond directly to their specific intent.
-      if (isPreCraftedPrompt) {
-        return `${base} The user has sent a specific request to start the conversation. Respond directly to their request without asking "On a scale of 1–5, how's your headspace?" — they've already told you what they want. If they want a briefing, run through their goals, priorities, and help set 3 key objectives. If they want a goal rundown, list all goals with progress. If they want to log a task, help them schedule it. Be concise and actionable. When the user seems satisfied, end with the exact token: [READY]`;
-      }
-      return `${base} This is a morning Briefing. Your FIRST message must be EXACTLY this mindset check-in: "On a scale of 1–5, how's your headspace going into today?" Use their score to calibrate: 1-2 = more coaching and task breakdown; 3 = balanced; 4-5 = jump straight to daily planning. Plan only for TODAY — not the week, not the month. Ask one question at a time. When the user says they feel ready, end your message with the exact token: [READY]`;
-    }
-
-    if (programId === 'focus') return `${base} The user wants to lock in on a task. Respond with ONLY a clean bulleted action plan (3–7 steps). No preamble, no sign-off, no conversation. Start each bullet with an action verb. If the task sounds overwhelming, silently break it into smaller steps.`;
-
-    if (programId === 'regroup') return `${base} The user has lost momentum. Your FIRST message must be: "What happened — did something interrupt you, or did you just lose the thread?" Be grounding, not motivational. Ask one question at a time. If you detect stress signals, offer one brief tip (breathing, task reframing, or size reduction).`;
-
+    // Program-specific volatile context
+    let programContext = '';
     if (programId === 'preview') {
       const now = new Date();
       const hour = now.getHours();
       const min = now.getMinutes();
       const timeStr = `${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
-      // After midnight (0-5 AM): "next day" = later today
-      // Evening (18-23) or daytime (6-17): "next day" = tomorrow
       const isAfterMidnight = hour >= 0 && hour < 6;
       const horizon = isAfterMidnight ? 'later today' : 'tomorrow';
 
-      // Build yesterday's completion summary
       const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toDateString();
       const yesterdayCompletions = projects
@@ -237,37 +280,22 @@ These should represent the 3 most likely ways the user would respond. Make them 
         .filter(s => s.completedAt && new Date(s.completedAt).toDateString() === yesterdayStr)
         .length;
 
-      // Build today's onward schedule summary
       const today = new Date().toDateString();
       const todayTasks = (novaState.dailyPlan?.date === today ? novaState.dailyPlan.items : [])
         .map(i => `  - ${i.title} (${i.estimatedMinutes}min)`)
         .join('\n');
 
-      return `${base} It's currently ${timeStr}. The user is planning for ${horizon}. Yesterday they completed ${yesterdayCompletions} subtasks.${todayTasks ? `\n\nToday's existing plan:\n${todayTasks}` : ''}\n\nYour FIRST message must be: "It's ${timeStr} — let's plan ${horizon}. What's top of mind?" Be concise. Suggest 2-4 specific tasks based on active goals and what's unfinished. Ask one question at a time. When the user seems satisfied, end with the exact token: [READY]`;
+      programContext = `It's currently ${timeStr}. Planning for ${horizon}. Yesterday completed ${yesterdayCompletions} subtasks.${todayTasks ? `\n\nToday's existing plan:\n${todayTasks}` : ''}`;
     }
 
-    if (programId === 'calibration') {
-      const confidence = computePlanningConfidence(novaState.syncEvents);
-      const kbResult = buildStructuredKnowledgeBlock(knowledgePool);
-      const knowledgeBlock = kbResult.text || '';
-      if (kbResult.usedEntryIds?.length > 0) {
-        lastUsedEntryIdsRef.current = kbResult.usedEntryIds;
-      }
+    return `[Blackboard State]
+Active goals: ${goalsSummary}.${quadrantBlock}
+Today's focus: ${focusSummary}.
+${knowledgeBlock ? `Knowledge context:\n${knowledgeBlock}` : ''}
+${programContext ? `\n${programContext}` : ''}
 
-      let directive;
-      if (confidence < 30) {
-        directive = `Your confidence with this user is very low (${confidence}%). Your ONLY goal is to understand them. Ask fundamental questions one at a time: What are their main goals? What does their ideal work day look like? What tools do they prefer? What are their biggest challenges? Do NOT make suggestions. Do NOT try to plan. Just learn.`;
-      } else if (confidence < 55) {
-        directive = `Your confidence with this user is moderate (${confidence}%). Ask targeted follow-up questions to fill gaps in your understanding. Reference what you already know from the Knowledge Pool and ask for clarification or elaboration. One question at a time.`;
-      } else {
-        directive = `Your confidence with this user is good (${confidence}%). Summarize what you understand about them and ask them to confirm. If they confirm accuracy, end with [READY]. If they correct you, learn from the correction and continue.`;
-      }
-
-      return `${base}\n\nThis is a Paths session. ${directive}\n\nKnowledge Pool context:\n${knowledgeBlock}\n\nRules:\n- Ask ONE question at a time\n- Never repeat a question already answered\n- Reference what you already know to show understanding\n- When the user confirms understanding is accurate, end with [READY]`;
-    }
-
-    return base;
-  }, [projects, focus, novaState.syncEvents, novaState.routine, knowledgePool, novaState.dailyPlan]);
+[User]: ${userInput}`;
+  }, [projects, focus, knowledgePool, novaState.dailyPlan]);
 
   // Auto-start NOVA programs when waypoint opens OR pendingAutoStart is set
   useEffect(() => {
@@ -298,6 +326,7 @@ These should represent the 3 most likely ways the user would respond. Make them 
     }
 
     const systemPrompt = buildNOVASystemPrompt(progId);
+    const schemaType = getSchemaForProgram(progId);
     setNovaLoading(true);
 
     // Clear pendingAutoStart once we begin
@@ -307,14 +336,25 @@ These should represent the 3 most likely ways the user would respond. Make them 
       chatWithNOVA([
         { role: 'system', content: systemPrompt },
         { role: 'user',   content: 'Hello' },
-      ], apiKey, { model })
+      ], apiKey, { model, schemaType })
     ).then(reply => {
       const data = typeof reply === 'object' && reply.data ? reply.data : reply;
-      const cleanReply = data.replace('[READY]', '').trim();
-      setNovaState(prev => ({
-        ...prev,
-        programChats: { ...prev.programChats, [progId]: [{ role: 'assistant', content: cleanReply }] },
-      }));
+      // Parse JSON response with try/catch fallback to text mode
+      try {
+        const parsed = JSON.parse(data);
+        const cleanReply = parsed.content || data;
+        const isReady = parsed.ready === true;
+        setNovaState(prev => ({
+          ...prev,
+          programChats: { ...prev.programChats, [progId]: [{ role: 'assistant', content: cleanReply }] },
+        }));
+      } catch {
+        // Fallback: treat as plain text (backward compatibility)
+        setNovaState(prev => ({
+          ...prev,
+          programChats: { ...prev.programChats, [progId]: [{ role: 'assistant', content: data }] },
+        }));
+      }
     }).finally(() => setNovaLoading(false));
   }, [waypointContext?.type, waypointContext?.id, pendingAutoStart, apiKey, buildNOVASystemPrompt, loaded, novaSessionKey, novaRetry, novaLoading, novaState.programChats, setPendingAutoStart]);
 
@@ -322,12 +362,11 @@ These should represent the 3 most likely ways the user would respond. Make them 
     if (!apiKey || messages.length < 3) return;
     const transcript = messages.map(m => `${m.role}: ${m.content}`).join('\n');
     const raw = await chatWithNOVA([
-      { role: 'system', content: 'You are a JSON API. Respond with ONLY a raw JSON object and nothing else. No markdown, no code fences.' },
-      { role: 'user', content: `Analyze this productivity coaching conversation and extract:\n1. routine_update: one sentence describing the user's work patterns revealed in this chat\n2. suggested_tasks: array of 2–4 specific actionable task strings\n3. knowledge_entries: array of 0–4 objects, each { "cat": "work"|"goals"|"prefs"|"context", "text": string (max 120 chars, factual present-tense), "conf": number 0–1 }\n   - Only include entries you are confident about\n   - "work" = habits/style; "goals" = objectives/motivations; "prefs" = tool/process preferences; "context" = personal/situational facts\n   - Leave empty if nothing clear was revealed\n\nConversation:\n${transcript}\n\nRespond with exactly: {"routine_update":"...","suggested_tasks":["..."],"knowledge_entries":[{"cat":"work","text":"...","conf":0.85}]}` },
-    ], apiKey, { model });
+      { role: 'system', content: 'You are a JSON API that extracts insights from productivity coaching conversations.' },
+      { role: 'user', content: `Analyze this productivity coaching conversation and extract:\n1. routine_update: one sentence describing the user's work patterns revealed in this chat\n2. suggested_tasks: array of 2–4 specific actionable task strings\n3. knowledge_entries: array of 0–4 objects, each { "cat": "work"|"goals"|"prefs"|"context", "text": string (max 120 chars, factual present-tense), "conf": number 0–1 }\n   - Only include entries you are confident about\n   - "work" = habits/style; "goals" = objectives/motivations; "prefs" = tool/process preferences; "context" = personal/situational facts\n   - Leave empty if nothing clear was revealed\n\nConversation:\n${transcript}\n\nRespond with a JSON object matching: {"routine_update":"...","suggested_tasks":["..."],"knowledge_entries":[{"cat":"work","text":"...","conf":0.85}]}` },
+    ], apiKey, { model, schemaType: INSIGHT_SCHEMA_OPENROUTER });
     try {
-      const cleaned = raw.replace(/```[\w]*\n?/g, '').replace(/```/g, '').trim();
-      const parsed  = JSON.parse(cleaned);
+      const parsed  = JSON.parse(raw);
       // Build pending insights instead of directly mutating state
       const pending = [];
       if (parsed.routine_update) {
@@ -444,13 +483,13 @@ These should represent the 3 most likely ways the user would respond. Make them 
   const inferKnowledgeFromMessage = useCallback(async (userText, programId) => {
     if (!apiKey || userText.trim().length < 20) return;
     try {
-      const system = 'You are a knowledge extraction API. Return ONLY a JSON array or empty array. Each item: {"cat":"work"|"goals"|"prefs"|"context","text":"factual present-tense statement (max 80 chars)","conf":0.0-1.0}. Only extract if the user reveals something new about their work style, preferences, goals, or context. Otherwise return [].';
+      const system = 'You are a knowledge extraction API. Extract knowledge entries from user messages.';
       const result = await chatWithNOVA([
         { role: 'system', content: system },
         { role: 'user', content: `Extract any new knowledge from this message: "${userText}"` },
-      ], apiKey, { model });
-      const cleaned = result.replace(/```[\w]*\n?/g, '').replace(/```/g, '').trim();
-      const entries = JSON.parse(cleaned);
+      ], apiKey, { model, schemaType: KNOWLEDGE_INFERENCE_SCHEMA_OPENROUTER });
+      const parsed = JSON.parse(result);
+      const entries = parsed.entries || [];
       if (Array.isArray(entries) && entries.length > 0) {
         const pending = entries.map(e => ({
           id: uid(),
@@ -478,6 +517,7 @@ These should represent the 3 most likely ways the user would respond. Make them 
     // Pass this flag so buildNOVASystemPrompt can skip the headspace check for briefing.
     const isPreCraftedPrompt = !!overrideText;
     const systemPrompt = buildNOVASystemPrompt(programId, isPreCraftedPrompt);
+    const schemaType = getSchemaForProgram(programId);
     const currentHistory = novaState.programChats[programId] || [];
 
     if (programId === 'focus') {
@@ -489,18 +529,23 @@ These should represent the 3 most likely ways the user would respond. Make them 
       setNovaLoading(true);
       try {
         const reply = await novaRetry.executeWithRetry(
-          () => chatWithNOVA([{ role: 'system', content: systemPrompt }, userMsg], apiKey, { model })
+          () => chatWithNOVA([{ role: 'system', content: systemPrompt }, userMsg], apiKey, { model, schemaType })
         ).then(r => r.data);
-        // Validate response
-        const validation = validateNOVAResponse(reply, programId);
-        if (!validation.valid) {
-          console.warn(`[NOVA] Response validation failed for ${programId}: ${validation.reason}`);
+        // Parse JSON response
+        try {
+          const parsed = JSON.parse(reply);
+          const content = parsed.content || reply;
+          setNovaState(prev => ({
+            ...prev,
+            programChats: { ...prev.programChats, focus: content },
+          }));
+        } catch {
+          // Fallback: plain text
+          setNovaState(prev => ({
+            ...prev,
+            programChats: { ...prev.programChats, focus: reply },
+          }));
         }
-        setNovaState(prev => ({
-          ...prev,
-          programChats: { ...prev.programChats, focus: reply },
-          lastValidation: validation.valid ? null : validation,
-        }));
       } finally { setNovaLoading(false); }
       return;
     }
@@ -522,20 +567,23 @@ These should represent the 3 most likely ways the user would respond. Make them 
         : updatedHistory;
       const messages = [{ role: 'system', content: systemPrompt }, ...apiHistory];
       const reply    = await novaRetry.executeWithRetry(
-        () => chatWithNOVA(messages, apiKey, { model })
+        () => chatWithNOVA(messages, apiKey, { model, schemaType })
       ).then(r => r.data);
-      // Validate response
-      const validation = validateNOVAResponse(reply, programId);
-      if (!validation.valid) {
-        console.warn(`[NOVA] Response validation failed for ${programId}: ${validation.reason}`);
+      // Parse JSON response — extract content and ready flag
+      let cleanReply = reply;
+      let isReady = false;
+      try {
+        const parsed = JSON.parse(reply);
+        cleanReply = parsed.content || reply;
+        isReady = parsed.ready === true;
+      } catch {
+        // Fallback: treat as plain text (backward compatibility)
+        cleanReply = reply;
       }
-      const isReady  = reply.includes('[READY]');
-      const cleanReply = reply.replace('[READY]', '').trim();
       const finalHistory = [...updatedHistory, { role: 'assistant', content: cleanReply }];
       setNovaState(prev => ({
         ...prev,
         programChats: { ...prev.programChats, [programId]: finalHistory },
-        lastValidation: validation.valid ? null : validation,
       }));
       if (isReady) {
         if (programId === 'calibration') {
@@ -547,7 +595,7 @@ These should represent the 3 most likely ways the user would respond. Make them 
         }
       }
     } finally { setNovaLoading(false); }
-  }, [novaChatInput, novaLoading, apiKey, novaState, buildNOVASystemPrompt, addSyncEvent, extractNOVAInsights, novaRetry, inferKnowledgeFromMessage]);
+  }, [novaChatInput, novaLoading, apiKey, novaState, buildNOVASystemPrompt, addSyncEvent, extractNOVAInsights, novaRetry, inferKnowledgeFromMessage, novaSessionKey]);
 
   // Internal helpers for generateNovaPlan (same logic as App.jsx's calcStreak/getWeeklyData)
   const allCompletionDates = () => {
@@ -655,7 +703,7 @@ These should represent the 3 most likely ways the user would respond. Make them 
     }
     const startTimeMinutes = startHour * 60 + startMinute;
 
-    const system = (`You are NOVA, an AI planning engine. Return ONLY a raw JSON array — no markdown, no explanation. Each item: { "title": string (max 60 chars), "goalId": string|null, "goalTitle": string|null, "estimatedMinutes": number (15-120), "complexity": "low"|"medium"|"high", "rationale": string (max 80 chars) }. Generate exactly 5 to 7 tasks. Prioritize using the Eisenhower Matrix: Q1 (Do First) > Q2 (Schedule) > Q3 (Delegate) > Q4 (Eliminate). Focus on urgent+important and important+not-urgent goals first.${lightCtx ? ' ' + lightCtx : ''}`).trim();
+    const system = (`You are NOVA, an AI planning engine. Generate a daily plan as a JSON object with a "tasks" array. Each task: { "title": string (max 60 chars), "goalId": string|null, "goalTitle": string|null, "estimatedMinutes": number (15-120), "complexity": "low"|"medium"|"high", "rationale": string (max 80 chars) }. Generate exactly 5 to 7 tasks. Prioritize using the Eisenhower Matrix: Q1 (Do First) > Q2 (Schedule) > Q3 (Delegate) > Q4 (Eliminate). Focus on urgent+important and important+not-urgent goals first.${lightCtx ? ' ' + lightCtx : ''}`).trim();
 
     const priorityContext = userPriorities && userPriorities.trim()
       ? `\n\nUSER'S PRIORITIES:\n${userPriorities.trim()}`
@@ -677,17 +725,17 @@ Plan start time: ${String(startHour).padStart(2, '0')}:${String(startMinute).pad
 ${isPlanningForTomorrow ? 'This plan is for TOMORROW.' : 'This plan is for TODAY.'}
 ${priorityContext}
 
-Return a JSON array of 5-7 tasks for ${isPlanningForTomorrow ? 'tomorrow' : 'today'}. Use the exact goalId strings from the goals above, or null for general tasks. Each task should be scheduled sequentially starting from the plan start time, with the estimatedMinutes determining the duration of each block.`;
+Generate a JSON object with a "tasks" array of 5-7 tasks for ${isPlanningForTomorrow ? 'tomorrow' : 'today'}. Use the exact goalId strings from the goals above, or null for general tasks. Each task should be scheduled sequentially starting from the plan start time, with the estimatedMinutes determining the duration of each block.`;
 
     setNovaState(prev => ({ ...prev, planGenLoading: true, planError: null }));
     try {
       const result  = await novaRetry.executeWithRetry(
-        () => askAI(system, userMsg, apiKey, { model })
+        () => askAI(system, userMsg, apiKey, { model, schemaType: PLAN_SCHEMA_OPENROUTER })
       );
       const raw     = result.data;
-      const cleaned = raw.replace(/```[\w]*\n?/g, '').replace(/```/g, '').trim();
-      const parsed  = JSON.parse(cleaned);
-      if (Array.isArray(parsed) && parsed.length >= 5) {
+      const parsed  = JSON.parse(raw);
+      const tasks = parsed.tasks || (Array.isArray(parsed) ? parsed : []);
+      if (Array.isArray(tasks) && tasks.length >= 5) {
         // Build sequential time blocks starting from startTimeMinutes
         let currentTimeOffset = 0;
         setNovaState(prev => ({
@@ -697,7 +745,7 @@ Return a JSON array of 5-7 tasks for ${isPlanningForTomorrow ? 'tomorrow' : 'tod
             generatedAt: new Date().toISOString(),
             startTimeMinutes,
             isTomorrow: isPlanningForTomorrow,
-            items: parsed.map(item => {
+            items: tasks.map(item => {
               const estimatedMinutes = Math.min(120, Math.max(15, Number(item.estimatedMinutes) || 30));
               const itemStart = startTimeMinutes + currentTimeOffset;
               currentTimeOffset += estimatedMinutes;
@@ -776,14 +824,19 @@ Return a JSON array of 5-7 tasks for ${isPlanningForTomorrow ? 'tomorrow' : 'tod
       return `"${p.title}" (${pct}% done) — OVERDUE`;
     }).join('\n');
 
-    const system = 'You are NOVA, a weekly planning analyst. Respond with a concise paragraph (2-4 sentences) assessing the user\'s weekly goal alignment. Be direct and specific. Mention which goals are on track, which need attention, and one actionable suggestion. No markdown, no sign-off.';
+    const system = 'You are NOVA, a weekly planning analyst. Assess the user\'s weekly goal alignment. Be direct and specific.';
     const userMsg = `Current week: ${weekStart.toLocaleDateString('en-US', { month:'short', day:'numeric' })} — ${weekEnd.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })}\n\nGoals with deadlines this week:\n${goalContext || 'None'}\n\nOverdue goals:\n${overdueContext || 'None'}\n\nAssess my weekly alignment.`;
 
     try {
       const result = await novaRetry.executeWithRetry(
-        () => askAI(system, userMsg, apiKey, { model })
+        () => askAI(system, userMsg, apiKey, { model, schemaType: WEEKLY_SCAN_SCHEMA_OPENROUTER })
       );
-      const reply  = result.data;
+      const raw   = result.data;
+      let reply = raw;
+      try {
+        const parsed = JSON.parse(raw);
+        reply = parsed.assessment || raw;
+      } catch { /* use raw text fallback */ }
       setNovaState(prev => ({
         ...prev,
         weeklyInsights: { loading: false, text: reply.trim(), error: null, scannedAt: Date.now() },

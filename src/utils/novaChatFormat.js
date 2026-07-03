@@ -4,7 +4,46 @@
  * Transforms raw LLM response text into structured segments for rich rendering.
  * Supports: paragraphs, bullet lists, numbered lists, section headers,
  * code blocks, dividers, options blocks, and inline bold formatting.
+ *
+ * With Strict Schema Mode, all responses are valid JSON. Use parseNOVAJSONResponse()
+ * to extract the content field from JSON-wrapped responses, then pass the extracted
+ * text to parseNOVAMessage() for rich segment rendering.
  */
+
+/**
+ * Parse a JSON-wrapped NOVA response into its content string.
+ *
+ * With Strict Schema Mode, every response is a valid JSON object matching
+ * the CHAT_SCHEMA shape: { content, options, ready }. This function extracts
+ * the `content` field for downstream rendering.
+ *
+ * Falls back to the raw text if JSON parsing fails (backward compatibility
+ * with non-schema responses).
+ *
+ * @param {string} text - Raw response from the API (may be JSON or plain text)
+ * @returns {string} The extracted content text
+ *
+ * @example
+ *   parseNOVAJSONResponse('{"content":"Hello","options":null,"ready":false}')
+ *   // => "Hello"
+ *
+ *   parseNOVAJSONResponse('Hello, world!')
+ *   // => "Hello, world!"  (fallback)
+ */
+export function parseNOVAJSONResponse(text) {
+  if (!text) return '';
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed === 'object' && typeof parsed.content === 'string') {
+      return parsed.content;
+    }
+    // If parsed but no content field, return the raw text
+    return text;
+  } catch {
+    // Not JSON — return as-is (backward compatibility)
+    return text;
+  }
+}
 
 /**
  * Parse a NOVA message string into an array of structured segment objects.

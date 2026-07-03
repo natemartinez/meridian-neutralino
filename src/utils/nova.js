@@ -1,3 +1,5 @@
+import { validateAgainstSchema, getPlainSchemaForProgram } from '../schemas/nova-schemas.js';
+
 export function computePlanningConfidence(syncEvents) {
   const SATURATION = 40;
   if (!syncEvents?.length) return 0;
@@ -16,74 +18,39 @@ export function computePlanningConfidence(syncEvents) {
 }
 
 /**
- * Validate NOVA's response based on program type.
- * Returns { valid: boolean, reason: string|null }
+ * Validate NOVA's JSON response against the schema for the given program type.
+ * Uses the schema-based validator from nova-schemas.js instead of heuristic
+ * text pattern matching.
+ *
+ * With Strict Schema Mode enforced at the provider level, validation failures
+ * should be extremely rare. This is a safety net only.
+ *
+ * @param {string} text - Raw JSON response text from the API
+ * @param {string} programId - Program type identifier
+ * @returns {{ valid: boolean, reason: string|null }}
  */
 export function validateNOVAResponse(text, programId) {
   if (!text || text.trim().length < 10) {
     return { valid: false, reason: 'Response too short or empty.' };
   }
 
-  switch (programId) {
-    case 'briefing': {
-      // Must contain a question or planning language
-      const hasQuestion = text.includes('?');
-      const hasPlanning = /plan|focus|priorit|today|scale|headspace/i.test(text);
-      if (!hasQuestion && !hasPlanning) {
-        return { valid: false, reason: 'Briefing should include a question or planning guidance.' };
-      }
-      return { valid: true, reason: null };
-    }
-
-    case 'focus': {
-      // Must contain bullet points or numbered steps
-      const hasBullets = /^[\s]*[-*•]\s/m.test(text);
-      const hasNumbers = /^\s*\d+[.)]\s/m.test(text);
-      const hasActionVerbs = /^(break|create|implement|write|build|refactor|test|review|analyze|setup|configure|research|draft)/im.test(text);
-      if (!hasBullets && !hasNumbers) {
-        return { valid: false, reason: 'Focus plan should use bullet points or numbered steps.' };
-      }
-      if (!hasActionVerbs) {
-        return { valid: false, reason: 'Focus plan steps should start with action verbs.' };
-      }
-      return { valid: true, reason: null };
-    }
-
-    case 'regroup': {
-      // Must acknowledge the situation, not be purely motivational
-      const hasAcknowledgment = /happened|interrupt|lost|understand|feel|noticed|signal|break|reset/i.test(text);
-      if (!hasAcknowledgment) {
-        return { valid: false, reason: 'Regroup should acknowledge the situation first.' };
-      }
-      return { valid: true, reason: null };
-    }
-
-    case 'preview': {
-      // Must reference planning for tomorrow/later
-      const hasHorizon = /tomorrow|today|later|plan|next|upcoming|schedule/i.test(text);
-      const hasQuestion = text.includes('?');
-      if (!hasHorizon) {
-        return { valid: false, reason: 'Preview should reference upcoming planning horizon.' };
-      }
-      return { valid: true, reason: null };
-    }
-
-    case 'calibration': {
-      // Must contain a question and reference understanding/learning
-      const hasQuestion = text.includes('?');
-      const hasLearningIntent = /understand|learn|tell me|what about|how about|clarify|help me understand|you mentioned|you said|what are|what does|how do/i.test(text);
-      if (!hasQuestion) {
-        return { valid: false, reason: 'Paths should ask questions to understand the user.' };
-      }
-      if (!hasLearningIntent) {
-        return { valid: false, reason: 'Paths should reference user context, not be generic.' };
-      }
-      return { valid: true, reason: null };
-    }
-
-    default:
-      return { valid: true, reason: null };
+  // Attempt to parse JSON
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return { valid: false, reason: 'Response is not valid JSON.' };
   }
+
+  // Validate against the schema for this program type
+  const schema = getPlainSchemaForProgram(programId);
+  const result = validateAgainstSchema(parsed, schema);
+
+  if (!result.valid) {
+    return { valid: false, reason: `Schema validation failed: ${result.errors.join('; ')}` };
+  }
+
+  return { valid: true, reason: null };
 }
 
 /**
