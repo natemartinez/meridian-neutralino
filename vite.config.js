@@ -28,4 +28,7 @@ function neuAuthProxy() {
 export default defineConfig({
   plugins: [react(), neuAuthProxy()],
   base: './',
+  test: {
+    environment: 'jsdom',
+  },
 })

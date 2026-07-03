@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
 import { T } from '../utils/theme.js';
-import { progress } from '../utils/helpers.js';
-
-const fmtTime = (mins) => {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  const ap = h >= 12 ? 'PM' : 'AM';
-  return `${h % 12 || 12}:${m.toString().padStart(2, '0')}${ap}`;
-};
 
 export default function OnwardPanel({
   onwardItems, onwardForm, setOnwardForm, projects, onAdd, onDelete, onToggleDone,
@@ -15,8 +7,6 @@ export default function OnwardPanel({
   onDeleteAvailableTask, onDragStart, onMoveItem, onStartFocus, onReturnToAvailable,
   // New props
   backlogItems = [], deferredItems = [], onRestoreFromBacklog, selectedForToday = [],
-  // Plan props
-  novaState, prioritizeInput, setPrioritizeInput, generateNovaPlan, apiKey,
   // ── Day navigation props ──
   selectedDate, onDateChange,
   // ── Goal integration props ──
@@ -77,12 +67,6 @@ export default function OnwardPanel({
   const selectedDayName = dayNames[selectedDateObj.getDay()];
   const visibleDeferred = deferredItems.filter(d => d.deferredTo === selectedDayName);
 
-  // Plan data — only show for today
-  const plan = novaState?.dailyPlan;
-  const planDate = new Date().toISOString().slice(0, 10);
-  const planItems = (plan?.date === planDate && plan?.items) ? plan.items : [];
-  const planError = novaState?.planError;
-
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
       <div style={{ padding:'18px 18px 14px', borderBottom:`1px solid ${T.border}` }}>
@@ -111,76 +95,6 @@ export default function OnwardPanel({
           </div>
         </div>
       </div>
-
-      {/* ── Today's Plan (only show for today) ── */}
-      {isToday && (
-      <div style={{ padding:'10px 18px', borderBottom:`1px solid ${T.border}`, background:`${T.accent}04` }}>
-        {/* Daily plan header */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted, letterSpacing:'.08em' }}>TODAY'S PLAN</div>
-          <button
-            onClick={e => { e.stopPropagation(); generateNovaPlan && generateNovaPlan(prioritizeInput); }}
-            disabled={novaState?.planGenLoading || !apiKey}
-            style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color: novaState?.planGenLoading ? T.muted : T.accent, cursor: novaState?.planGenLoading || !apiKey ? 'default' : 'pointer', padding:'2px 5px', fontFamily:"'IBM Plex Mono',monospace", fontSize:8, letterSpacing:'.05em', opacity: novaState?.planGenLoading ? .5 : 1 }}
-          >{novaState?.planGenLoading ? '···' : 'REFRESH'}</button>
-        </div>
-        {/* Prioritization input */}
-        <div style={{ marginBottom:6 }} onClick={e => e.stopPropagation()}>
-          <input
-            value={prioritizeInput || ''}
-            onChange={e => setPrioritizeInput && setPrioritizeInput(e.target.value)}
-            placeholder="What should I prioritize today?"
-            style={{ width:'100%', boxSizing:'border-box', background:T.bg, border:`1px solid ${T.border}`, borderRadius:4, padding:'5px 7px', color:T.text, fontFamily:"'IBM Plex Mono',monospace", fontSize:9, outline:'none' }}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && prioritizeInput?.trim()) {
-                e.stopPropagation();
-                generateNovaPlan && generateNovaPlan(prioritizeInput);
-              }
-            }}
-          />
-        </div>
-        {/* Plan error message */}
-        {planError && (
-          <div style={{ padding:'4px 0', fontFamily:"'IBM Plex Mono',monospace", fontSize:8, color:T.rose, lineHeight:1.5 }}>
-            {planError}
-          </div>
-        )}
-        {/* Plan items */}
-        {(() => {
-          if (novaState?.planGenLoading && planItems.length === 0) {
-            return <div style={{ padding:'6px 0', fontFamily:"'IBM Plex Mono',monospace", fontSize:8, color:T.muted, textAlign:'center' }}>Building plan…</div>;
-          }
-          if (planItems.length === 0 && !planError) {
-            return (
-              <div style={{ padding:'6px 0', fontFamily:"'IBM Plex Mono',monospace", fontSize:8, color:T.muted, lineHeight:1.5 }}>
-                {apiKey ? 'No plan yet — complete a Briefing or tap Refresh.' : 'Add an API key to generate plans.'}
-              </div>
-            );
-          }
-          if (planItems.length > 0) {
-            return (
-              <div style={{ maxHeight:120, overflowY:'auto' }}>
-                {planItems.map((item, idx) => {
-                  const dotColor = item.complexity === 'high' ? T.rose : item.complexity === 'medium' ? T.accent : T.muted;
-                  return (
-                    <div key={item.id} style={{ padding:'4px 0', display:'flex', alignItems:'flex-start', gap:6, borderBottom: idx < planItems.length - 1 ? `1px solid ${T.border}` : 'none' }}>
-                      <div style={{ width:4, height:4, borderRadius:'50%', background:dotColor, marginTop:4, flexShrink:0 }} />
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.text, lineHeight:1.4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.title}</div>
-                        <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:8, color:T.muted, marginTop:1 }}>
-                          {item.startMinutes !== undefined ? `${fmtTime(item.startMinutes)}` : ''} ~{item.estimatedMinutes}m{item.goalTitle ? ` · ${item.goalTitle.slice(0,18)}${item.goalTitle.length > 18 ? '…' : ''}` : ''}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          }
-          return null;
-        })()}
-      </div>
-      )}
 
       {/* Add form */}
       <div style={{ padding:'12px 18px', borderBottom:`1px solid ${T.border}` }}>

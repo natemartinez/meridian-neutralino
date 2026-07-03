@@ -66,11 +66,6 @@ export default function RegroupPanel({
       {/* ── Daily Summary Graph ── */}
       <div>
         <div style={{
-          fontFamily:"'IBM Plex Mono',monospace",
-          fontSize: 9, color: T.muted,
-          letterSpacing: '0.1em', marginBottom: 12,
-        }}>TODAY'S BREAKDOWN</div>
-        <div style={{
           display: 'flex', gap: 10, height: 80,
           alignItems: 'flex-end',
           marginBottom: 10,

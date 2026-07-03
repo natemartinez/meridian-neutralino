@@ -5,16 +5,16 @@ import { uid, quadrantCenter } from '../../utils/helpers.js';
 function AddMilestoneInline({ projectId, onAdd, color }) {
   const [value, setValue] = useState('');
   return (
-    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
       <input
         value={value}
         onChange={e => setValue(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter' && value.trim()) { onAdd(projectId, value); setValue(''); }}}
         placeholder="Add milestone..."
-        style={{ flex: 1, background: '#121820', border: '1px solid #1b2336', borderRadius: 5, padding: '5px 10px', color: '#d6e2f5', fontFamily: 'IBM Plex Mono', fontSize: 11, outline: 'none' }}
+        style={{ flex: 1, background: '#121820', border: '1px solid #1b2336', borderRadius: 6, padding: '7px 12px', color: '#d6e2f5', fontFamily: 'IBM Plex Mono', fontSize: 13, outline: 'none' }}
       />
       <button onClick={() => { if (value.trim()) { onAdd(projectId, value); setValue(''); } }}
-              style={{ background: 'transparent', border: `1px solid ${color}`, borderRadius: 5, color, padding: '5px 12px', fontFamily: 'IBM Plex Mono', fontSize: 11, cursor: 'pointer' }}>
+              style={{ background: 'transparent', border: `1px solid ${color}`, borderRadius: 6, color, padding: '7px 14px', fontFamily: 'IBM Plex Mono', fontSize: 13, cursor: 'pointer' }}>
         +
       </button>
     </div>
@@ -135,25 +135,21 @@ export default function PathsView({ setGoalsProjects, goalsProjects, onNavigateT
   }
 
   const inputStyle = {
-    width: '100%', background: '#121820', border: '1px solid #1b2336', borderRadius: 6,
-    padding: '8px 12px', color: '#d6e2f5', fontFamily: 'IBM Plex Mono', fontSize: 12,
-    outline: 'none', boxSizing: 'border-box', marginBottom: 12,
+    width: '100%', background: '#121820', border: '1px solid #1b2336', borderRadius: 8,
+    padding: '10px 14px', color: '#d6e2f5', fontFamily: 'IBM Plex Mono', fontSize: 14,
+    outline: 'none', boxSizing: 'border-box', marginBottom: 14,
   };
 
   return (
-    <div style={{ padding: 24, height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-        <div>
-          <h2 style={{ fontFamily: 'Syne', color: '#f0b429', margin: 0, fontSize: 22 }}>PATHS</h2>
-          <p style={{ color: '#56687f', fontSize: 12, fontFamily: 'IBM Plex Mono', margin: '4px 0 0' }}>Personal projects & roadmaps</p>
-        </div>
-        <button onClick={() => setShowModal(true)} style={{ background: 'transparent', border: '1px solid #f0b429', borderRadius: 6, color: '#f0b429', padding: '7px 14px', fontFamily: 'IBM Plex Mono', fontSize: 11, cursor: 'pointer', letterSpacing: 1 }}>
+    <div style={{ padding: 30, height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 }}>
+        <button onClick={() => setShowModal(true)} style={{ background: 'transparent', border: '1px solid #f0b429', borderRadius: 8, color: '#f0b429', padding: '9px 18px', fontFamily: 'IBM Plex Mono', fontSize: 13, cursor: 'pointer', letterSpacing: 1 }}>
           + New Project
         </button>
       </div>
 
       {projects.length === 0 && (
-        <div style={{ textAlign: 'center', marginTop: 80, color: '#56687f', fontFamily: 'IBM Plex Mono', fontSize: 12 }}>
+        <div style={{ textAlign: 'center', marginTop: 100, color: '#56687f', fontFamily: 'IBM Plex Mono', fontSize: 14 }}>
           No projects yet. Start one.
         </div>
       )}
@@ -165,50 +161,50 @@ export default function PathsView({ setGoalsProjects, goalsProjects, onNavigateT
         const isInGoals  = goalsProjects?.some(g => g.id === project.id);
 
         return (
-          <div key={project.id} style={{ background: '#0d1017', border: `1px solid ${isExpanded ? project.color + '55' : '#1b2336'}`, borderRadius: 10, marginBottom: 12, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+          <div key={project.id} style={{ background: '#0d1017', border: `1px solid ${isExpanded ? project.color + '55' : '#1b2336'}`, borderRadius: 12, marginBottom: 14, overflow: 'hidden', transition: 'border-color 0.2s' }}>
 
             <div onClick={() => setExpandedId(isExpanded ? null : project.id)}
-                 style={{ padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: project.color, flexShrink: 0 }} />
+                 style={{ padding: '18px 22px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ width: 12, height: 12, borderRadius: '50%', background: project.color, flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                  <span style={{ fontFamily: 'Syne', fontSize: 14, color: '#d6e2f5', fontWeight: 600 }}>{project.title}</span>
-                  <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 9, padding: '1px 6px', borderRadius: 3, border: `1px solid ${project.color}44`, color: project.status === 'completed' ? '#3ecf7e' : project.status === 'paused' ? '#56687f' : project.color }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                  <span style={{ fontFamily: 'Syne', fontSize: 17, color: '#d6e2f5', fontWeight: 600 }}>{project.title}</span>
+                  <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, padding: '2px 8px', borderRadius: 4, border: `1px solid ${project.color}44`, color: project.status === 'completed' ? '#3ecf7e' : project.status === 'paused' ? '#56687f' : project.color }}>
                     {project.status.toUpperCase()}
                   </span>
                   {isInGoals && (
-                    <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 8, padding: '1px 5px', borderRadius: 3, background: '#53aaff22', color: '#53aaff', border: '1px solid #53aaff44' }}>
+                    <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#53aaff22', color: '#53aaff', border: '1px solid #53aaff44' }}>
                       IN GOALS
                     </span>
                   )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ flex: 1, height: 3, background: '#1b2336', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ flex: 1, height: 4, background: '#1b2336', borderRadius: 2, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${progress * 100}%`, background: project.color, transition: 'width 0.4s' }} />
                   </div>
-                  <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 9, color: '#56687f', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: '#56687f', whiteSpace: 'nowrap' }}>
                     {done}/{project.milestones.length} milestones
                   </span>
                 </div>
               </div>
-              <span style={{ color: '#56687f', fontSize: 10, transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+              <span style={{ color: '#56687f', fontSize: 12, transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
             </div>
 
             {isExpanded && (
-              <div style={{ padding: '0 18px 18px', borderTop: '1px solid #1b2336' }}>
+              <div style={{ padding: '0 22px 22px', borderTop: '1px solid #1b2336' }}>
                 {project.description && (
-                  <p style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: '#56687f', margin: '12px 0 16px' }}>{project.description}</p>
+                  <p style={{ fontFamily: 'IBM Plex Mono', fontSize: 13, color: '#56687f', margin: '14px 0 20px' }}>{project.description}</p>
                 )}
 
-                <div style={{ marginTop: 12, position: 'relative' }}>
+                <div style={{ marginTop: 14, position: 'relative' }}>
                   {project.milestones.length > 1 && (
-                    <div style={{ position: 'absolute', left: 7, top: 8, bottom: 8, width: 1, background: '#1b2336' }} />
+                    <div style={{ position: 'absolute', left: 9, top: 10, bottom: 10, width: 1, background: '#1b2336' }} />
                   )}
                   {project.milestones.map(m => (
                     <div key={m.id} onClick={() => toggleMilestone(project.id, m.id)}
-                         style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12, cursor: 'pointer', position: 'relative' }}>
-                      <div style={{ width: 15, height: 15, borderRadius: '50%', flexShrink: 0, marginTop: 1, background: m.completed ? project.color : 'transparent', border: `2px solid ${m.completed ? project.color : '#1b2336'}`, transition: 'all 0.2s', zIndex: 1 }} />
-                      <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: m.completed ? '#56687f' : '#d6e2f5', textDecoration: m.completed ? 'line-through' : 'none' }}>
+                         style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14, cursor: 'pointer', position: 'relative' }}>
+                      <div style={{ width: 18, height: 18, borderRadius: '50%', flexShrink: 0, marginTop: 2, background: m.completed ? project.color : 'transparent', border: `2px solid ${m.completed ? project.color : '#1b2336'}`, transition: 'all 0.2s', zIndex: 1 }} />
+                      <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 14, color: m.completed ? '#56687f' : '#d6e2f5', textDecoration: m.completed ? 'line-through' : 'none' }}>
                         {m.title}
                       </span>
                     </div>
@@ -217,10 +213,10 @@ export default function PathsView({ setGoalsProjects, goalsProjects, onNavigateT
 
                 <AddMilestoneInline projectId={project.id} onAdd={addMilestone} color={project.color} />
 
-                <div style={{ display: 'flex', gap: 6, marginTop: 14, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 8, marginTop: 18, alignItems: 'center' }}>
                   {['active', 'paused', 'completed'].map(s => (
                     <button key={s} onClick={() => setProjects(prev => prev.map(p => p.id === project.id ? { ...p, status: s } : p))}
-                            style={{ background: project.status === s ? project.color + '22' : 'transparent', border: `1px solid ${project.status === s ? project.color : '#1b2336'}`, borderRadius: 4, color: project.status === s ? project.color : '#56687f', padding: '3px 10px', fontFamily: 'IBM Plex Mono', fontSize: 9, cursor: 'pointer', letterSpacing: 1 }}>
+                            style={{ background: project.status === s ? project.color + '22' : 'transparent', border: `1px solid ${project.status === s ? project.color : '#1b2336'}`, borderRadius: 5, color: project.status === s ? project.color : '#56687f', padding: '4px 12px', fontFamily: 'IBM Plex Mono', fontSize: 11, cursor: 'pointer', letterSpacing: 1 }}>
                       {s.toUpperCase()}
                     </button>
                   ))}
@@ -230,11 +226,11 @@ export default function PathsView({ setGoalsProjects, goalsProjects, onNavigateT
                     style={{
                       background: isInGoals ? '#53aaff22' : 'transparent',
                       border: `1px solid ${isInGoals ? '#53aaff' : '#53aaff66'}`,
-                      borderRadius: 4,
+                      borderRadius: 5,
                       color: isInGoals ? '#53aaff' : '#53aaffcc',
-                      padding: '3px 10px',
+                      padding: '4px 12px',
                       fontFamily: 'IBM Plex Mono',
-                      fontSize: 9,
+                      fontSize: 11,
                       cursor: 'pointer',
                       letterSpacing: 1,
                     }}
@@ -250,30 +246,30 @@ export default function PathsView({ setGoalsProjects, goalsProjects, onNavigateT
 
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
-          <div style={{ background: '#0d1017', border: '1px solid #1b2336', borderRadius: 12, padding: 28, width: 420 }}>
-            <h3 style={{ fontFamily: 'Syne', color: '#f0b429', margin: '0 0 18px' }}>New Project</h3>
+          <div style={{ background: '#0d1017', border: '1px solid #1b2336', borderRadius: 14, padding: 34, width: 520 }}>
+            <h3 style={{ fontFamily: 'Syne', color: '#f0b429', margin: '0 0 22px', fontSize: 20 }}>New Project</h3>
 
-            <label style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#56687f', display: 'block', marginBottom: 4 }}>NAME</label>
+            <label style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: '#56687f', display: 'block', marginBottom: 5 }}>NAME</label>
             <input value={title} onChange={e => setTitle(e.target.value)} style={inputStyle} placeholder="e.g. Personal Portfolio" />
 
-            <label style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#56687f', display: 'block', marginBottom: 4 }}>DESCRIPTION (optional)</label>
-            <textarea value={desc} onChange={e => setDesc(e.target.value)} style={{ ...inputStyle, height: 60, resize: 'none' }} />
+            <label style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: '#56687f', display: 'block', marginBottom: 5 }}>DESCRIPTION (optional)</label>
+            <textarea value={desc} onChange={e => setDesc(e.target.value)} style={{ ...inputStyle, height: 72, resize: 'none' }} />
 
-            <label style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#56687f', display: 'block', marginBottom: 8 }}>COLOR</label>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <label style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: '#56687f', display: 'block', marginBottom: 10 }}>COLOR</label>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
               {PROJECT_COLORS.map(c => (
-                <div key={c} onClick={() => setColor(c)} style={{ width: 22, height: 22, borderRadius: '50%', background: c, cursor: 'pointer', border: color === c ? '2px solid white' : '2px solid transparent', boxSizing: 'border-box' }} />
+                <div key={c} onClick={() => setColor(c)} style={{ width: 28, height: 28, borderRadius: '50%', background: c, cursor: 'pointer', border: color === c ? '2px solid white' : '2px solid transparent', boxSizing: 'border-box' }} />
               ))}
             </div>
 
-            <label style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#56687f', display: 'block', marginBottom: 4 }}>MILESTONES</label>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+            <label style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: '#56687f', display: 'block', marginBottom: 5 }}>MILESTONES</label>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
               <input value={newMilestone} onChange={e => setNewMilestone(e.target.value)}
                      onKeyDown={e => { if (e.key === 'Enter' && newMilestone.trim()) { setDraftMilestones(prev => [...prev, { id: Date.now(), title: newMilestone.trim(), completed: false, date: null }]); setNewMilestone(''); }}}
                      placeholder="Type milestone, press Enter" style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
             </div>
             {draftMilestones.map((m, i) => (
-              <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontFamily: 'IBM Plex Mono', fontSize: 11, color: '#d6e2f5' }}>
+              <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, fontFamily: 'IBM Plex Mono', fontSize: 13, color: '#d6e2f5' }}>
                 <span style={{ color: '#56687f' }}>{i + 1}.</span>
                 {m.title}
                 <span onClick={() => setDraftMilestones(prev => prev.filter(x => x.id !== m.id))}
@@ -281,11 +277,11 @@ export default function PathsView({ setGoalsProjects, goalsProjects, onNavigateT
               </div>
             ))}
 
-            <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+            <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
               <button onClick={() => { setShowModal(false); setTitle(''); setDesc(''); setColor('#53aaff'); setDraftMilestones([]); setNewMilestone(''); }}
-                      style={{ flex: 1, background: 'transparent', border: '1px solid #1b2336', borderRadius: 6, color: '#56687f', padding: '9px 0', fontFamily: 'IBM Plex Mono', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+                      style={{ flex: 1, background: 'transparent', border: '1px solid #1b2336', borderRadius: 8, color: '#56687f', padding: '11px 0', fontFamily: 'IBM Plex Mono', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
               <button onClick={createProject}
-                      style={{ flex: 2, background: '#f0b429', border: 'none', borderRadius: 6, color: '#07090f', padding: '9px 0', fontFamily: 'IBM Plex Mono', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Create Project</button>
+                      style={{ flex: 2, background: '#f0b429', border: 'none', borderRadius: 8, color: '#07090f', padding: '11px 0', fontFamily: 'IBM Plex Mono', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Create Project</button>
             </div>
           </div>
         </div>

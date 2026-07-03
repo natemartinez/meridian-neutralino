@@ -48,12 +48,6 @@ export default function CanvasPanelWrapper({ panelId, ...props }) {
             deferredItems={props.deferredItems}
             selectedForToday={props.selectedForToday}
             onRestoreFromBacklog={props.handleRestoreFromBacklog}
-            // Plan props
-            novaState={props.novaState}
-            prioritizeInput={props.prioritizeInput}
-            setPrioritizeInput={props.setPrioritizeInput}
-            generateNovaPlan={props.generateNovaPlan}
-            apiKey={props.apiKey}
             // ── Day navigation props ──
             selectedDate={props.selectedOnwardDate}
             onDateChange={props.setSelectedOnwardDate}
