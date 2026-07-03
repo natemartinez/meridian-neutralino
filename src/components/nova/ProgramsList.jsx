@@ -97,7 +97,7 @@ const PROGRAMS = [
   },
 ];
 
-export default function ProgramsList({ mainPage, onOpenProgram, onBackToHQ, addSyncEvent, onSubNavNavigate, onOpenProgramWithPage, collapsed }) {
+export default function ProgramsList({ mainPage, onOpenProgram, onBackToHQ, addSyncEvent, onSubNavNavigate, onOpenProgramWithPage, collapsed, onToggleHistory }) {
   const [hoveredId, setHoveredId] = useState(null);
 
   return (
@@ -105,11 +105,16 @@ export default function ProgramsList({ mainPage, onOpenProgram, onBackToHQ, addS
       flex: 1,
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'space-evenly',
       padding: collapsed ? '8px 0' : '14px 14px',
-      gap: 22,
+      overflow: 'hidden',
     }}>
-
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-evenly',
+        gap: 22,
+      }}>
       {PROGRAMS.map(prog => {
         const isHq = prog.id === 'hq';
         const isActive = isHq ? mainPage === 'hq' : mainPage === `program-${prog.id}`;
@@ -248,6 +253,47 @@ export default function ProgramsList({ mainPage, onOpenProgram, onBackToHQ, addS
           </div>
         );
       })}
+      </div>
+
+      {/* ── HISTORY toggle button at bottom ── */}
+      {!collapsed && (
+        <button
+          onClick={onToggleHistory}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            padding: '8px 0',
+            borderRadius: 8,
+            background: `${T.accent}12`,
+            border: `1px solid ${T.accent}30`,
+            color: T.accent,
+            fontFamily: "'IBM Plex Mono',monospace",
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '.08em',
+            cursor: 'pointer',
+            marginTop: 8,
+            flexShrink: 0,
+            transition: 'all .15s',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = `${T.accent}20`;
+            e.currentTarget.style.borderColor = `${T.accent}50`;
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = `${T.accent}12`;
+            e.currentTarget.style.borderColor = `${T.accent}30`;
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="6" cy="6" r="4.5" stroke={T.accent} strokeWidth="1.2"/>
+            <path d="M6 3.5V6L7.5 7.5" stroke={T.accent} strokeWidth="1.2" strokeLinecap="round"/>
+          </svg>
+          HISTORY
+        </button>
+      )}
     </div>
   );
 }

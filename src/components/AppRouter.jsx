@@ -15,6 +15,7 @@ import SkillsView from './views/SkillsView.jsx';
 import PathsView from './views/PathsView.jsx';
 import WorkLogsView from './views/WorkLogsView.jsx';
 import GoalModal from './panels/GoalModal.jsx';
+import GoalPriorityList from './goals/GoalPriorityList.jsx';
 import FocusScreen from './views/FocusScreen.jsx';
 import DeadlineNotifier from './DeadlineNotifier.jsx';
 import OnwardTaskPopover from './OnwardTaskPopover.jsx';
@@ -22,6 +23,7 @@ import GoalDetailPanel from './panels/GoalDetailPanel.jsx';
 import CanvasPanelWrapper from './panels/CanvasPanelWrapper.jsx';
 import NovaSidebarBlock from './nova/NovaSidebarBlock.jsx';
 import ProgramsList from './nova/ProgramsList.jsx';
+import SessionHistoryLog from './nova/SessionHistoryLog.jsx';
 import NovaInsightsPanel from './nova/NovaInsightsPanel.jsx';
 import NOVAProgramPanel from './nova/NOVAProgramPanel.jsx';
 import NovaToast from './nova/NovaToast.jsx';
@@ -40,6 +42,7 @@ export default function AppRouter({
   selectedId, setSelectedId,
   focus, setFocus,
   modal, setModal,
+  goalsView, setGoalsView,
   aiMsg, setAiMsg,
   companionLoading, setCompanionLoading,
   pan, setPan,
@@ -85,8 +88,8 @@ export default function AppRouter({
   onwardClickedItem, setOnwardClickedItem,
   selectedOnwardDate, setSelectedOnwardDate,
   sidebarCollapsed, setSidebarCollapsed,
+  sidebarView, setSidebarView,
   sunId, setSunId,
-  companionName, setCompanionName,
   renamingGoalId, setRenamingGoalId,
   renameValue, setRenameValue,
   topGoals, setTopGoals,
@@ -183,20 +186,35 @@ export default function AppRouter({
               onOpenInsights={() => setMainPage('nova-insights')}
               onBackToHQ={() => { setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; setShowStartupCanvas(true); closeWaypoint(); }}
             />
-            <ProgramsList
-              collapsed={sidebarCollapsed}
-              mainPage={mainPage}
-              onOpenProgram={(id) => setMainPage(`program-${id}`)}
-              onBackToHQ={() => { setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; setShowStartupCanvas(true); closeWaypoint(); }}
-              addSyncEvent={addSyncEvent}
-              onOpenProgramWithPage={onOpenProgramWithPage}
-              onSubNavNavigate={(programId, subNavId) => {
-                setMainPage(`program-${programId}`);
-                // Map 'briefing' sub-nav to 'briefing-chat' page
-                const page = (programId === 'briefing' && subNavId === 'briefing') ? 'briefing-chat' : subNavId;
-                setTimeout(() => onSubNav(page), 50);
-              }}
-            />
+            {sidebarView === 'session-history' ? (
+              <SessionHistoryLog
+                collapsed={sidebarCollapsed}
+                sessions={sessions}
+                novaState={novaState}
+                mainPage={mainPage}
+                onOpenProgram={(id) => setMainPage(`program-${id}`)}
+                onBackToHQ={() => { setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; setShowStartupCanvas(true); closeWaypoint(); }}
+                onOpenProgramWithPage={onOpenProgramWithPage}
+                addSyncEvent={addSyncEvent}
+                onTogglePrograms={() => setSidebarView('programs')}
+              />
+            ) : (
+              <ProgramsList
+                collapsed={sidebarCollapsed}
+                mainPage={mainPage}
+                onOpenProgram={(id) => { setMainPage(`program-${id}`); }}
+                onBackToHQ={() => { setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; setShowStartupCanvas(true); closeWaypoint(); }}
+                addSyncEvent={addSyncEvent}
+                onOpenProgramWithPage={onOpenProgramWithPage}
+                onSubNavNavigate={(programId, subNavId) => {
+                  setMainPage(`program-${programId}`);
+                  // Map 'briefing' sub-nav to 'briefing-chat' page
+                  const page = (programId === 'briefing' && subNavId === 'briefing') ? 'briefing-chat' : subNavId;
+                  setTimeout(() => onSubNav(page), 50);
+                }}
+                onToggleHistory={() => setSidebarView('session-history')}
+              />
+            )}
           </div>
 
           {/* ── Full-height collapse toggle strip on the right edge of .sig ── */}
@@ -233,7 +251,7 @@ export default function AppRouter({
         </div>
 
         {/* ═══ COMMAND ═══ */}
-        <div className="cmd">
+        <div className={`cmd${waypointOpen ? ' wp-open' : ''}`}>
           {/* Top bar — nav buttons */}
           <div className="ctb" style={{ justifyContent: isProgram(mainPage) ? 'space-between' : 'flex-end' }}>
             {isProgram(mainPage) && (
@@ -245,32 +263,60 @@ export default function AppRouter({
                   if (!label) return null;
                   const isBriefing = progId === 'briefing';
                   return isBriefing ? (
-                    <button
-                      onClick={() => setModal(true)}
-                      style={{
-                        fontFamily:"'IBM Plex Mono',monospace",
-                        fontSize:11,
-                        fontWeight:600,
-                        color:T.text,
-                        background:`${T.accent}18`,
-                        border:`1px solid ${T.accent}40`,
-                        borderRadius:8,
-                        padding:'5px 12px',
-                        cursor:'pointer',
-                        letterSpacing:'0.04em',
-                        transition:'all .14s',
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = `${T.accent}28`;
-                        e.currentTarget.style.borderColor = `${T.accent}70`;
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = `${T.accent}18`;
-                        e.currentTarget.style.borderColor = `${T.accent}40`;
-                      }}
-                    >
-                      + Create Goal
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setModal(true)}
+                        style={{
+                          fontFamily:"'IBM Plex Mono',monospace",
+                          fontSize:11,
+                          fontWeight:600,
+                          color:T.text,
+                          background:`${T.accent}18`,
+                          border:`1px solid ${T.accent}40`,
+                          borderRadius:8,
+                          padding:'5px 12px',
+                          cursor:'pointer',
+                          letterSpacing:'0.04em',
+                          transition:'all .14s',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = `${T.accent}28`;
+                          e.currentTarget.style.borderColor = `${T.accent}70`;
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = `${T.accent}18`;
+                          e.currentTarget.style.borderColor = `${T.accent}40`;
+                        }}
+                      >
+                        + Create Goal
+                      </button>
+                      <button
+                        onClick={() => setGoalsView(v => v === 'matrix' ? 'priority-list' : 'matrix')}
+                        style={{
+                          fontFamily:"'IBM Plex Mono',monospace",
+                          fontSize:11,
+                          fontWeight:600,
+                          color:T.text,
+                          background:`${T.green}18`,
+                          border:`1px solid ${T.green}40`,
+                          borderRadius:8,
+                          padding:'5px 12px',
+                          cursor:'pointer',
+                          letterSpacing:'0.04em',
+                          transition:'all .14s',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = `${T.green}28`;
+                          e.currentTarget.style.borderColor = `${T.green}70`;
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = `${T.green}18`;
+                          e.currentTarget.style.borderColor = `${T.green}40`;
+                        }}
+                      >
+                        {goalsView === 'matrix' ? '☰ List View' : '⊞ Matrix View'}
+                      </button>
+                    </>
                   ) : (
                     <span style={{
                       fontFamily:"'Syne',sans-serif",
@@ -379,7 +425,7 @@ export default function AppRouter({
                 T={T}
               />
             ) : isCanvasPage(mainPage) && (
-              <div className="cv" style={{ cursor: activePage === 'goals' ? (dragging ? 'grabbing' : 'grab') : activePage === 'onward' ? 'default' : 'pointer', position: 'relative', overflow: activePage === 'onward' ? 'auto' : 'hidden', width: waypointOpen ? 'calc(100% - 244px)' : '100%', scrollbarWidth: 'thin', scrollbarColor: `${T.border} ${T.bg}` }}>
+              <div className="cv" style={{ cursor: activePage === 'goals' ? (dragging ? 'grabbing' : 'grab') : activePage === 'onward' ? 'default' : 'pointer', position: 'relative', overflow: activePage === 'onward' ? 'auto' : 'hidden', scrollbarWidth: 'thin', scrollbarColor: `${T.border} ${T.bg}` }}>
                 <canvas
                   ref={canvasRef}
                   style={{ position:'absolute', top:0, left:20 }}
@@ -410,6 +456,20 @@ export default function AppRouter({
                         // Select the goal and open the waypoint
                         setSelectedId(goalId);
                         openWaypoint({ type: 'goal', id: goalId });
+                      }}
+                    />
+                  </div>
+                )}
+                {activePage === 'goals' && goalsView === 'priority-list' && (
+                  <div style={{ position: 'absolute', inset: 0, background: '#0c111a', overflowY: 'auto', zIndex: 10 }}>
+                    <GoalPriorityList
+                      projects={projects}
+                      setProjects={setProjects}
+                      T={T}
+                      selectedId={selectedId}
+                      onSelectGoal={(id) => {
+                        setSelectedId(id);
+                        openWaypoint({ type: 'goal', id });
                       }}
                     />
                   </div>
@@ -504,8 +564,6 @@ export default function AppRouter({
                 setIntensity={setIntensity}
                 showApiKey={showApiKey}
                 setShowApiKey={setShowApiKey}
-                companionName={companionName}
-                setCompanionName={setCompanionName}
                 setMainPage={setMainPage}
                 buildNOVASystemPrompt={buildNOVASystemPrompt}
                 onNewSession={onNewSession}
@@ -604,7 +662,6 @@ export default function AppRouter({
                   setSunId={setSunId}
                   companionLoading={companionLoading}
                   aiMsg={aiMsg}
-                  companionName={companionName}
                   checkIn={checkIn}
                   suggestSubtask={suggestSubtask}
                   topGoals={topGoals}
@@ -689,7 +746,8 @@ export default function AppRouter({
           cardY={onwardClickedItem.cardY}
           projects={projects}
           onStartFocus={(title, goalId) => {
-            startSession(title, goalId);
+            const progId = isProgram(mainPage) ? extractProgId(mainPage) : null;
+            startSession(title, goalId, progId);
             setOnwardClickedItem(null);
             setMainPage('tracking');
           }}
