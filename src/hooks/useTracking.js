@@ -36,8 +36,8 @@ export default function useTracking({ projects, sessions, activeSession, setSess
     return { totalMin, focusedMin, productiveMin, minSinceBreak };
   }, [getSessionsForDay, todayStr, sessionDurationMin]);
 
-  const startSession = useCallback((label = '', goalId = null) => {
-    const s = { id: uid(), startTime: new Date().toISOString(), endTime: null, label, goalId };
+  const startSession = useCallback((label = '', goalId = null, programId = null) => {
+    const s = { id: uid(), startTime: new Date().toISOString(), endTime: null, label, goalId, programId };
     setActiveSession(s);
     setSessions(prev => [...prev, s]);
   }, [setActiveSession, setSessions]);

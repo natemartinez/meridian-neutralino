@@ -10,7 +10,7 @@ export default function GoalDetailPanel({
   addSubtask, addCheckpoint, completeGoal, renameGoal,
   closeWaypoint, setConfirmDelete,
   topGoals, onToggleTopGoal,
-  companionLoading, aiMsg, companionName,
+  companionLoading, aiMsg,
   checkIn, suggestSubtask,
 }) {
   if (!proj) return null;
@@ -135,7 +135,7 @@ export default function GoalDetailPanel({
             <svg width="13" height="13" viewBox="0 0 13 13"><polygon points="6.5,1 8,5 12.5,5.2 9.2,8 10.3,12.5 6.5,9.8 2.7,12.5 3.8,8 0.5,5.2 5,5" fill="currentColor"/></svg>
           </div>
           <div>
-            <div className="wp-ai-lbl">{companionName}</div>
+            <div className="wp-ai-lbl">NOVA</div>
             <div className="wp-ai-sub">Contextual reflection</div>
           </div>
           <div className="wp-ai-dot" />

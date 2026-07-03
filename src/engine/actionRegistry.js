@@ -71,7 +71,7 @@ export function createActionRegistry(hookFns) {
       id: 'START_FOCUS_SESSION',
       label: 'Start a focus session',
       precondition: (bb) => !bb.activeSession,
-      effect: ({ label, goalId }) => startSession(label, goalId),
+      effect: ({ label, goalId, programId }) => startSession(label, goalId, programId),
       cost: 2,
       category: 'tracking',
     },

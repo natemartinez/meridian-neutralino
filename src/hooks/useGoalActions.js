@@ -25,7 +25,6 @@ export default function useGoalActions({
   freeformTasks,
   backlogItems,
   selected,
-  companionName,
   knowledgePool,
   novaState,
   novaInteractions,
@@ -436,7 +435,7 @@ export default function useGoalActions({
       const total  = subtasks.length;
       const cpDone = checkpoints.filter((c) => c.done).length;
       const lightCtx = buildLightKnowledgeContext(knowledgePool);
-      const system = (`You are a thoughtful, non-pushy productivity companion named ${companionName}. Keep check-ins brief (2–3 sentences), warm, and psychologically honest. No toxic positivity. Focus on reflection and clarity, not pressure.${lightCtx ? ' ' + lightCtx : ''}`).trim();
+      const system = (`You are a thoughtful, non-pushy productivity companion named NOVA. Keep check-ins brief (2–3 sentences), warm, and psychologically honest. No toxic positivity. Focus on reflection and clarity, not pressure.${lightCtx ? ' ' + lightCtx : ''}`).trim();
       const msg = await askAI(system, `Goal: "${selected.title}". Progress: ${done}/${total} subtasks done, ${cpDone}/${checkpoints.length} checkpoints reached. Do a brief check-in.`, apiKey, { model });
       setAiMsg(msg || 'No response from AI. Check your API key in Settings.');
     } finally {
