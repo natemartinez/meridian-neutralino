@@ -22,6 +22,7 @@ export default function useAppState() {
   const [selectedId, setSelectedId] = useState(null);
   const [focus, setFocus]           = useState(["", "", ""]);
   const [modal, setModal]           = useState(false);
+  const [goalsView, setGoalsView]   = useState('matrix');
   const [, setForm]                 = useState({ title: "", desc: "", measurable: "", achievable: "", relevant: "", deadline: "", priority: "low", scale: "short" });
   const [aiMsg, setAiMsg]           = useState("");
   const [companionLoading, setCompanionLoading] = useState(false);
@@ -29,7 +30,26 @@ export default function useAppState() {
   const [dragging, setDragging]     = useState(null);
   const [loaded, setLoaded]         = useState(false);
   const [apiKey, setApiKey]         = useState(() => localStorage.getItem('meridian_api_key') || null);
-  const [model, setModel]           = useState(() => localStorage.getItem('meridian_model') || '');
+  // Migrate old OpenRouter model names (e.g. "deepseek/deepseek-v4-flash") to DeepSeek direct format
+  const [model, setModel]           = useState(() => {
+    const saved = localStorage.getItem('meridian_model');
+    if (saved && saved.startsWith('deepseek/')) {
+      const migrated = saved.replace('deepseek/', '');
+      localStorage.setItem('meridian_model', migrated);
+      console.warn(
+        `[ModelMigration] Migrated legacy model name "${saved}" → "${migrated}". ` +
+        `The "deepseek/" prefix is no longer needed when using DeepSeek's direct API.`
+      );
+      return migrated;
+    }
+    if (saved && !saved.startsWith('sk-') && !saved.startsWith('deepseek-v') && !saved.startsWith('gpt') && !saved.startsWith('claude') && !saved.startsWith('o')) {
+      console.warn(
+        `[ModelMigration] Unrecognized model name "${saved}" loaded from settings. ` +
+        `Expected format: "deepseek-v4-flash" or "deepseek-v4-pro".`
+      );
+    }
+    return saved || '';
+  });
   const [, setPlanningDay]          = useState(false);
   const [addInput, setAddInput]     = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -129,12 +149,12 @@ export default function useAppState() {
   const [onwardClickedItem, setOnwardClickedItem] = useState(null);
   const [selectedOnwardDate, setSelectedOnwardDate] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarView, setSidebarView] = useState('session-history'); // 'session-history' | 'programs'
   // Tracks whether the sidebar was auto-collapsed by openWaypoint,
   // so closeWaypoint only restores it if it was auto-collapsed,
   // not when the user manually collapsed it.
   const sidebarAutoCollapsedRef = useRef(false);
   const [sunId, setSunId] = useLocalStorageState('meridian_sun_id', null);
-  const [companionName, setCompanionName] = useLocalStorageState('meridian_companion_name', 'AI Companion');
 
   // ── NOVA ──
   const {
@@ -424,7 +444,6 @@ export default function useAppState() {
     [onwardItems, 'meridian_onward_v2'],
     [freeformTasks, 'meridian_freeform_tasks'],
     [xpSkills, 'meridian_skills'],
-    [companionName, 'meridian_companion_name'],
     [selectedForToday, 'meridian_selected_today'],
     [deferredItems, 'meridian_deferred'],
     [backlogItems, 'meridian_backlog'],
@@ -543,6 +562,7 @@ export default function useAppState() {
     selectedId, setSelectedId,
     focus, setFocus,
     modal, setModal,
+    goalsView, setGoalsView,
     setForm,
     aiMsg, setAiMsg,
     companionLoading, setCompanionLoading,
@@ -591,8 +611,8 @@ export default function useAppState() {
     onwardClickedItem, setOnwardClickedItem,
     selectedOnwardDate, setSelectedOnwardDate,
     sidebarCollapsed, setSidebarCollapsed,
+    sidebarView, setSidebarView,
     sunId, setSunId,
-    companionName, setCompanionName,
     renamingGoalId, setRenamingGoalId,
     renameValue, setRenameValue,
     topGoals, setTopGoals,

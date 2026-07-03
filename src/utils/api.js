@@ -8,10 +8,12 @@ import { withRetry, NovaRetryError, getRetryAfter, shouldAbortRetry } from './re
  */
 
 /**
- * Validate an OpenRouter API key format and presence.
+ * Validate an API key format and presence.
  * Does NOT make network requests — purely client-side format validation.
  *
- * OpenRouter keys follow the pattern: sk-or-v1-<64 hex chars>
+ * Supports:
+ *   - OpenRouter keys: sk-or-v1-<64 hex chars>
+ *   - Generic keys: sk-<alphanumeric, 32+ chars>
  * @param {string|null|undefined} key
  * @returns {ApiKeyValidationResult}
  */
@@ -20,34 +22,36 @@ export function validateApiKey(key) {
   if (!key || typeof key !== 'string' || !key.trim()) {
     return {
       valid: false,
-      reason: 'API key is required. Please enter your OpenRouter API key.',
+      reason: 'API key is required. Please enter your API key in Settings.',
       code: 'missing',
     };
   }
 
   const trimmed = key.trim();
 
-  // 2. Format validation: OpenRouter keys start with "sk-or-v1-" followed by 64 hex chars
+  // 2. Format validation: accept OpenRouter (sk-or-v1-*) OR generic DeepSeek (sk-*) key formats
   const OPENROUTER_KEY_PATTERN = /^sk-or-v1-[0-9a-f]{64}$/;
-  if (!OPENROUTER_KEY_PATTERN.test(trimmed)) {
+  const GENERIC_KEY_PATTERN = /^sk-[a-zA-Z0-9]{32,}$/;
+  const DEEPSEEK_KEY_PATTERN = /^sk-[a-f0-9]{32}$/;
+  if (!OPENROUTER_KEY_PATTERN.test(trimmed) && !GENERIC_KEY_PATTERN.test(trimmed) && !DEEPSEEK_KEY_PATTERN.test(trimmed)) {
     // Provide specific guidance based on what's wrong
-    if (!trimmed.startsWith('sk-or-v1-')) {
+    if (!trimmed.startsWith('sk-')) {
       return {
         valid: false,
-        reason: 'Invalid key format. OpenRouter API keys start with "sk-or-v1-". Please check your key at openrouter.ai/keys.',
+        reason: 'Invalid key format. API keys start with "sk-". Please check your key.',
         code: 'format',
       };
     }
     if (trimmed.length < 20) {
       return {
         valid: false,
-        reason: 'API key is too short. OpenRouter keys are typically 71 characters long (sk-or-v1- followed by 64 hex characters).',
+        reason: 'API key is too short. Keys are typically 64+ characters long.',
         code: 'format',
       };
     }
     return {
       valid: false,
-      reason: 'API key format is invalid. Expected format: sk-or-v1- followed by 64 hexadecimal characters.',
+      reason: 'API key format is invalid. Expected format: sk- followed by alphanumeric characters.',
       code: 'format',
     };
   }
@@ -74,7 +78,7 @@ function validateApiKeyOrThrow(apiKey) {
 }
 
 /**
- * Parse an OpenRouter API error response into a NovaRetryError.
+ * Parse an API error response into a NovaRetryError.
  * @param {Response} response - fetch Response object
  * @returns {Promise<NovaRetryError>}
  */
@@ -95,9 +99,9 @@ async function parseApiError(response) {
   const retryable = !shouldAbortRetry(status);
   const userMessages = {
     429: 'Rate limit reached. Waiting before retrying...',
-    500: 'OpenRouter server error. Retrying...',
-    502: 'OpenRouter gateway error. Retrying...',
-    503: 'OpenRouter service temporarily unavailable. Retrying...',
+    500: 'API server error. Retrying...',
+    502: 'API gateway error. Retrying...',
+    503: 'API service temporarily unavailable. Retrying...',
     401: 'Authentication failed. Please check your API key in Settings.',
     403: 'Access denied. Please check your API key permissions.',
   };
@@ -111,12 +115,15 @@ async function parseApiError(response) {
 }
 
 /**
- * Call the OpenRouter API via Electron IPC with automatic retry.
- * @param {string} systemPrompt - system prompt text
- * @param {string} userMsg - user message text
- * @param {string} apiKey - OpenRouter API key
+ * Ask the AI a question via API with automatic retry.
+ * Supports JSON schema mode for structured output.
+ *
+ * @param {string} systemPrompt - System instructions
+ * @param {string} userMsg - User message
+ * @param {string} apiKey - API key
  * @param {Object} [options]
- * @param {string} [options.model] - OpenRouter model ID (e.g. "openai/gpt-4o-mini")
+ * @param {string} [options.model] - Model ID (e.g. "deepseek-v4-flash")
+ * @param {Object|null} [options.schemaType] - Schema definition (triggers json_object mode)
  * @param {Object} [options.retryOptions] - passed through to withRetry
  * @returns {Promise<string>} response text
  */
@@ -124,10 +131,16 @@ export async function askAI(systemPrompt, userMsg, apiKey, options = {}) {
   // Pre-flight validation — prevents wasted API calls on invalid keys
   validateApiKeyOrThrow(apiKey);
 
-  const { model, retryOptions = {} } = options;
+  const { model, schemaType, retryOptions = {} } = options;
 
   const result = await withRetry(async (attempt) => {
-    const response = await window.electronAPI?.queryAI({ systemPrompt, userMsg, apiKey, model });
+    const response = await window.electronAPI?.queryAI({
+      systemPrompt,
+      userMsg,
+      apiKey,
+      model,
+      schemaType: schemaType || null,
+    });
     
     // electronAPI.queryAI returns the raw response string.
     // Check if it's an error string from the main process.
@@ -153,11 +166,14 @@ export async function askAI(systemPrompt, userMsg, apiKey, options = {}) {
 }
 
 /**
- * Chat with NOVA via OpenRouter API with automatic retry.
+ * Chat with NOVA via API with automatic retry.
+ * Supports JSON schema mode for structured output.
+ *
  * @param {Array} messages - array of {role, content} objects
- * @param {string} apiKey - OpenRouter API key
+ * @param {string} apiKey - API key
  * @param {Object} [options]
- * @param {string} [options.model] - OpenRouter model ID (e.g. "openai/gpt-4o-mini")
+ * @param {string} [options.model] - Model ID (e.g. "deepseek-v4-flash")
+ * @param {Object|null} [options.schemaType] - Schema definition (triggers json_object mode)
  * @param {Object} [options.retryOptions] - passed through to withRetry
  * @returns {Promise<string>} response text
  */
@@ -165,10 +181,15 @@ export async function chatWithNOVA(messages, apiKey, options = {}) {
   // Pre-flight validation — prevents wasted API calls on invalid keys
   validateApiKeyOrThrow(apiKey);
 
-  const { model, retryOptions = {} } = options;
+  const { model, schemaType, retryOptions = {} } = options;
 
   const result = await withRetry(async (attempt) => {
-    const response = await window.electronAPI?.chatNOVA({ messages, apiKey, model });
+    const response = await window.electronAPI?.chatNOVA({
+      messages,
+      apiKey,
+      model,
+      schemaType: schemaType || null,
+    });
     
     if (typeof response === 'string' && response.startsWith('Error:')) {
       const msg = response.replace('Error: ', '');

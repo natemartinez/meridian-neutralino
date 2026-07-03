@@ -10,19 +10,25 @@ const isNeutralino = () => typeof Neutralino !== 'undefined' && !!Neutralino.ext
 
 // ── Direct browser fetch to OpenRouter (dev mode fallback) ──
 async function browserFetchAI(endpoint, params) {
-  const { apiKey, model, messages, systemPrompt, userMsg } = params;
+  const { apiKey, model, messages, systemPrompt, userMsg, schemaType } = params;
+  const headers = {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
   const body = messages
-    ? { model: model || 'openai/gpt-4o-mini', messages, max_tokens: 1200 }
-    : { model: model || 'openai/gpt-4o-mini', messages: [
+    ? { model: model || 'deepseek-v4-flash', messages, max_tokens: 4096 }
+    : { model: model || 'deepseek-v4-flash', messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userMsg },
-      ], max_tokens: 1000 };
-  const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      ], max_tokens: 4096 };
+  // DeepSeek supports json_object (not json_schema).
+  // When schemaType is provided, use json_object to enforce JSON output.
+  if (schemaType) {
+    body.response_format = { type: 'json_object' };
+  }
+  const r = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(endpoint === 'aiChat' ? 45000 : 30000),
   });

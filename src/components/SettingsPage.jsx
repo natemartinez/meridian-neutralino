@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { T } from '../utils/theme.js';
 import { validateApiKey } from '../utils/api.js';
 
-export default function SettingsPage({ apiKey, setApiKey, model, setModel, intensity, setIntensity, showApiKey, setShowApiKey, companionName, setCompanionName, setMainPage, buildNOVASystemPrompt, onNewSession }) {
+export default function SettingsPage({ apiKey, setApiKey, model, setModel, intensity, setIntensity, showApiKey, setShowApiKey, setMainPage, buildNOVASystemPrompt, onNewSession }) {
   const [keyVal, setKeyVal]       = useState(apiKey || '');
   const [keySaved, setKeySaved]   = useState(false);
   const [keyError, setKeyError]   = useState('');
@@ -68,14 +68,14 @@ export default function SettingsPage({ apiKey, setApiKey, model, setModel, inten
         </div>
         {/* API Key */}
         <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:'18px 20px', marginBottom:16 }}>
-          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted, letterSpacing:'.12em', marginBottom:12 }}>OPENROUTER API KEY</div>
+          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted, letterSpacing:'.12em', marginBottom:12 }}>API KEY</div>
           <div style={{ display:'flex', gap:8, marginBottom: keyError ? 4 : 8 }}>
             <input
               type={showApiKey ? 'text' : 'password'}
               value={keyVal}
               onChange={e => { setKeyVal(e.target.value); setKeySaved(false); setKeyError(''); }}
               onKeyDown={e => e.key === 'Enter' && saveKey()}
-              placeholder="sk-or-..."
+              placeholder="sk-..."
               style={{ flex:1, background:T.card, border:`1px solid ${keyError ? T.rose : T.border}`, borderRadius:6, padding:'8px 12px', color:T.text, fontFamily:"'IBM Plex Mono',monospace", fontSize:11, outline:'none' }}
             />
             <button onClick={() => setShowApiKey(v => !v)}
@@ -90,7 +90,7 @@ export default function SettingsPage({ apiKey, setApiKey, model, setModel, inten
           {keyError && (
             <div style={{ color:T.rose, fontSize:10, fontFamily:"'IBM Plex Mono',monospace", marginBottom:8, lineHeight:1.4 }}>{keyError}</div>
           )}
-          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted }}>OpenRouter API key — used for AI Check-in, Plan My Day, Suggest Subtask</div>
+          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted }}>API key — used for AI Check-in, Plan My Day, Suggest Subtask</div>
         </div>
         {/* AI Model */}
         <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:'18px 20px', marginBottom:16 }}>
@@ -109,24 +109,8 @@ export default function SettingsPage({ apiKey, setApiKey, model, setModel, inten
               {modelSaved ? '✓ saved' : 'save'}
             </button>
           </div>
-          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted }}>OpenRouter model ID — find free models at openrouter.ai/models</div>
+          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted }}>Model ID — e.g. deepseek/deepseek-v4-flash</div>
         </div>
-        {/* AI Companion Name */}
-        <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:'18px 20px', marginBottom:16 }}>
-          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted, letterSpacing:'.12em', marginBottom:12 }}>AI COMPANION</div>
-          <div style={{ display:'flex', gap:8 }}>
-            <input
-              type="text"
-              value={companionName}
-              onChange={e => setCompanionName(e.target.value)}
-              placeholder="AI Companion"
-              maxLength={32}
-              style={{ flex:1, background:T.card, border:`1px solid ${T.border}`, borderRadius:6, padding:'8px 12px', color:T.text, fontFamily:"'IBM Plex Mono',monospace", fontSize:11, outline:'none' }}
-            />
-          </div>
-          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted, marginTop:8 }}>Name shown in the AI companion header on the Waypoint panel</div>
-        </div>
-
         {/* Nova Knowledge Pool */}
         <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:'18px 20px', marginBottom:16 }}>
           <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted, letterSpacing:'.12em', marginBottom:4 }}>NOVA KNOWLEDGE POOL</div>

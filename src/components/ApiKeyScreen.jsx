@@ -33,12 +33,12 @@ export default function ApiKeyScreen({ onSave }) {
       <div style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:16, padding:'40px 48px', width:440, boxShadow:'0 8px 40px #00000080' }}>
         <img src={meridianLogo} alt="Meridian" style={{ width:180, display:'block', marginBottom:12 }} />
         <div style={{ color:T.muted, fontSize:13, marginBottom:28, lineHeight:1.5 }}>
-          Enter your OpenRouter API key to enable AI features.<br/>
-          Get a free key at <strong>openrouter.ai</strong> — stored encrypted on this device.
+          Enter your API key to enable AI features.<br/>
+          Get a key at <strong>openrouter.ai/keys</strong> — stored encrypted on this device.
         </div>
         <input
           type="password"
-          placeholder="sk-or-..."
+          placeholder="sk-..."
           value={val}
           onChange={e => { setVal(e.target.value); setErr(''); }}
           onKeyDown={e => e.key === 'Enter' && handleSave()}

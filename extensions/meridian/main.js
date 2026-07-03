@@ -92,39 +92,53 @@ class MeridianExtension {
 
       // ── AI (reused from main.js fetch logic) ──
       case 'aiQuery': {
-        const { systemPrompt, userMsg, apiKey, model } = params;
-        const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        const { systemPrompt, userMsg, apiKey, model, schemaType } = params;
+        const headers = {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        };
+        const body = {
+          model: model || 'deepseek-v4-flash',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMsg },
+          ],
+          max_tokens: 4096,
+        };
+        // DeepSeek supports json_object (not json_schema).
+        // When schemaType is provided, use json_object to enforce JSON output.
+        if (schemaType) {
+          body.response_format = { type: 'json_object' };
+        }
+        const r = await fetch('https://api.deepseek.com/chat/completions', {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: model || 'openai/gpt-4o-mini',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userMsg },
-            ],
-            max_tokens: 1000,
-          }),
+          headers,
+          body: JSON.stringify(body),
           signal: AbortSignal.timeout(30000),
         });
         const data = await r.json();
         return { success: true, data: data.choices?.[0]?.message?.content || '' };
       }
       case 'aiChat': {
-        const { messages, apiKey, model } = params;
-        const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        const { messages, apiKey, model, schemaType } = params;
+        const headers = {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        };
+        const body = {
+          model: model || 'deepseek-v4-flash',
+          messages,
+          max_tokens: 4096,
+        };
+        // DeepSeek supports json_object (not json_schema).
+        // When schemaType is provided, use json_object to enforce JSON output.
+        if (schemaType) {
+          body.response_format = { type: 'json_object' };
+        }
+        const r = await fetch('https://api.deepseek.com/chat/completions', {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: model || 'openai/gpt-4o-mini',
-            messages,
-            max_tokens: 1200,
-          }),
+          headers,
+          body: JSON.stringify(body),
           signal: AbortSignal.timeout(45000),
         });
         const data = await r.json();
