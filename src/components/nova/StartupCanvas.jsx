@@ -3,6 +3,7 @@ import { T } from '../../utils/theme.js';
 import { selectGreeting, buildSessionSummary } from '../../utils/nova.js';
 import { ACTION_BUTTONS, SESSION_DECISION_BUTTONS } from '../../constants/novaStartupActions.js';
 import NOVAMessageBlock from './NOVAMessageBlock.jsx';
+import RoutingChatBox from './RoutingChatBox.jsx';
 
 const PROG_META = {
   briefing:    { label:'Goals',       color:'#F59E0B', icon:'☀', desc:'Morning debrief' },
@@ -160,26 +161,26 @@ export default function StartupCanvas({
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '80px 60px',
+      padding: '50px 80px',
       overflow: 'auto',
     },
     card: {
       width: '100%',
-      maxWidth: 640,
+      maxWidth: 800,
       background: T.card,
       border: `1px solid ${T.border}`,
-      borderRadius: 12,
+      borderRadius: 14,
       padding: 0,
       overflow: 'hidden',
     },
     summaryRow: {
       display: 'flex',
-      gap: 20,
+      gap: 28,
       justifyContent: 'center',
-      marginTop: 20,
-      padding: '14px 20px',
+      marginTop: 24,
+      padding: '18px 28px',
       background: T.surface,
-      borderRadius: 8,
+      borderRadius: 10,
       border: `1px solid ${T.border}`,
     },
     summaryItem: {
@@ -187,30 +188,30 @@ export default function StartupCanvas({
     },
     summaryValue: {
       fontFamily: "'IBM Plex Mono',monospace",
-      fontSize: 16,
+      fontSize: 20,
       fontWeight: 700,
       color: T.text,
     },
     summaryLabel: {
       fontFamily: "'IBM Plex Mono',monospace",
-      fontSize: 8,
+      fontSize: 10,
       fontWeight: 600,
       color: T.muted,
       letterSpacing: '.08em',
-      marginTop: 2,
+      marginTop: 3,
     },
     actionButton: {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 4,
-      padding: '16px 12px',
-      borderRadius: 10,
+      gap: 5,
+      padding: '20px 16px',
+      borderRadius: 12,
       border: '1px solid transparent',
       cursor: 'pointer',
       transition: 'all .14s',
-      minWidth: 130,
+      minWidth: 160,
       flex: 1,
     },
     actionButtonDisabled: {
@@ -226,53 +227,53 @@ export default function StartupCanvas({
   const renderAutoStart = () => (
     <div style={styles.card}>
       <div style={{
-        padding: '18px 24px',
+        padding: '22px 30px',
         borderBottom: `1px solid ${T.border}`,
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
+        gap: 14,
       }}>
         <div style={{
-          width: 36, height: 36, borderRadius: 8,
+          width: 44, height: 44, borderRadius: 10,
           background: `${autoMeta.color}20`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 18,
+          fontSize: 22,
         }}>
           {autoMeta.icon}
         </div>
         <div>
           <div style={{
             fontFamily: "'IBM Plex Mono',monospace",
-            fontSize: 13, fontWeight: 700, color: autoMeta.color,
+            fontSize: 16, fontWeight: 700, color: autoMeta.color,
             letterSpacing: '.06em',
           }}>
             {autoMeta.label}
           </div>
           <div style={{
             fontFamily: "'IBM Plex Mono',monospace",
-            fontSize: 9, color: T.muted, marginTop: 2,
+            fontSize: 11, color: T.muted, marginTop: 3,
           }}>
             {autoMeta.desc}
           </div>
         </div>
       </div>
 
-      <div style={{ padding: '24px' }}>
+      <div style={{ padding: '30px' }}>
         {novaLoading ? (
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 12,
-            padding: '16px 0',
+            gap: 14,
+            padding: '20px 0',
           }}>
             <div style={{
-              width: 8, height: 8, borderRadius: '50%',
+              width: 10, height: 10, borderRadius: '50%',
               background: autoMeta.color,
               animation: 'novaPulse 1.2s ease-in-out infinite',
             }} />
             <span style={{
               fontFamily: "'IBM Plex Mono',monospace",
-              fontSize: 11, color: T.muted,
+              fontSize: 13, color: T.muted,
               letterSpacing: '.04em',
             }}>
               NOVA is thinking…
@@ -289,7 +290,7 @@ export default function StartupCanvas({
               ) : (
                 <div style={{
                   fontFamily: "'IBM Plex Mono',monospace",
-                  fontSize: 11, color: T.muted, fontStyle: 'italic',
+                  fontSize: 13, color: T.muted, fontStyle: 'italic',
                 }}>
                   Waiting for NOVA's response…
                 </div>
@@ -305,34 +306,34 @@ export default function StartupCanvas({
   const renderFocusResume = () => (
     <div style={styles.card}>
       <div style={{
-        padding: '32px 28px',
+        padding: '40px 36px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 16,
+        gap: 20,
       }}>
         <div style={{
-          width: 48, height: 48, borderRadius: 12,
+          width: 60, height: 60, borderRadius: 14,
           background: `${T.blue}20`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 22,
+          fontSize: 28,
         }}>
           ◎
         </div>
 
         <div style={{
           fontFamily: "'IBM Plex Mono',monospace",
-          fontSize: 9, fontWeight: 700, color: T.muted,
+          fontSize: 11, fontWeight: 700, color: T.muted,
           letterSpacing: '.12em',
         }}>
           ACTIVE FOCUS SESSION
         </div>
 
         <div style={{
-          fontSize: 22, fontWeight: 700, color: T.text,
+          fontSize: 26, fontWeight: 700, color: T.text,
           textAlign: 'center',
           lineHeight: 1.3,
-          maxWidth: 400,
+          maxWidth: 500,
         }}>
           {focusMode.taskTitle}
         </div>
@@ -340,28 +341,107 @@ export default function StartupCanvas({
         <button
           onClick={onResumeFocus}
           style={{
-            marginTop: 8,
+            marginTop: 10,
             background: T.blue,
             border: 'none',
-            borderRadius: 10,
-            padding: '14px 40px',
+            borderRadius: 12,
+            padding: '16px 48px',
             fontFamily: "'IBM Plex Mono',monospace",
-            fontSize: 13,
+            fontSize: 15,
             fontWeight: 700,
             color: '#07090f',
             cursor: 'pointer',
             letterSpacing: '.08em',
             transition: 'all .14s',
-            boxShadow: `0 0 24px ${T.blue}40`,
+            boxShadow: `0 0 30px ${T.blue}40`,
           }}
-          onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 0 32px ${T.blue}60`; e.currentTarget.style.transform = 'scale(1.02)'; }}
-          onMouseLeave={e => { e.currentTarget.style.boxShadow = `0 0 24px ${T.blue}40`; e.currentTarget.style.transform = 'scale(1)'; }}
+          onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 0 40px ${T.blue}60`; e.currentTarget.style.transform = 'scale(1.02)'; }}
+          onMouseLeave={e => { e.currentTarget.style.boxShadow = `0 0 30px ${T.blue}40`; e.currentTarget.style.transform = 'scale(1)'; }}
         >
           ▶ Resume Task
         </button>
       </div>
     </div>
   );
+
+  /** Continue Session card — prominent resume button for the last active program */
+  const renderContinueSession = () => {
+    if (!lastProgram || !lastMeta) return null;
+
+    return (
+      <div style={{
+        ...styles.card,
+        marginBottom: 20,
+        border: `1px solid ${lastMeta.color}50`,
+        boxShadow: `0 0 36px ${lastMeta.color}20`,
+      }}>
+        <button
+          onClick={() => {
+            if (onSendPreCraftedPrompt) {
+              onSendPreCraftedPrompt(lastProgram.progId, 'Continue our last conversation. Pick up right where we left off.');
+            }
+          }}
+          disabled={novaLoading || isAutoStarting}
+          style={{
+            width: '100%',
+            padding: '34px 30px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 18,
+            background: 'none',
+            border: 'none',
+            cursor: (novaLoading || isAutoStarting) ? 'not-allowed' : 'pointer',
+            opacity: (novaLoading || isAutoStarting) ? 0.4 : 1,
+            transition: 'all .14s',
+          }}
+          onMouseEnter={e => {
+            if (!novaLoading && !isAutoStarting) {
+              e.currentTarget.style.background = `${lastMeta.color}08`;
+            }
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'none';
+          }}
+        >
+          <div style={{
+            width: 54, height: 54, borderRadius: 14,
+            background: `${lastMeta.color}20`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 24,
+            flexShrink: 0,
+          }}>
+            ▶
+          </div>
+          <div style={{ textAlign: 'left' }}>
+            <div style={{
+              fontFamily: "'IBM Plex Mono',monospace",
+              fontSize: 16, fontWeight: 700, color: lastMeta.color,
+              letterSpacing: '.06em',
+            }}>
+              Continue Session
+            </div>
+            <div style={{
+              fontFamily: "'IBM Plex Mono',monospace",
+              fontSize: 11, color: T.muted, marginTop: 4,
+            }}>
+              Resume {lastMeta.label} — {lastProgram.messageCount || 0} messages
+            </div>
+          </div>
+          <div style={{
+            marginLeft: 'auto',
+            fontFamily: "'IBM Plex Mono',monospace",
+            fontSize: 12, color: lastMeta.color,
+            fontWeight: 700,
+            letterSpacing: '.04em',
+            opacity: 0.7,
+          }}>
+            ▶
+          </div>
+        </button>
+      </div>
+    );
+  };
 
   /** Session Summary card — replaces renderLastProgram (Scenario B) */
   const renderSessionSummary = () => {
@@ -375,31 +455,31 @@ export default function StartupCanvas({
       <div style={styles.card}>
         {/* Program header */}
         <div style={{
-          padding: '18px 24px',
+          padding: '22px 30px',
           borderBottom: `1px solid ${T.border}`,
           display: 'flex',
           alignItems: 'center',
-          gap: 12,
+          gap: 14,
         }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 8,
+            width: 44, height: 44, borderRadius: 10,
             background: `${lastMeta.color}20`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 18,
+            fontSize: 22,
           }}>
             {lastMeta.icon}
           </div>
           <div>
             <div style={{
               fontFamily: "'IBM Plex Mono',monospace",
-              fontSize: 13, fontWeight: 700, color: lastMeta.color,
+              fontSize: 16, fontWeight: 700, color: lastMeta.color,
               letterSpacing: '.06em',
             }}>
               {lastMeta.label}
             </div>
             <div style={{
               fontFamily: "'IBM Plex Mono',monospace",
-              fontSize: 9, color: T.muted, marginTop: 2,
+              fontSize: 11, color: T.muted, marginTop: 3,
             }}>
               {sessionSummary.lastActiveLabel} · {sessionSummary.messageCount} messages
             </div>
@@ -407,18 +487,18 @@ export default function StartupCanvas({
         </div>
 
         {/* Session Summary content */}
-        <div style={{ padding: '20px 24px' }}>
+        <div style={{ padding: '24px 30px' }}>
           <div style={{
             background: T.surface,
-            borderRadius: 8,
+            borderRadius: 10,
             border: `1px solid ${T.border}`,
-            padding: '16px 20px',
+            padding: '20px 24px',
           }}>
             <div style={{
               fontFamily: "'IBM Plex Mono',monospace",
-              fontSize: 9, fontWeight: 700, color: T.muted,
+              fontSize: 11, fontWeight: 700, color: T.muted,
               letterSpacing: '.1em',
-              marginBottom: 12,
+              marginBottom: 14,
             }}>
               SESSION SUMMARY
             </div>
@@ -426,8 +506,8 @@ export default function StartupCanvas({
             {/* Selected objectives */}
             {sessionSummary.selectedCount > 0 && (
               <div style={{
-                fontSize: 12, color: T.text, lineHeight: 1.6,
-                marginBottom: 10,
+                fontSize: 14, color: T.text, lineHeight: 1.6,
+                marginBottom: 12,
               }}>
                 You selected <strong style={{ color: lastMeta.color }}>{sessionSummary.selectedCount}</strong> objective{sessionSummary.selectedCount !== 1 ? 's' : ''} for today.
               </div>
@@ -435,34 +515,34 @@ export default function StartupCanvas({
 
             {/* Progress */}
             {sessionSummary.totalCount > 0 && (
-              <div style={{ marginBottom: 10 }}>
+              <div style={{ marginBottom: 12 }}>
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   fontFamily: "'IBM Plex Mono',monospace",
-                  fontSize: 9, color: T.muted,
-                  marginBottom: 4,
+                  fontSize: 11, color: T.muted,
+                  marginBottom: 5,
                 }}>
                   <span>Progress</span>
                   <span>{sessionSummary.completedCount}/{sessionSummary.totalCount} completed</span>
                 </div>
                 <div style={{
-                  width: '100%', height: 4,
+                  width: '100%', height: 5,
                   background: T.dim,
-                  borderRadius: 2,
+                  borderRadius: 3,
                   overflow: 'hidden',
                 }}>
                   <div style={{
                     width: `${progressPercent}%`,
                     height: '100%',
                     background: progressPercent === 100 ? T.green : lastMeta.color,
-                    borderRadius: 2,
+                    borderRadius: 3,
                     transition: 'width 0.3s ease',
                   }} />
                 </div>
                 {sessionSummary.completedCount === sessionSummary.totalCount && sessionSummary.totalCount > 0 && (
                   <div style={{
-                    fontSize: 11, color: T.green, marginTop: 6,
+                    fontSize: 13, color: T.green, marginTop: 8,
                     fontWeight: 600,
                   }}>
                     All objectives completed! 🎉
@@ -474,7 +554,7 @@ export default function StartupCanvas({
             {/* Streak */}
             <div style={{
               fontFamily: "'IBM Plex Mono',monospace",
-              fontSize: 9, color: sessionSummary.streakDays > 0 ? T.accent : T.muted,
+              fontSize: 11, color: sessionSummary.streakDays > 0 ? T.accent : T.muted,
             }}>
               {sessionSummary.streakDays > 0
                 ? `Streak: ${sessionSummary.streakDays} day${sessionSummary.streakDays > 1 ? 's' : ''}`
@@ -484,15 +564,15 @@ export default function StartupCanvas({
             {/* Last message snippet */}
             {sessionSummary.lastMessageSnippet && (
               <div style={{
-                marginTop: 10,
-                padding: '8px 10px',
+                marginTop: 12,
+                padding: '10px 12px',
                 background: T.dim,
-                borderRadius: 6,
+                borderRadius: 8,
                 fontFamily: "'IBM Plex Mono',monospace",
-                fontSize: 9, color: T.muted,
+                fontSize: 11, color: T.muted,
                 fontStyle: 'italic',
                 lineHeight: 1.5,
-                maxHeight: 40,
+                maxHeight: 48,
                 overflow: 'hidden',
               }}>
                 "{sessionSummary.lastMessageSnippet}"
@@ -503,10 +583,10 @@ export default function StartupCanvas({
 
         {/* Decision buttons */}
         <div style={{
-          padding: '14px 24px',
+          padding: '16px 30px',
           borderTop: `1px solid ${T.border}`,
           display: 'flex',
-          gap: 8,
+          gap: 10,
           flexWrap: 'wrap',
           justifyContent: 'center',
         }}>
@@ -520,10 +600,10 @@ export default function StartupCanvas({
                   ? `${lastMeta.color}18`
                   : 'transparent',
                 border: `1px solid ${btn.id === 'continue' ? `${lastMeta.color}40` : T.border}`,
-                borderRadius: 8,
-                padding: '8px 16px',
+                borderRadius: 10,
+                padding: '10px 20px',
                 fontFamily: "'IBM Plex Mono',monospace",
-                fontSize: 9,
+                fontSize: 11,
                 fontWeight: 700,
                 color: btn.id === 'continue' ? lastMeta.color : T.text,
                 cursor: (novaLoading || isAutoStarting) ? 'not-allowed' : 'pointer',
@@ -555,47 +635,53 @@ export default function StartupCanvas({
     <div style={styles.card}>
       {/* NOVA Greeting header */}
       <div style={{
-        padding: '24px 24px 16px',
+        padding: '30px 30px 20px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 8,
+        gap: 10,
       }}>
         <div style={{
-          width: 48, height: 48, borderRadius: 12,
+          width: 60, height: 60, borderRadius: 14,
           background: `${T.accent}18`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 22,
+          fontSize: 28,
         }}>
           ✦
         </div>
         <div style={{
-          fontSize: 18, fontWeight: 700, color: T.text,
+          fontSize: 22, fontWeight: 700, color: T.text,
           textAlign: 'center',
         }}>
           {greeting}
         </div>
         <div style={{
           fontFamily: "'IBM Plex Mono',monospace",
-          fontSize: 10, color: T.muted,
+          fontSize: 12, color: T.muted,
           textAlign: 'center',
-          maxWidth: 380,
+          maxWidth: 480,
           lineHeight: 1.5,
         }}>
           Pick a direction and I'll jump right in.
         </div>
       </div>
 
+      {/* ── Routing Chat Box ── */}
+      <RoutingChatBox
+        onSendPreCraftedPrompt={onSendPreCraftedPrompt}
+        novaLoading={novaLoading || isAutoStarting}
+      />
+
       {/* Action buttons grid */}
       <div style={{
-        padding: '8px 24px 20px',
+        padding: '10px 30px 24px',
         display: 'flex',
         flexDirection: 'column',
-        gap: 8,
+        gap: 10,
       }}>
         <div style={{
           display: 'flex',
-          gap: 8,
+          gap: 10,
           flexWrap: 'wrap',
         }}>
           {visibleButtons.slice(0, 3).map(btn => (
@@ -624,17 +710,17 @@ export default function StartupCanvas({
                 e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
-              <span style={{ fontSize: 20 }}>{btn.icon}</span>
+              <span style={{ fontSize: 24 }}>{btn.icon}</span>
               <span style={{
                 fontFamily: "'IBM Plex Mono',monospace",
-                fontSize: 10, fontWeight: 700,
+                fontSize: 12, fontWeight: 700,
                 letterSpacing: '.04em',
               }}>
                 {btn.label}
               </span>
               <span style={{
                 fontFamily: "'IBM Plex Mono',monospace",
-                fontSize: 8, color: T.muted,
+                fontSize: 10, color: T.muted,
               }}>
                 {btn.sublabel}
               </span>
@@ -643,7 +729,7 @@ export default function StartupCanvas({
         </div>
         <div style={{
           display: 'flex',
-          gap: 8,
+          gap: 10,
           flexWrap: 'wrap',
         }}>
           {visibleButtons.slice(3).map(btn => (
@@ -672,17 +758,17 @@ export default function StartupCanvas({
                 e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
-              <span style={{ fontSize: 20 }}>{btn.icon}</span>
+              <span style={{ fontSize: 24 }}>{btn.icon}</span>
               <span style={{
                 fontFamily: "'IBM Plex Mono',monospace",
-                fontSize: 10, fontWeight: 700,
+                fontSize: 12, fontWeight: 700,
                 letterSpacing: '.04em',
               }}>
                 {btn.label}
               </span>
               <span style={{
                 fontFamily: "'IBM Plex Mono',monospace",
-                fontSize: 8, color: T.muted,
+                fontSize: 10, color: T.muted,
               }}>
                 {btn.sublabel}
               </span>
@@ -694,7 +780,7 @@ export default function StartupCanvas({
       {/* Back to Summary button (only when toggled from session summary) */}
       {showBackToSummary && (
         <div style={{
-          padding: '0 24px 16px',
+          padding: '0 30px 20px',
           display: 'flex',
           justifyContent: 'center',
         }}>
@@ -703,10 +789,10 @@ export default function StartupCanvas({
             style={{
               background: 'transparent',
               border: `1px solid ${T.border}`,
-              borderRadius: 8,
-              padding: '8px 20px',
+              borderRadius: 10,
+              padding: '10px 24px',
               fontFamily: "'IBM Plex Mono',monospace",
-              fontSize: 9,
+              fontSize: 11,
               fontWeight: 700,
               color: T.muted,
               cursor: 'pointer',
@@ -770,12 +856,17 @@ export default function StartupCanvas({
         <div style={styles.body}>
           <div style={{
             width: '100%',
-            maxWidth: 640,
+            maxWidth: 800,
             animation: 'fadeInUp 0.35s ease-out',
           }}>
             {isAutoStarting && renderAutoStart()}
             {isFocusResume && renderFocusResume()}
-            {hasLastProgram && !showActionPalette && renderSessionSummary()}
+            {hasLastProgram && !showActionPalette && (
+              <>
+                {renderContinueSession()}
+                {renderSessionSummary()}
+              </>
+            )}
             {hasLastProgram && showActionPalette && renderActionPalette(true)}
             {isNewSession && renderNovaGreeting()}
           </div>
