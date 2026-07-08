@@ -558,7 +558,7 @@ export function drawMapPage(ctx, dpr, w, h, t, refs) {
 
       // Day number
       ctx.save();
-      ctx.font = `${(isHov ? 10 : 8)*dpr}px 'IBM Plex Mono',monospace`;
+      ctx.font = `${(isHov ? 12 : 9.6)*dpr}px 'IBM Plex Mono',monospace`;
       ctx.fillStyle = isToday ? T.accent : rgba(T.text, .7);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';

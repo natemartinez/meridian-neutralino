@@ -102,7 +102,9 @@ export default function useAppCanvas({
       lastW = newW;
       lastH = newH;
 
-      const isOnward = activePageRef.current === 'onward';
+      const page = activePageRef.current;
+      const isOnward = page === 'onward';
+      const isMap    = page === 'map';
       const visibleHeight = rect.height;
       const rowHeightPx = visibleHeight / VISIBLE_HOURS;
 
@@ -112,6 +114,12 @@ export default function useAppCanvas({
         canvas.height = Math.round(contentHeight * dpr);
         canvas.style.width  = rect.width  + 'px';
         canvas.style.height = contentHeight + 'px';
+      } else if (isMap) {
+        // Map fills the available space (parent width minus waypoint padding)
+        canvas.width  = newW;
+        canvas.height = newH;
+        canvas.style.width  = rect.width + 'px';
+        canvas.style.height = rect.height + 'px';
       } else {
         canvas.width  = newW;
         canvas.height = newH;

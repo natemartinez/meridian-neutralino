@@ -18,7 +18,6 @@ import GoalModal from './panels/GoalModal.jsx';
 import GoalPriorityList from './goals/GoalPriorityList.jsx';
 import FocusScreen from './views/FocusScreen.jsx';
 import DeadlineNotifier from './DeadlineNotifier.jsx';
-import OnwardTaskPopover from './OnwardTaskPopover.jsx';
 import GoalDetailPanel from './panels/GoalDetailPanel.jsx';
 import CanvasPanelWrapper from './panels/CanvasPanelWrapper.jsx';
 import NovaSidebarBlock from './nova/NovaSidebarBlock.jsx';
@@ -735,27 +734,6 @@ export default function AppRouter({
           model={model}
           onClose={() => { setModal(false); setForm({ title:'', desc:'', measurable:'', achievable:'', relevant:'', deadline:'', priority:'low', scale:'short' }); }}
           onCreate={createGoalFromModal}
-        />
-      )}
-
-      {/* ── Onward Task Popover ── */}
-      {onwardClickedItem && (
-        <OnwardTaskPopover
-          item={onwardItems.find(it => it.id === onwardClickedItem.id) || onwardClickedItem}
-          cardX={onwardClickedItem.cardX}
-          cardY={onwardClickedItem.cardY}
-          projects={projects}
-          onStartFocus={(title, goalId) => {
-            const progId = isProgram(mainPage) ? extractProgId(mainPage) : null;
-            startSession(title, goalId, progId);
-            setOnwardClickedItem(null);
-            setMainPage('tracking');
-          }}
-          onToggleDone={(id) => {
-            setOnwardItems(prev => prev.map(it => it.id===id ? { ...it, done: !it.done } : it));
-            setOnwardClickedItem(null);
-          }}
-          onClose={() => setOnwardClickedItem(null)}
         />
       )}
 

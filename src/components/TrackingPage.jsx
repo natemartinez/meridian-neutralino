@@ -27,6 +27,13 @@ export default function TrackingPage({
   setMainPage,
 }) {
   const [trackView, setTrackView] = useState('performance');
+
+  // Auto-switch to timer view when a task is preselected for focus
+  useEffect(() => {
+    if (pomodoroPreselect?.taskId) {
+      setTrackView('timer');
+    }
+  }, [pomodoroPreselect?.taskId]);
   const [hoveredHour, setHoveredHour] = useState(null);
   const [liveMin, setLiveMin] = useState(0);
   const [pomodoroData, setPomodoroData] = useState(() => {

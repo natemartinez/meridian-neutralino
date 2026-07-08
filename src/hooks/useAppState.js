@@ -59,7 +59,7 @@ export default function useAppState() {
   const [onwardItems, setOnwardItems]         = useLocalStorageState('meridian_onward_v2', []);
   const [freeformTasks, setFreeformTasks]     = useLocalStorageState('meridian_freeform_tasks', []);
   const [skills, setSkills]                   = useState([]);
-  const [onwardForm, setOnwardForm]           = useState({ title:'', hour:480, priority:'low', goalId:null });
+  const [onwardForm, setOnwardForm]           = useState({ title:'', hour:480, priority:'low', goalId:null, duration:60 });
 
   // Drag and drop state for subtasks/checkpoints to time blocks
   const [draggedTask, setDraggedTask]         = useState(null);
@@ -118,7 +118,15 @@ export default function useAppState() {
   const [intensity, setIntensity]         = useState({ low:35, medium:55, high:75 });
   const [showApiKey, setShowApiKey]       = useState(false);
   const [showMindCheckCard, setShowMindCheckCard] = useState(false);
-  const [sessions, setSessions]                   = useState([]);
+  const [sessions, setSessions]                   = useState(() => {
+    try {
+      const raw = localStorage.getItem('meridian_sessions');
+      if (raw) {
+        return JSON.parse(raw);
+      }
+    } catch {}
+    return [];
+  });
   const [activeSession, setActiveSession]         = useState(null);
   const [prioritizeInput, setPrioritizeInput]     = useState('');
   const [trackingPeriod, setTrackingPeriod]       = useState('day');
@@ -150,10 +158,6 @@ export default function useAppState() {
   const [selectedOnwardDate, setSelectedOnwardDate] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarView, setSidebarView] = useState('session-history'); // 'session-history' | 'programs'
-  // Tracks whether the sidebar was auto-collapsed by openWaypoint,
-  // so closeWaypoint only restores it if it was auto-collapsed,
-  // not when the user manually collapsed it.
-  const sidebarAutoCollapsedRef = useRef(false);
   const [sunId, setSunId] = useLocalStorageState('meridian_sun_id', null);
 
   // ── NOVA ──
@@ -273,20 +277,11 @@ export default function useAppState() {
   const openWaypoint = (context) => {
     setWaypointContext(context);
     setWaypointOpen(true);
-    // Auto-collapse the left sidebar when the right sidebar opens
-    sidebarAutoCollapsedRef.current = true;
-    setSidebarCollapsed(true);
     if (context.type === 'goal') setSelectedId(context.id);
   };
 
   const closeWaypoint = () => {
     setWaypointOpen(false);
-    // Only restore the sidebar if it was auto-collapsed by openWaypoint,
-    // not if the user manually collapsed it.
-    if (sidebarAutoCollapsedRef.current) {
-      setSidebarCollapsed(false);
-    }
-    sidebarAutoCollapsedRef.current = false;
   };
 
   // ── Program-aware waypoint opener: maps a program's default page to the right waypoint context ──
@@ -322,9 +317,11 @@ export default function useAppState() {
     if (defaultPage) {
       setActivePage(defaultPage);
       activePageRef.current = defaultPage;
-      // Open the appropriate waypoint for this program's default page
-      openWaypointForProgram(defaultPage);
     }
+    // Open or close the waypoint based on the program's default page.
+    // openWaypointForProgram handles null (closes waypoint) and known
+    // waypoint pages (opens waypoint) appropriately.
+    openWaypointForProgram(defaultPage);
     setShowStartupCanvas(false);
     // Reset the flag after state settles
     setTimeout(() => { isSwitchingProgramRef.current = false; }, 0);
@@ -355,6 +352,15 @@ export default function useAppState() {
     setSessions, setActiveSession, apiKey, model,
     setFocus, setPlanningDay,
   });
+
+  // ── Wrap onNewSession to also create a tracking session for the sidebar ──
+  const handleNewSession = useCallback((programId) => {
+    onNewSession(programId);
+    // Create a tracking session so SessionHistoryLog sidebar can display it
+    const labelMap = { briefing: 'Goals Session', focus: 'Focus Session', regroup: 'Re-group Session', preview: 'Preview Session', calibration: 'Paths Session' };
+    const label = labelMap[programId] || `${programId} Session`;
+    startSession(label, null, programId);
+  }, [onNewSession, startSession]);
 
   // ── Load persisted state + API key + settings on mount ──
   useEffect(() => {
@@ -388,7 +394,9 @@ export default function useAppState() {
           else                    setSkills(DEFAULT_SKILLS);
           if (saved.intensity)    setIntensity(saved.intensity);
           if (saved.routines)     setRoutines(saved.routines);
-          if (saved.sessions)     setSessions(saved.sessions);
+          if (saved.sessions) {
+            setSessions(saved.sessions);
+          }
         } else {
           setSkills(DEFAULT_SKILLS);
         }
@@ -638,7 +646,7 @@ export default function useAppState() {
     novaState, setNovaState,
     novaChatInput, setNovaChatInput,
     novaLoading, knowledgePool,
-    addSyncEvent, onNewSession,
+    addSyncEvent, onNewSession: handleNewSession,
     addKnowledgeEntry, deleteKnowledgeEntry, editKnowledgeEntry,
     updateCorrections, sendNOVAMessage,
     generateNovaPlan, buildNOVASystemPrompt,

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { T } from '../../utils/theme.js';
+import { PROGRAM_DEFAULT_PAGES } from '../../constants/programs.js';
 
 const PROG_META = {
   briefing:     { label: 'Goals',      color: '#F59E0B' },
@@ -60,9 +61,9 @@ export default function SessionHistoryLog({
   collapsed,
   onTogglePrograms,
 }) {
-  const [expandedProgs, setExpandedProgs] = useState(() =>
-    Object.fromEntries(PROG_ORDER.map(id => [id, true]))
-  );
+  const [expandedProgs, setExpandedProgs] = useState(() => {
+    return Object.fromEntries(PROG_ORDER.map(id => [id, true]));
+  });
 
   const toggleExpanded = (progId) => {
     setExpandedProgs(prev => ({ ...prev, [progId]: !prev[progId] }));
@@ -98,8 +99,9 @@ export default function SessionHistoryLog({
 
   const handleProgramClick = (progId) => {
     const meta = PROG_META[progId];
+    const defaultPage = PROGRAM_DEFAULT_PAGES[progId] || null;
     if (onOpenProgramWithPage) {
-      onOpenProgramWithPage(progId, null);
+      onOpenProgramWithPage(progId, defaultPage);
     } else {
       onOpenProgram(progId);
     }
@@ -148,7 +150,7 @@ export default function SessionHistoryLog({
         letterSpacing: '.12em',
         marginBottom: 10,
       }}>
-        SESSION HISTORY
+        NOVA SESSIONS
       </div>
 
       {/* ── Scrollable list ── */}

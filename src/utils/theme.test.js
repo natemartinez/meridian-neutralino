@@ -13,12 +13,12 @@ import { T, NODE_PALETTE } from './theme.js';
 // T (Theme object)
 // ============================================================
 describe('T (theme object)', () => {
-  it('has all 13 color properties', () => {
+  it('has all 14 color properties', () => {
     const keys = Object.keys(T);
-    expect(keys).toHaveLength(13);
+    expect(keys).toHaveLength(14);
     expect(keys).toEqual([
       'bg', 'surface', 'card', 'border', 'accent', 'accentLo',
-      'blue', 'green', 'purple', 'rose',
+      'blue', 'cyan', 'green', 'purple', 'rose',
       'text', 'muted', 'dim',
     ]);
   });
@@ -28,7 +28,7 @@ describe('T (theme object)', () => {
   });
 
   it('surface is slightly lighter than bg', () => {
-    expect(T.surface).toBe('#0d1017');
+    expect(T.surface).toBe('#111620');
   });
 
   it('accent is gold/yellow', () => {

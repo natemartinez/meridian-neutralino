@@ -59,8 +59,8 @@ export default function useAppStyles() {
 
       /* ── COMMAND ── */
       .cmd{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;position:relative;}
-      .cmd.wp-open .ctb{padding-right:293px;}
-      .cmd.wp-open .cv{width:calc(100% - 293px);}
+      .cmd.wp-open .ctb{padding-right:249px;}
+      .cmd.wp-open .cv{width:calc(100% - 249px);}
       .ctb{padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
       .cttl{font-size:14px;color:${T.accent};font-weight:700;letter-spacing:.1em;font-family:'Syne',sans-serif;}
       .cdt{font-size:9px;color:${T.muted};margin-top:2px;font-family:'IBM Plex Mono',monospace;}
@@ -75,8 +75,8 @@ export default function useAppStyles() {
 
       /* ── WAYPOINT ── */
       .wp{position:absolute;top:0;right:0;height:100%;width:0;overflow:hidden;background:${T.surface};display:flex;transition:width .4s cubic-bezier(.4,0,.2,1);z-index:20;box-shadow:-4px 0 24px rgba(0,0,0,.35);}
-      .wp.open{width:293px;border-left:1px solid ${T.border};}
-      .wpi{width:293px;flex-shrink:0;display:flex;flex-direction:column;height:100%;overflow:hidden;}
+      .wp.open{width:249px;border-left:1px solid ${T.border};}
+      .wpi{width:249px;flex-shrink:0;display:flex;flex-direction:column;height:100%;overflow:hidden;}
       .wp-accent{height:3px;flex-shrink:0;transition:background .25s;}
       .wp-hd{padding:13px 13px 10px;border-bottom:1px solid ${T.border};flex-shrink:0;position:relative;}
       .wp-close{position:absolute;top:9px;right:9px;width:20px;height:20px;border-radius:4px;background:${T.border};display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;font-family:monospace;font-size:12px;color:${T.muted};line-height:1;transition:all .13s;}
@@ -185,10 +185,10 @@ export default function useAppStyles() {
       .sig{width:235px;}
       .sec{padding:14px 14px 10px;}
       .sig-add{margin:6px 14px 10px;padding:9px;}
-      .wp.open{width:414px;}
-      .wpi{width:414px;}
-      .cmd.wp-open .ctb{padding-right:414px;}
-      .cmd.wp-open .cv{width:calc(100% - 414px);}
+      .wp.open{width:352px;}
+      .wpi{width:352px;}
+      .cmd.wp-open .ctb{padding-right:352px;}
+      .cmd.wp-open .cv{width:calc(100% - 352px);}
       .wp-hd{padding:16px 16px 12px;}
       .wp-pg{padding:12px 16px;}
       .wp-bdy{padding:12px 16px 6px;}
@@ -206,10 +206,10 @@ export default function useAppStyles() {
 
       @media (max-width: 1439px) {
         .sig{width:216px;}
-        .wp.open{width:359px;}
-        .wpi{width:359px;}
-        .cmd.wp-open .ctb{padding-right:359px;}
-        .cmd.wp-open .cv{width:calc(100% - 359px);}
+        .wp.open{width:305px;}
+        .wpi{width:305px;}
+        .cmd.wp-open .ctb{padding-right:305px;}
+        .cmd.wp-open .cv{width:calc(100% - 305px);}
         .sec{padding:12px 12px 8px;}
         .sig-add{margin:5px 12px 8px;padding:8px;}
         .wp-hd{padding:14px 14px 10px;}
@@ -227,10 +227,10 @@ export default function useAppStyles() {
 
       @media (max-width: 1365px) {
         .sig{width:193px;}
-        .wp.open{width:331px;}
-        .wpi{width:331px;}
-        .cmd.wp-open .ctb{padding-right:331px;}
-        .cmd.wp-open .cv{width:calc(100% - 331px);}
+        .wp.open{width:281px;}
+        .wpi{width:281px;}
+        .cmd.wp-open .ctb{padding-right:281px;}
+        .cmd.wp-open .cv{width:calc(100% - 281px);}
         .sec{padding:10px 10px 6px;}
         .sig-add{margin:4px 10px 6px;padding:7px;}
         .wp-hd{padding:12px 12px 9px;}
@@ -249,10 +249,10 @@ export default function useAppStyles() {
 
       @media (min-width: 1920px) {
         .sig{width:278px;}
-        .wp.open{width:469px;}
-        .wpi{width:469px;}
-        .cmd.wp-open .ctb{padding-right:469px;}
-        .cmd.wp-open .cv{width:calc(100% - 469px);}
+        .wp.open{width:399px;}
+        .wpi{width:399px;}
+        .cmd.wp-open .ctb{padding-right:399px;}
+        .cmd.wp-open .cv{width:calc(100% - 399px);}
         .sec{padding:18px 18px 12px;}
         .sig-add{margin:8px 18px 12px;padding:11px;}
         .wp-hd{padding:20px 20px 16px;}
@@ -280,10 +280,10 @@ export default function useAppStyles() {
 
       @media (min-width: 2560px) {
         .sig{width:259px;}
-        .wp.open{width:552px;}
-        .wpi{width:552px;}
-        .cmd.wp-open .ctb{padding-right:552px;}
-        .cmd.wp-open .cv{width:calc(100% - 552px);}
+        .wp.open{width:469px;}
+        .wpi{width:469px;}
+        .cmd.wp-open .ctb{padding-right:469px;}
+        .cmd.wp-open .cv{width:calc(100% - 469px);}
         .sec{padding:22px 22px 16px;}
         .sig-add{margin:10px 22px 16px;padding:13px;}
         .wp-hd{padding:24px 24px 20px;}
@@ -313,10 +313,10 @@ export default function useAppStyles() {
 
       @media (max-width: 1200px) {
         .sig{width:129px;}
-        .wp.open{width:304px;}
-        .wpi{width:304px;}
-        .cmd.wp-open .ctb{padding-right:304px;}
-        .cmd.wp-open .cv{width:calc(100% - 304px);}
+        .wp.open{width:258px;}
+        .wpi{width:258px;}
+        .cmd.wp-open .ctb{padding-right:258px;}
+        .cmd.wp-open .cv{width:calc(100% - 258px);}
         .sec{padding:8px 9px 5px;}
         .fci-ico{width:20px;height:20px;}
         .wp-ai-orb{width:24px;height:24px;}

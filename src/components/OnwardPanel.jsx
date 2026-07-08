@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { T } from '../utils/theme.js';
 
 export default function OnwardPanel({
@@ -11,8 +11,15 @@ export default function OnwardPanel({
   selectedDate, onDateChange,
   // ── Goal integration props ──
   setModal, topGoals = [], onToggleTopGoal, setSunId,
+  // ── Duration resize prop ──
+  onResizeDuration,
+  // ── When false, hide the visual time-block grid (canvas draws it instead) ──
+  showTimeBlocks = true,
 }) {
   const [showBacklog, setShowBacklog] = useState(false);
+  const [resizing, setResizing] = useState(null); // { itemId, startY, startDuration }
+  const [selectedTask, setSelectedTask] = useState(null); // clicked task detail panel
+  const gridRef = useRef(null);
 
   // ── Day navigation state ──
   const todayISO = new Date().toISOString().slice(0, 10);
@@ -27,7 +34,6 @@ export default function OnwardPanel({
     if (!onDateChange) return;
     const d = new Date(selectedDateObj);
     d.setDate(d.getDate() + delta);
-    // Clamp to ±30 days from today
     const min = new Date();
     min.setDate(min.getDate() - 30);
     const max = new Date();
@@ -55,12 +61,49 @@ export default function OnwardPanel({
   // Filter: show only items for the selected date that are NOT deferred and NOT in backlog
   const selectedDateItems = onwardItems
     .filter(it => {
-      if (!it.date) return isToday; // items without a date show on today only
+      if (!it.date) return isToday;
       return it.date === selectedDateObj.toDateString();
     })
     .filter(it => !deferredItems.find(d => d.id === it.id))
     .filter(it => !backlogItems.find(b => b.id === it.id))
     .sort((a,b) => a.hour - b.hour);
+
+  // ── Resize drag logic ──
+  const handleResizeMouseDown = useCallback((e, itemId, currentDuration) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizing({ itemId, startY: e.clientY, startDuration: currentDuration || 60 });
+  }, []);
+
+  useEffect(() => {
+    if (!resizing) return;
+    const handleMouseMove = (e) => {
+      const dy = e.clientY - resizing.startY;
+      // Convert pixels to minutes: each 30px ≈ 15min, so 2px per minute
+      const deltaMinutes = Math.round(dy / 2);
+      const newDuration = Math.max(15, Math.min(240, resizing.startDuration + deltaMinutes));
+      if (onResizeDuration) {
+        onResizeDuration(resizing.itemId, newDuration);
+      }
+    };
+    const handleMouseUp = () => {
+      setResizing(null);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [resizing, onResizeDuration]);
+
+  // ── Grid constants ──
+  const GRID_START_HOUR = 6;  // 6:00 AM
+  const GRID_END_HOUR   = 22; // 10:00 PM
+  const VISIBLE_HOURS   = GRID_END_HOUR - GRID_START_HOUR;
+  const ROW_HEIGHT      = 56; // px per hour row
+  const GRID_HEIGHT     = VISIBLE_HOURS * ROW_HEIGHT;
+  const HOUR_LABEL_WIDTH = 44;
 
   // Deferred items that should appear on the selected date
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -112,6 +155,20 @@ export default function OnwardPanel({
             style={{ flex:1, background:T.card, border:`1px solid ${T.border}`, borderRadius:6, padding:'6px 8px', color:T.text, fontFamily:"'IBM Plex Mono',monospace", fontSize:11, outline:'none' }}
           >
             {timeSlots.map(t => <option key={t.value} value={t.value}>{fmt(t.value)}</option>)}
+          </select>
+          <select
+            value={onwardForm.duration || 60}
+            onChange={e => setOnwardForm(f => ({ ...f, duration: Number(e.target.value) }))}
+            style={{ flex:1, background:T.card, border:`1px solid ${T.border}`, borderRadius:6, padding:'6px 8px', color:T.text, fontFamily:"'IBM Plex Mono',monospace", fontSize:11, outline:'none' }}
+          >
+            <option value={15}>15m</option>
+            <option value={30}>30m</option>
+            <option value={45}>45m</option>
+            <option value={60}>1h</option>
+            <option value={90}>1.5h</option>
+            <option value={120}>2h</option>
+            <option value={180}>3h</option>
+            <option value={240}>4h</option>
           </select>
           <select
             value={onwardForm.priority}
@@ -250,62 +307,238 @@ export default function OnwardPanel({
         </div>
       )}
 
-      {/* Task list */}
-      <div style={{ flex:1, overflowY:'auto', padding:'16px 18px' }}>
+      {/* ── Time-block grid (hidden when canvas draws it) ── */}
+      {showTimeBlocks && (
+      <div ref={gridRef} style={{ flex:1, overflowY:'auto', padding:'12px 0', position:'relative' }}>
         {selectedDateItems.length === 0 ? (
           <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:14, color:T.muted, textAlign:'center', marginTop:24, lineHeight:1.8 }}>
             {isToday ? 'No tasks yet.\nAdd your first time block.' : 'No tasks for this day.'}
           </div>
-        ) : selectedDateItems.map((item, index) => (
-          <div key={item.id} style={{ display:'flex', alignItems:'center', gap:16, padding:'18px 0', borderBottom:`1px solid ${T.border}` }}>
-            <button
-              onClick={() => onToggleDone(item.id)}
-              style={{ width:28, height:28, borderRadius:6, border:`3px solid ${item.done ? T.green : T.muted}`, background: item.done ? T.green : 'transparent', flexShrink:0, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}
-            >{item.done && <span style={{ fontSize:16, color:T.bg, lineHeight:1 }}>✓</span>}</button>
-            <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:16, fontWeight:700, color:item.done ? T.muted : T.accent, width:70, flexShrink:0 }}>{fmt(item.hour)}</div>
-            <span style={{ flex:1, fontSize:18, fontWeight:600, color: item.done ? T.muted : T.text, textDecoration: item.done ? 'line-through' : 'none' }}>{item.title}</span>
-            {onStartFocus && !item.done && (
-              <button
-                onClick={() => onStartFocus(item)}
-                title="Start focus session"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: T.accent,
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  padding: '0 4px',
-                  flexShrink: 0,
-                  lineHeight: 1,
-                  opacity: 0.7,
-                }}
-              >▶</button>
-            )}
-            {onReturnToAvailable && !item.done && (
-              <button
-                onClick={() => onReturnToAvailable(item.id)}
-                title="Move back to Available Tasks"
-                style={{ background:'none', border:'none', color:T.muted, cursor:'pointer', fontSize:14, padding:'0 4px', flexShrink:0, lineHeight:1 }}
-              >↩</button>
-            )}
-            {onMoveItem && (
-              <div style={{ display:'flex', flexDirection:'column', gap:2, flexShrink:0 }}>
-                <button
-                  onClick={() => onMoveItem(item.id, -1)}
-                  disabled={index === 0}
-                  style={{ background:'none', border:'none', color: index === 0 ? T.border : T.muted, cursor: index === 0 ? 'default' : 'pointer', fontSize:10, padding:'0 4px', lineHeight:1 }}
-                >▲</button>
-                <button
-                  onClick={() => onMoveItem(item.id, 1)}
-                  disabled={index === selectedDateItems.length - 1}
-                  style={{ background:'none', border:'none', color: index === selectedDateItems.length - 1 ? T.border : T.muted, cursor: index === selectedDateItems.length - 1 ? 'default' : 'pointer', fontSize:10, padding:'0 4px', lineHeight:1 }}
-                >▼</button>
-              </div>
-            )}
-            <button onClick={() => onDelete(item.id)} style={{ background:'none', border:'none', color:T.muted, cursor:'pointer', fontSize:24, padding:'0 8px', lineHeight:1 }}>×</button>
+        ) : (
+          <div style={{ position:'relative', minHeight: GRID_HEIGHT, marginLeft: HOUR_LABEL_WIDTH }}>
+            {/* Hour row backgrounds */}
+            {Array.from({ length: VISIBLE_HOURS }, (_, i) => {
+              const hour = GRID_START_HOUR + i;
+              return (
+                <div key={hour} style={{
+                  position:'absolute',
+                  top: i * ROW_HEIGHT,
+                  left: 0, right: 0,
+                  height: ROW_HEIGHT,
+                  borderBottom: `1px solid ${T.border}40`,
+                  background: i % 2 === 0 ? 'transparent' : `${T.border}08`,
+                  pointerEvents:'none',
+                }} />
+              );
+            })}
+            {/* Hour labels */}
+            <div style={{ position:'absolute', top:0, left: -HOUR_LABEL_WIDTH, width: HOUR_LABEL_WIDTH, bottom:0 }}>
+              {Array.from({ length: VISIBLE_HOURS }, (_, i) => {
+                const hour = GRID_START_HOUR + i;
+                const h12 = hour % 12 || 12;
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                return (
+                  <div key={hour} style={{
+                    position:'absolute',
+                    top: i * ROW_HEIGHT - 5,
+                    left: 4,
+                    fontFamily:"'IBM Plex Mono',monospace",
+                    fontSize:8,
+                    color:T.muted,
+                    lineHeight:1,
+                  }}>{h12}{ampm}</div>
+                );
+              })}
+            </div>
+            {/* Task blocks */}
+            {selectedDateItems.map((item) => {
+              const startMinutes = item.hour; // total minutes from midnight
+              const duration = item.duration || 60;
+              const startHourFrac = startMinutes / 60;
+              const topOffset = (startHourFrac - GRID_START_HOUR) * ROW_HEIGHT;
+              const blockHeight = (duration / 60) * ROW_HEIGHT;
+              const isResizing = resizing?.itemId === item.id;
+              const blockColor = item.done ? T.muted : (item.priority === 'high' ? T.rose : T.accent);
+              const isSelected = selectedTask?.id === item.id;
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => setSelectedTask(isSelected ? null : item)}
+                  style={{
+                    position:'absolute',
+                    top: Math.max(0, topOffset),
+                    left: 4,
+                    right: 8,
+                    height: Math.max(20, blockHeight - 2),
+                    background: `${blockColor}15`,
+                    border: `1.5px solid ${isSelected ? blockColor : blockColor}50`,
+                    borderLeft: `3px solid ${blockColor}`,
+                    borderRadius: 6,
+                    padding: '4px 6px',
+                    display:'flex',
+                    flexDirection:'column',
+                    overflow:'hidden',
+                    cursor: 'pointer',
+                    transition: isResizing ? 'none' : 'height 0.1s',
+                    opacity: item.done ? 0.5 : 1,
+                    userSelect:'none',
+                    boxShadow: isSelected ? `0 0 0 1.5px ${blockColor}80` : 'none',
+                  }}
+                >
+                  {/* Top row: checkbox + title + actions */}
+                  <div style={{ display:'flex', alignItems:'center', gap:4, minHeight:0, flex:1 }}>
+                    <button
+                      onClick={() => onToggleDone(item.id)}
+                      style={{
+                        width:14, height:14, borderRadius:3,
+                        border:`2px solid ${item.done ? T.green : T.muted}`,
+                        background: item.done ? T.green : 'transparent',
+                        flexShrink:0, cursor:'pointer',
+                        display:'flex', alignItems:'center', justifyContent:'center',
+                        padding:0,
+                      }}
+                    >{item.done && <span style={{ fontSize:10, color:T.bg, lineHeight:1 }}>✓</span>}</button>
+                    <span style={{
+                      flex:1,
+                      fontSize:10,
+                      fontWeight:600,
+                      color: item.done ? T.muted : T.text,
+                      textDecoration: item.done ? 'line-through' : 'none',
+                      overflow:'hidden',
+                      textOverflow:'ellipsis',
+                      whiteSpace:'nowrap',
+                    }}>{item.title}</span>
+                    <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:7, color:T.muted, flexShrink:0 }}>
+                      {fmt(item.hour)}–{fmt(item.hour + duration)}
+                    </div>
+                    {onStartFocus && !item.done && (
+                      <button onClick={() => onStartFocus(item)} title="Focus"
+                        style={{ background:'none', border:'none', color:T.accent, cursor:'pointer', fontSize:10, padding:'0 2px', flexShrink:0, lineHeight:1, opacity:0.6 }}
+                      >▶</button>
+                    )}
+                    {onReturnToAvailable && !item.done && (
+                      <button onClick={() => onReturnToAvailable(item.id)} title="Move to Available"
+                        style={{ background:'none', border:'none', color:T.muted, cursor:'pointer', fontSize:10, padding:'0 2px', flexShrink:0, lineHeight:1 }}
+                      >↩</button>
+                    )}
+                    <button onClick={() => onDelete(item.id)} title="Delete"
+                      style={{ background:'none', border:'none', color:T.muted, cursor:'pointer', fontSize:13, padding:'0 2px', flexShrink:0, lineHeight:1, opacity:0.5 }}
+                    >×</button>
+                  </div>
+                  {/* Duration bar at bottom */}
+                  {!item.done && (
+                    <div
+                      onMouseDown={(e) => handleResizeMouseDown(e, item.id, duration)}
+                      style={{
+                        position:'absolute',
+                        bottom:0, left:0, right:0,
+                        height: 6,
+                        cursor: 'ns-resize',
+                        display:'flex',
+                        alignItems:'center',
+                        justifyContent:'center',
+                        opacity: isResizing ? 1 : 0,
+                        transition:'opacity 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.opacity = 1; }}
+                      onMouseLeave={e => { if (!isResizing) e.currentTarget.style.opacity = 0; }}
+                    >
+                      <div style={{
+                        width: 20, height: 2,
+                        background: T.muted,
+                        borderRadius: 1,
+                      }} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        ))}
+        )}
       </div>
+      )}
+
+      {/* ── Selected Task Detail Panel ── */}
+      {selectedTask && (
+        <div style={{
+          borderTop:`1px solid ${T.border}`,
+          padding:'14px 18px',
+          background: `${T.card}`,
+        }}>
+          <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
+            {/* Color dot */}
+            <div style={{
+              width:8, height:8, borderRadius:'50%', flexShrink:0, marginTop:3,
+              background: selectedTask.done ? T.muted : (selectedTask.priority === 'high' ? T.rose : T.accent),
+            }} />
+            <div style={{ flex:1, minWidth:0 }}>
+              {/* Title */}
+              <div style={{ fontFamily:"'Syne',sans-serif", fontSize:14, fontWeight:700, color:T.text, marginBottom:4 }}>
+                {selectedTask.title}
+              </div>
+              {/* Time & duration */}
+              <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted, marginBottom:6 }}>
+                {fmt(selectedTask.hour)}–{fmt(selectedTask.hour + (selectedTask.duration || 60))}
+                {' · '}{selectedTask.duration || 60}m
+              </div>
+              {/* Linked goal */}
+              {(() => {
+                const linkedGoal = projects.find(p => p.id === selectedTask.goalId);
+                return linkedGoal ? (
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted, marginBottom:10, display:'flex', alignItems:'center', gap:5 }}>
+                    <span style={{ color: linkedGoal.color || T.accent }}>◉</span>
+                    <span>{linkedGoal.title}</span>
+                  </div>
+                ) : (
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted, marginBottom:10, fontStyle:'italic' }}>
+                    No linked goal
+                  </div>
+                );
+              })()}
+            </div>
+            {/* Close button */}
+            <button
+              onClick={() => setSelectedTask(null)}
+              style={{ background:'none', border:'none', color:T.muted, cursor:'pointer', fontSize:14, lineHeight:1, padding:'0 2px', opacity:0.5, flexShrink:0 }}
+            >×</button>
+          </div>
+          {/* Action buttons stacked at bottom */}
+          <div style={{ display:'flex', flexDirection:'column', gap:6, marginTop:10 }}>
+            {onStartFocus && !selectedTask.done && (
+              <button
+                onClick={() => { onStartFocus(selectedTask); setSelectedTask(null); }}
+                style={{
+                  width:'100%',
+                  background:`${T.green}18`,
+                  border:`1px solid ${T.green}55`,
+                  borderRadius:6,
+                  color:T.green,
+                  padding:'9px 0',
+                  fontFamily:"'Syne',sans-serif",
+                  fontSize:12,
+                  fontWeight:700,
+                  cursor:'pointer',
+                  letterSpacing:'.06em',
+                }}
+              >▶ Start Focus Session</button>
+            )}
+            <button
+              onClick={() => { onToggleDone(selectedTask.id); setSelectedTask(null); }}
+              style={{
+                width:'100%',
+                background: selectedTask.done ? `${T.muted}18` : `${(selectedTask.priority === 'high' ? T.rose : T.accent)}18`,
+                border:`1px solid ${selectedTask.done ? T.muted : (selectedTask.priority === 'high' ? T.rose : T.accent)}55`,
+                borderRadius:6,
+                color: selectedTask.done ? T.muted : (selectedTask.priority === 'high' ? T.rose : T.accent),
+                padding:'8px 0',
+                fontFamily:"'IBM Plex Mono',monospace",
+                fontSize:12,
+                cursor:'pointer',
+              }}
+            >{selectedTask.done ? '↩ Mark Undone' : '✓ Mark Done'}</button>
+          </div>
+        </div>
+      )}
 
       {/* ── Backlog Toggle ── */}
       {backlogItems.length > 0 && (

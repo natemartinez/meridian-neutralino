@@ -56,6 +56,10 @@ export default function CanvasPanelWrapper({ panelId, ...props }) {
             topGoals={resolvedTopGoals}
             onToggleTopGoal={props.onToggleTopGoal}
             setSunId={props.setSunId}
+            // ── Duration resize ──
+            onResizeDuration={props.resizeOnwardItem}
+            // ── Hide time-block grid (canvas draws it) ──
+            showTimeBlocks={false}
           />
         )}
         {panelId === 'map' && (

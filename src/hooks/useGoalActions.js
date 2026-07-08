@@ -61,6 +61,7 @@ export default function useGoalActions({
 
   // Navigation helpers
   closeWaypoint,
+  setMainPage,
 
   // Streak
   updateStreak,
@@ -107,9 +108,9 @@ export default function useGoalActions({
   // Onward item handlers
   const addOnwardItem = () => {
     if (!onwardForm.title.trim()) return;
-    const item = { id: uid(), title: onwardForm.title.trim(), hour: onwardForm.hour, done: false, priority: onwardForm.priority, goalId: onwardForm.goalId, date: new Date().toDateString(), duration: 60 };
+    const item = { id: uid(), title: onwardForm.title.trim(), hour: onwardForm.hour, done: false, priority: onwardForm.priority, goalId: onwardForm.goalId, date: new Date().toDateString(), duration: onwardForm.duration || 60 };
     setOnwardItems(prev => [...prev, item]);
-    setOnwardForm(f => ({ ...f, title: '', goalId: null }));
+    setOnwardForm(f => ({ ...f, title: '', goalId: null, duration: 60 }));
   };
 
   // Confirm a dropped subtask/checkpoint into a time block
@@ -143,6 +144,13 @@ export default function useGoalActions({
   };
 
   const deleteOnwardItem = (id) => setOnwardItems(prev => prev.filter(it => it.id !== id));
+
+  // Resize an onward item's duration (from drag handle on time-block grid)
+  const resizeOnwardItem = (id, newDuration) => {
+    setOnwardItems(prev => prev.map(it =>
+      it.id === id ? { ...it, duration: Math.max(15, Math.min(240, newDuration)) } : it
+    ));
+  };
 
   const deleteAvailableTask = (task) => {
     if (task.type === 'subtask') {
@@ -197,8 +205,8 @@ export default function useGoalActions({
       }));
     } catch { /* empty — localStorage parse failure is non-critical */ }
     setPomodoroPreselect({ goalId: item.goalId ?? null, taskId: item.id });
-    // Also set focusMode for immersive FocusScreen
-    setFocusMode({ active: true, taskTitle: item.title, taskId: item.id, goalId: item.goalId ?? null });
+    // Route to Track page's Pomodoro timer instead of immersive FocusScreen
+    setMainPage('tracking');
   };
 
   // ── New Ingestion & Smart Sorting handlers ──
@@ -474,6 +482,7 @@ export default function useGoalActions({
     confirmPendingDrop,
     cancelPendingDrop,
     deleteOnwardItem,
+    resizeOnwardItem,
     deleteAvailableTask,
     returnOnwardItemToAvailable,
     moveOnwardItem,

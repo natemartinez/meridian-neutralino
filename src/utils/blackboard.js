@@ -93,6 +93,11 @@ export function compileBlackboard(state) {
     lastActiveDate: lastActiveDate || null,
     planningConfidence: computePlanningConfidence(syncEvents || []),
 
+    // ── Insight Engagement Metrics ──
+    insightAcceptedCount: (syncEvents || []).filter(e => e.type === 'insight_accepted').length,
+    insightDismissedCount: (syncEvents || []).filter(e => e.type === 'insight_dismissed').length,
+    totalInsightEvents: (syncEvents || []).filter(e => e.type === 'insight_accepted' || e.type === 'insight_dismissed').length,
+
     // ── Knowledge Pool (condensed) ──
     knowledgeEntries: (knowledgePool?.entries || []).map(e => ({
       cat: e.cat,

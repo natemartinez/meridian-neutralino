@@ -27,8 +27,13 @@ export default function NovaInsightsPanel({
   const total = accepted + rejected;
   const acceptPct   = total > 0 ? Math.round(accepted / total * 100) : 50;
   const completePct = accepted > 0 ? Math.round(Math.min(completed / accepted, 1) * 100) : 0;
-  const meaningfulEvts = evts.filter(e => ["task_accepted","task_rejected","task_completed","briefing_done"].includes(e.type));
+  const meaningfulEvts = evts.filter(e => ["task_accepted","task_rejected","task_completed","briefing_done","insight_accepted","insight_dismissed"].includes(e.type));
   const richPct     = Math.round(Math.min(meaningfulEvts.length / 40, 1) * 100);
+  // ── Insight engagement (new 4th component) ──
+  const insightAccepted  = evts.filter(e => e.type === 'insight_accepted').length;
+  const insightDismissed = evts.filter(e => e.type === 'insight_dismissed').length;
+  const totalInsights    = insightAccepted + insightDismissed;
+  const insightEngagePct = totalInsights > 0 ? Math.round(insightAccepted / totalInsights * 100) : 50;
   const streak      = calcStreak();
   const weekly      = getWeeklyData();
   const avgPerDay   = weekly.length ? (weekly.reduce((s, d) => s + d.count, 0) / weekly.length).toFixed(1) : '0';
@@ -70,6 +75,7 @@ export default function NovaInsightsPanel({
             { label:'Suggestion accuracy', pct: acceptPct, detail:`${accepted} accepted / ${rejected} rejected` },
             { label:'Plan completion',     pct: completePct, detail:`${completed} of ${accepted} accepted tasks done` },
             { label:'Data richness',       pct: richPct, detail:`${meaningfulEvts.length} meaningful / ${evts.length} total events` },
+            { label:'Insight engagement',  pct: insightEngagePct, detail:`${insightAccepted} accepted / ${insightDismissed} dismissed` },
           ].map(row => (
             <div key={row.label} style={{ marginBottom:8 }}>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
