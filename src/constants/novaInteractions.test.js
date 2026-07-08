@@ -18,9 +18,9 @@ const VALID_PRESENTATIONS = ['toast', 'waypoint', 'inline'];
 const VALID_SOURCES = ['user_action', 'performance_signal', 'app_state_change', 'time_based'];
 
 describe('PATTERNS', () => {
-  it('exports an array of 22 patterns', () => {
+  it('exports an array of 25 patterns', () => {
     expect(Array.isArray(PATTERNS)).toBe(true);
-    expect(PATTERNS).toHaveLength(22);
+    expect(PATTERNS).toHaveLength(25);
   });
 
   it('all patterns have unique IDs', () => {
@@ -79,7 +79,12 @@ describe('PATTERNS', () => {
     PATTERNS.forEach(p => {
       expect(p.cooldown.durationMs).toBeDefined();
       expect(typeof p.cooldown.durationMs).toBe('number');
-      expect(p.cooldown.durationMs).toBeGreaterThan(0);
+      // 'once-per-session' cooldown type allows durationMs: 0
+      if (p.cooldown.type === 'once-per-session') {
+        expect(p.cooldown.durationMs).toBe(0);
+      } else {
+        expect(p.cooldown.durationMs).toBeGreaterThan(0);
+      }
     });
   });
 

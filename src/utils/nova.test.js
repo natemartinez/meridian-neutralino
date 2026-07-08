@@ -3,9 +3,10 @@
  *
  * What we're testing:
  * - computePlanningConfidence: weighted scoring algorithm
- *   - 35% acceptance rate (tasks accepted vs total decisions)
- *   - 45% completion rate (tasks completed vs accepted)
- *   - 20% richness (meaningful events / saturation point of 40)
+ *   - 30% acceptance rate (tasks accepted vs total decisions)
+ *   - 35% completion rate (tasks completed vs accepted)
+ *   - 15% richness (meaningful events / saturation point of 40)
+ *   - 20% insight engagement rate (insights accepted vs total insight decisions)
  * - validateNOVAResponse: schema-based JSON validation (replaced heuristic text parsing)
  * - computeSkillImprovements: keyword-based skill inference from completed tasks
  * - getNeglectedSkills: identifies skills not used recently
@@ -29,21 +30,24 @@ describe('computePlanningConfidence', () => {
     // 1 accepted, 1 rejected => acceptance = 0.5
     // 0 completed / 1 accepted => completion = 0
     // 2 meaningful events / 40 => richness = 0.05
-    // Score = (0.5 * 0.35 + 0 * 0.45 + 0.05 * 0.20) * 100 = 18.5 => 19
+    // 0 insight events => insightEngagement = 0.5 (default)
+    // Score = (0.5 * 0.30 + 0 * 0.35 + 0.05 * 0.15 + 0.5 * 0.20) * 100
+    //       = (0.15 + 0 + 0.0075 + 0.10) * 100 = 25.75 => 26
     const events = [
       { type: 'task_accepted' },
       { type: 'task_rejected' },
     ];
     const score = computePlanningConfidence(events);
-    expect(score).toBe(19);
+    expect(score).toBe(26);
   });
 
   it('gives higher score with more completions', () => {
     // 3 accepted, 1 rejected => acceptance = 3/4 = 0.75
     // 2 completed / 3 accepted => completion = 2/3 ≈ 0.667
     // 6 meaningful events / 40 => richness = 0.15
-    // Score = (0.75 * 0.35 + 2/3 * 0.45 + 0.15 * 0.20) * 100
-    //       = (0.2625 + 0.3 + 0.03) * 100 = 59.25 => 59
+    // 0 insight events => insightEngagement = 0.5 (default)
+    // Score = (0.75 * 0.30 + 2/3 * 0.35 + 0.15 * 0.15 + 0.5 * 0.20) * 100
+    //       = (0.225 + 0.2333 + 0.0225 + 0.10) * 100 = 58.08 => 58
     const events = [
       { type: 'task_accepted' },
       { type: 'task_accepted' },
@@ -53,7 +57,7 @@ describe('computePlanningConfidence', () => {
       { type: 'task_completed' },
     ];
     const score = computePlanningConfidence(events);
-    expect(score).toBe(59);
+    expect(score).toBe(58);
   });
 
   it('ignores non-meaningful events like program_opened', () => {
@@ -78,7 +82,9 @@ describe('computePlanningConfidence', () => {
     // 1 accepted, 0 rejected => acceptance = 1
     // 5 completed / 1 accepted => completion = min(5, 1) = 1
     // 6 meaningful / 40 => richness = 0.15
-    // Score = (1 * 0.35 + 1 * 0.45 + 0.15 * 0.20) * 100 = 83
+    // 0 insight events => insightEngagement = 0.5 (default)
+    // Score = (1 * 0.30 + 1 * 0.35 + 0.15 * 0.15 + 0.5 * 0.20) * 100
+    //       = (0.30 + 0.35 + 0.0225 + 0.10) * 100 = 77.25 => 77
     const events = [
       { type: 'task_accepted' },
       { type: 'task_completed' },
@@ -87,18 +93,20 @@ describe('computePlanningConfidence', () => {
       { type: 'task_completed' },
       { type: 'task_completed' },
     ];
-    expect(computePlanningConfidence(events)).toBe(83);
+    expect(computePlanningConfidence(events)).toBe(77);
   });
 
   it('uses default acceptance of 0.5 when no decisions made', () => {
     // Only completions, no accept/reject => acceptance = 0.5 (default)
     // 1 completed / 0 accepted => completion = 0
     // 1 meaningful / 40 => richness = 0.025
-    // Score = (0.5 * 0.35 + 0 * 0.45 + 0.025 * 0.20) * 100 = 18
+    // 0 insight events => insightEngagement = 0.5 (default)
+    // Score = (0.5 * 0.30 + 0 * 0.35 + 0.025 * 0.15 + 0.5 * 0.20) * 100
+    //       = (0.15 + 0 + 0.00375 + 0.10) * 100 = 25.375 => 25
     const events = [
       { type: 'task_completed' },
     ];
-    expect(computePlanningConfidence(events)).toBe(18);
+    expect(computePlanningConfidence(events)).toBe(25);
   });
 
   it('includes briefing_done as a meaningful event', () => {
@@ -109,19 +117,55 @@ describe('computePlanningConfidence', () => {
     // 1 accepted, 0 rejected => acceptance = 1
     // 0 completed / 1 accepted => completion = 0
     // 2 meaningful / 40 => richness = 0.05
-    // Score = (1 * 0.35 + 0 * 0.45 + 0.05 * 0.20) * 100 = 36
-    expect(computePlanningConfidence(events)).toBe(36);
+    // 0 insight events => insightEngagement = 0.5 (default)
+    // Score = (1 * 0.30 + 0 * 0.35 + 0.05 * 0.15 + 0.5 * 0.20) * 100
+    //       = (0.30 + 0 + 0.0075 + 0.10) * 100 = 40.75 => 41
+    expect(computePlanningConfidence(events)).toBe(41);
   });
 
   it('returns 100 with perfect scores', () => {
     // 40 accepted, 0 rejected => acceptance = 1
     // 40 completed / 40 accepted => completion = 1
     // 40 meaningful / 40 => richness = 1
-    // Score = (1 * 0.35 + 1 * 0.45 + 1 * 0.20) * 100 = 100
+    // 0 insight events => insightEngagement = 0.5 (default)
+    // Score = (1 * 0.30 + 1 * 0.35 + 1 * 0.15 + 0.5 * 0.20) * 100
+    //       = (0.30 + 0.35 + 0.15 + 0.10) * 100 = 90
     const events = Array.from({ length: 40 }, (_, i) => ({
       type: i < 20 ? 'task_accepted' : 'task_completed',
     }));
-    expect(computePlanningConfidence(events)).toBe(100);
+    expect(computePlanningConfidence(events)).toBe(90);
+  });
+
+  it('includes insight_accepted and insight_dismissed in confidence calculation', () => {
+    // 1 accepted, 0 rejected => acceptance = 1
+    // 0 completed / 1 accepted => completion = 0
+    // 3 meaningful (1 accepted + 2 insight events) / 40 => richness = 0.075
+    // 1 insight accepted, 1 insight dismissed => insightEngagement = 0.5
+    // Score = (1 * 0.30 + 0 * 0.35 + 0.075 * 0.15 + 0.5 * 0.20) * 100
+    //       = (0.30 + 0 + 0.01125 + 0.10) * 100 = 41.125 => 41
+    const events = [
+      { type: 'task_accepted' },
+      { type: 'insight_accepted' },
+      { type: 'insight_dismissed' },
+    ];
+    expect(computePlanningConfidence(events)).toBe(41);
+  });
+
+  it('insight engagement increases with more accepted insights', () => {
+    // 1 accepted, 0 rejected => acceptance = 1
+    // 0 completed / 1 accepted => completion = 0
+    // 4 meaningful / 40 => richness = 0.10
+    // 3 insight accepted, 1 insight dismissed => insightEngagement = 3/4 = 0.75
+    // Score = (1 * 0.30 + 0 * 0.35 + 0.10 * 0.15 + 0.75 * 0.20) * 100
+    //       = (0.30 + 0 + 0.015 + 0.15) * 100 = 46.5 => 47
+    const events = [
+      { type: 'task_accepted' },
+      { type: 'insight_accepted' },
+      { type: 'insight_accepted' },
+      { type: 'insight_accepted' },
+      { type: 'insight_dismissed' },
+    ];
+    expect(computePlanningConfidence(events)).toBe(47);
   });
 });
 
@@ -212,7 +256,6 @@ describe('validateNOVAResponse', () => {
 describe('NOVA_DEFAULT', () => {
   it('has the expected default shape', () => {
     expect(NOVA_DEFAULT).toEqual({
-      syncScore: 0,
       syncEvents: [],
       routine: null,
       programChats: { briefing: [], focus: null, regroup: [], preview: [], calibration: [] },

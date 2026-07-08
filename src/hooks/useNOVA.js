@@ -96,11 +96,9 @@ export function useNOVA({ apiKey, model, projects, focus, waypointContext, loade
   }, []); // intentionally narrow — one-time seed on mount
 
   const addSyncEvent = useCallback((type, detail = '') => {
-    const POINTS = { task_accepted: 5, task_completed: 10, briefing_done: 5, task_rejected: -2, calibration_complete: 15, knowledge_confirmed: 3 };
-    const delta = POINTS[type] ?? 0;
+    const POINTS = { task_accepted: 5, task_completed: 10, briefing_done: 5, task_rejected: -2, calibration_complete: 15, knowledge_confirmed: 3, insight_accepted: 3, insight_dismissed: -1 };
     setNovaState(prev => ({
       ...prev,
-      syncScore: Math.min(100, Math.max(0, prev.syncScore + delta)),
       syncEvents: [...prev.syncEvents, { type, detail, ts: Date.now() }].slice(-200),
     }));
   }, []);
@@ -414,6 +412,11 @@ ${programContext ? `\n${programContext}` : ''}
       const insight = (prev.pendingInsights || []).find(i => i.id === insightId);
       if (!insight) return prev;
       const remaining = (prev.pendingInsights || []).filter(i => i.id !== insightId);
+      // Fire sync event outside the updater to avoid batching issues
+      const insightType = insight.type || 'unknown';
+      const detail = `insight_${insightType}: ${String(insight.content || '').slice(0, 80)}`;
+      // Use setTimeout(0) to ensure we're outside the setState updater
+      setTimeout(() => addSyncEvent('insight_accepted', detail), 0);
       if (insight.type === 'routine') {
         return {
           ...prev,
@@ -435,14 +438,21 @@ ${programContext ? `\n${programContext}` : ''}
       }
       return { ...prev, pendingInsights: remaining };
     });
-  }, [addInferredEntries]);
+  }, [addInferredEntries, addSyncEvent]);
 
   const dismissInsight = useCallback((insightId) => {
-    setNovaState(prev => ({
-      ...prev,
-      pendingInsights: (prev.pendingInsights || []).filter(i => i.id !== insightId),
-    }));
-  }, []);
+    setNovaState(prev => {
+      const insight = (prev.pendingInsights || []).find(i => i.id === insightId);
+      const detail = insight
+        ? `insight_${insight.type || 'unknown'}: ${String(insight.content || '').slice(0, 80)}`
+        : `insight_${insightId}`;
+      setTimeout(() => addSyncEvent('insight_dismissed', detail), 0);
+      return {
+        ...prev,
+        pendingInsights: (prev.pendingInsights || []).filter(i => i.id !== insightId),
+      };
+    });
+  }, [addSyncEvent]);
 
   /**
    * Record plan accuracy by comparing completed tasks against the daily plan.

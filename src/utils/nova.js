@@ -1,20 +1,49 @@
 import { validateAgainstSchema, getPlainSchemaForProgram } from '../schemas/nova-schemas.js';
 
+/**
+ * Compute NOVA's planning confidence from sync events.
+ *
+ * Four weighted components:
+ *   1. Suggestion acceptance rate  (30%) — how often user accepts vs rejects suggestions
+ *   2. Plan completion rate         (35%) — how often accepted tasks get completed
+ *   3. Data richness               (15%) — how many meaningful events have accumulated
+ *   4. Insight engagement rate     (20%) — how often user accepts vs dismisses insights
+ *
+ * Insight engagement is the NEW component that closes the feedback loop between
+ * confirmInsight/dismissInsight and the confidence score.
+ *
+ * @param {Array} syncEvents - Array of sync event objects { type, ts }
+ * @returns {number} Confidence percentage (0-100)
+ */
 export function computePlanningConfidence(syncEvents) {
   const SATURATION = 40;
   if (!syncEvents?.length) return 0;
+
+  // ── Component 1: Suggestion acceptance (30%) ──
   const accepted  = syncEvents.filter(e => e.type === 'task_accepted').length;
   const rejected  = syncEvents.filter(e => e.type === 'task_rejected').length;
+  const totalDecisions = accepted + rejected;
+  const acceptance = totalDecisions > 0 ? accepted / totalDecisions : 0.5;
+
+  // ── Component 2: Plan completion (35%) ──
   const completed = syncEvents.filter(e => e.type === 'task_completed').length;
-  const total     = accepted + rejected;
-  const acceptance = total > 0 ? accepted / total : 0.5;
   const completion = accepted > 0 ? Math.min(completed / accepted, 1) : 0;
-  // Only count meaningful decision events — not UI clicks like program_opened
+
+  // ── Component 3: Data richness (15%) ──
   const meaningfulEvents = syncEvents.filter(e =>
-    ['task_accepted', 'task_rejected', 'task_completed', 'briefing_done'].includes(e.type)
+    ['task_accepted', 'task_rejected', 'task_completed', 'briefing_done', 'insight_accepted', 'insight_dismissed'].includes(e.type)
   );
-  const richness   = Math.min(meaningfulEvents.length / SATURATION, 1);
-  return Math.round((acceptance * 0.35 + completion * 0.45 + richness * 0.20) * 100);
+  const richness = Math.min(meaningfulEvents.length / SATURATION, 1);
+
+  // ── Component 4: Insight engagement (20%) ──
+  const insightAccepted  = syncEvents.filter(e => e.type === 'insight_accepted').length;
+  const insightDismissed = syncEvents.filter(e => e.type === 'insight_dismissed').length;
+  const totalInsights    = insightAccepted + insightDismissed;
+  const insightEngagement = totalInsights > 0 ? insightAccepted / totalInsights : 0.5;
+
+  return Math.round(
+    (acceptance * 0.30 + completion * 0.35 + richness * 0.15 + insightEngagement * 0.20) * 100
+  );
 }
 
 /**
@@ -164,7 +193,6 @@ export function getNeglectedSkills(skills) {
 }
 
 export const NOVA_DEFAULT = {
-  syncScore: 0,
   syncEvents: [],
   routine: null,
   programChats: { briefing: [], focus: null, regroup: [], preview: [], calibration: [] },

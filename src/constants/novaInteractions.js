@@ -137,6 +137,24 @@ const A5_TASK_ACCEPTED = {
   },
 };
 
+const A6_INSIGHT_ACCEPTED = {
+  id: 'A6_insight_accepted',
+  trigger: {
+    source: 'user_action',
+    event: 'insight_accepted',
+    conditions: {},
+  },
+  cooldown: { type: 'per-pattern', durationMs: 120_000 },
+  priority: 'low',
+  presentation: 'toast',
+  template: {
+    title: 'Insight accepted',
+    body: 'NOVA will use this feedback to sharpen future insights.',
+    action: null,
+  },
+  variables: {},
+};
+
 // ── Category B: Check-in & Reflection ──
 
 const B2_SESSION_OVERRAN = {
@@ -276,6 +294,24 @@ const C4_HIGH_REJECTION = {
   variables: {
     rejectionRate: { source: 'event', path: 'rate' },
   },
+};
+
+const C5_HIGH_INSIGHT_DISMISSAL = {
+  id: 'C5_high_insight_dismissal',
+  trigger: {
+    source: 'performance_signal',
+    event: 'insight_dismissed',
+    conditions: { minDismissals: 3 },
+  },
+  cooldown: { type: 'per-pattern', durationMs: 600_000 },
+  priority: 'high',
+  presentation: 'waypoint',
+  template: {
+    title: 'NOVA insights being dismissed?',
+    body: 'You\'ve dismissed several insights. Would you like to adjust what NOVA looks for?',
+    action: { label: 'Adjust Focus', type: 'open_program', payload: { programId: 'calibration' } },
+  },
+  variables: {},
 };
 
 // ── Category D: Proactive Suggestions ──
@@ -535,8 +571,9 @@ const D5_QUADRANT_IMBALANCE = {
  * Presentation is 'inline' (not toast) since it renders in StartupCanvas.
  */
 const D6_NEW_SESSION_GREETING = {
-  id: 'D6_NEW_SESSION_GREETING',
+  id: 'D6_new_session_greeting',
   trigger: {
+    source: 'app_state_change',
     event: 'app_opened',
     conditions: { isNewSession: true },
   },
@@ -546,7 +583,7 @@ const D6_NEW_SESSION_GREETING = {
   template: {
     title: 'New Session Greeting',
     body: 'NOVA proactive greeting with action buttons',
-    action: { type: 'show_greeting', payload: {} },
+    action: { type: 'show_greeting', payload: {}, label: 'Open' },
   },
 };
 
@@ -556,8 +593,9 @@ const D6_NEW_SESSION_GREETING = {
  * Presentation is 'inline' (not toast) since it renders in StartupCanvas.
  */
 const D7_SESSION_SUMMARY = {
-  id: 'D7_SESSION_SUMMARY',
+  id: 'D7_session_summary',
   trigger: {
+    source: 'app_state_change',
     event: 'app_opened',
     conditions: { hasPriorSession: true },
   },
@@ -567,7 +605,7 @@ const D7_SESSION_SUMMARY = {
   template: {
     title: 'Session Summary',
     body: 'Summary of the last active program session',
-    action: { type: 'show_summary', payload: {} },
+    action: { type: 'show_summary', payload: {}, label: 'View' },
   },
 };
 
@@ -579,12 +617,14 @@ export const PATTERNS = [
   A3_DAY_COMPLETE,
   A4_FIRST_WIN,
   A5_TASK_ACCEPTED,
+  A6_INSIGHT_ACCEPTED,
   B2_SESSION_OVERRAN,
   B3_IDLE_NUDGE,
   B4_END_OF_DAY,
   C2_MULTIPLE_DEFERRED,
   C3_LOW_FOCUS_RATING,
   C4_HIGH_REJECTION,
+  C5_HIGH_INSIGHT_DISMISSAL,
   D2_GOAL_CREATED,
   D3_DEADLINE_URGENT,
   D4_LOW_COMPLETION,
