@@ -1,4 +1,4 @@
-module.exports = `
+export default `
 CREATE TABLE IF NOT EXISTS nova_sessions (
   id TEXT PRIMARY KEY,
   program TEXT NOT NULL,
@@ -38,8 +38,7 @@ CREATE TABLE IF NOT EXISTS nova_behavioral (
   tasks_completed INTEGER DEFAULT 0,
   sync_score_start INTEGER,
   sync_score_end INTEGER,
-  briefing_done INTEGER DEFAULT 0,
-  regroup_done INTEGER DEFAULT 0
+  briefing_done INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS knowledge_pool (

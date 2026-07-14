@@ -190,7 +190,6 @@ export const WEEKLY_SCAN_SCHEMA_OPENROUTER = {
 
 export const PROGRAM_SCHEMA_MAP = {
   briefing: CHAT_SCHEMA_OPENROUTER,
-  regroup: CHAT_SCHEMA_OPENROUTER,
   preview: CHAT_SCHEMA_OPENROUTER,
   calibration: CHAT_SCHEMA_OPENROUTER,
   focus: CHAT_SCHEMA_OPENROUTER,
@@ -199,7 +198,6 @@ export const PROGRAM_SCHEMA_MAP = {
 
 export const PROGRAM_SCHEMA_PLAIN_MAP = {
   briefing: CHAT_SCHEMA,
-  regroup: CHAT_SCHEMA,
   preview: CHAT_SCHEMA,
   calibration: CHAT_SCHEMA,
   focus: CHAT_SCHEMA,

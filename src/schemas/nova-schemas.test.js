@@ -290,10 +290,6 @@ describe('getSchemaForProgram', () => {
     expect(getSchemaForProgram('briefing')).toBe(CHAT_SCHEMA_OPENROUTER);
   });
 
-  it('returns CHAT_SCHEMA_OPENROUTER for regroup', () => {
-    expect(getSchemaForProgram('regroup')).toBe(CHAT_SCHEMA_OPENROUTER);
-  });
-
   it('returns CHAT_SCHEMA_OPENROUTER for preview', () => {
     expect(getSchemaForProgram('preview')).toBe(CHAT_SCHEMA_OPENROUTER);
   });

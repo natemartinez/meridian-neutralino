@@ -228,8 +228,8 @@ const C1_STREAK_BROKEN = {
   presentation: 'waypoint',
   template: {
     title: 'Streak reset — that\'s okay',
-    body: 'Your {previousStreak}-day streak ended. Every reset is a chance to build back stronger. Want to regroup?',
-    action: { label: 'Regroup', type: 'open_program', payload: { programId: 'regroup' } },
+    body: 'Your {previousStreak}-day streak ended. Every reset is a chance to build back stronger. Want to reflect?',
+    action: { label: 'Reflect', type: 'open_program', payload: { programId: 'preview' } },
   },
   variables: {
     previousStreak: { source: 'event', path: 'previousStreak' },
@@ -249,7 +249,7 @@ const C2_MULTIPLE_DEFERRED = {
   template: {
     title: 'Noticing some deferrals',
     body: 'You\'ve deferred {deferredCount} tasks recently. This might mean your workload needs adjusting.',
-    action: { label: 'Review Workload', type: 'open_program', payload: { programId: 'regroup' } },
+    action: { label: 'Review Workload', type: 'open_program', payload: { programId: 'preview' } },
   },
   variables: {
     deferredCount: { source: 'event', path: 'count' },
@@ -268,8 +268,8 @@ const C3_LOW_FOCUS_RATING = {
   presentation: 'toast',
   template: {
     title: 'Tough session?',
-    body: 'You rated that session a {rating}/5. Sometimes regrouping helps — want to try?',
-    action: { label: 'Regroup', type: 'open_program', payload: { programId: 'regroup' } },
+    body: 'You rated that session a {rating}/5. Sometimes reflecting helps — want to try?',
+    action: { label: 'Reflect', type: 'open_program', payload: { programId: 'preview' } },
   },
   variables: {
     rating: { source: 'event', path: 'rating' },
@@ -389,7 +389,7 @@ const D4_LOW_COMPLETION = {
   template: {
     title: 'Slower week?',
     body: 'You\'ve been completing fewer tasks than usual. Maybe the scope needs adjusting?',
-    action: { label: 'Regroup', type: 'open_program', payload: { programId: 'regroup' } },
+    action: { label: 'Regroup', type: 'open_program', payload: { programId: 'preview' } },
   },
   variables: {
     avgPerDay: { source: 'event', path: 'avgPerDay' },

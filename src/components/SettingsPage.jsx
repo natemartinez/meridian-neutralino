@@ -128,14 +128,6 @@ export default function SettingsPage({ apiKey, setApiKey, model, setModel, inten
                 fontSize:10, padding:'7px 16px', cursor:'pointer', letterSpacing:'.04em',
               }}
             >{showSystemContext ? 'Hide System Context' : 'Show System Context'}</button>
-            <button
-              onClick={() => onNewSession?.('regroup')}
-              style={{
-                background:'none', border:`1px solid rgba(240,180,41,0.3)`, borderRadius:6,
-                color:T.muted, fontFamily:"'IBM Plex Mono',monospace",
-                fontSize:10, padding:'7px 16px', cursor:'pointer', letterSpacing:'.04em',
-              }}
-            >New Session</button>
           </div>
           {showSystemContext && (
             <div style={{
@@ -148,7 +140,7 @@ export default function SettingsPage({ apiKey, setApiKey, model, setModel, inten
               <div style={{ color:T.accent, fontSize:8, letterSpacing:'.08em', marginBottom:4 }}>
                 SYSTEM PROMPT CONTEXT
               </div>
-              {buildNOVASystemPrompt ? buildNOVASystemPrompt('regroup') : 'No context loaded yet.'}
+              {buildNOVASystemPrompt ? buildNOVASystemPrompt('preview') : 'No context loaded yet.'}
             </div>
           )}
         </div>

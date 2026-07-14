@@ -199,12 +199,6 @@ describe('validateNOVAResponse', () => {
     expect(result.reason).toContain('ready');
   });
 
-  it('accepts valid JSON matching CHAT_SCHEMA for regroup', () => {
-    const json = JSON.stringify({ content: 'What happened?', options: ['Option 1'], ready: false });
-    const result = validateNOVAResponse(json, 'regroup');
-    expect(result.valid).toBe(true);
-  });
-
   it('accepts valid JSON matching CHAT_SCHEMA for preview', () => {
     const json = JSON.stringify({ content: 'Plan for tomorrow', options: null, ready: false });
     const result = validateNOVAResponse(json, 'preview');
@@ -258,7 +252,7 @@ describe('NOVA_DEFAULT', () => {
     expect(NOVA_DEFAULT).toEqual({
       syncEvents: [],
       routine: null,
-      programChats: { briefing: [], focus: null, regroup: [], preview: [], calibration: [] },
+      programChats: { briefing: [], focus: null, preview: [], calibration: [] },
       suggestedTasks: [],
       dailyPlan: null,
       planGenLoading: false,

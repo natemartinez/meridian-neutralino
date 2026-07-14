@@ -180,16 +180,16 @@ describe('useExecutionEngine', () => {
     expect(t5.nextPhase).toBe(PHASES.PREVIEW_PLANNING);
     expect(t5.requiresLLM).toBe(true);
 
-    // Regroup: stuck + text → refocusing (LLM)
-    const t6 = resolveTransition('regroup', PHASES.REGROUP_STUCK, INPUT.TEXT);
-    expect(t6.nextPhase).toBe(PHASES.REGROUP_REFOCUSING);
+    // Preview (regroup_journal): text → regroup_journal (LLM, stay)
+    const t6 = resolveTransition('preview', PHASES.PREVIEW_REGROUP_JOURNAL, INPUT.TEXT);
+    expect(t6.nextPhase).toBe(PHASES.PREVIEW_REGROUP_JOURNAL);
     expect(t6.requiresLLM).toBe(true);
 
-    // Regroup: refocusing + confirm → resumed (deterministic)
-    const t7 = resolveTransition('regroup', PHASES.REGROUP_REFOCUSING, INPUT.CONFIRM);
-    expect(t7.nextPhase).toBe(PHASES.REGROUP_RESUMED);
+    // Preview (regroup_journal): confirm → planning (deterministic)
+    const t7 = resolveTransition('preview', PHASES.PREVIEW_REGROUP_JOURNAL, INPUT.CONFIRM);
+    expect(t7.nextPhase).toBe(PHASES.PREVIEW_PLANNING);
     expect(t7.requiresLLM).toBe(false);
-    expect(t7.response).toBe('Ready to resume.');
+    expect(t7.response).toBe('Moving on to planning.');
   });
 
   // Test the classifyInput → resolveTransition pipeline

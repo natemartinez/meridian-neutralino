@@ -2,7 +2,7 @@
  * Program FSM Tests
  *
  * Exhaustive tests covering:
- *   1. All 5 program FSMs (briefing, focus, regroup, preview, calibration)
+ *   1. All 4 program FSMs (briefing, focus, preview, calibration)
  *   2. Every defined transition for every phase
  *   3. Default/fallback transitions
  *   4. Edge cases: unknown program, unknown phase, unknown input, null phase
@@ -67,11 +67,10 @@ describe('transition helpers', () => {
 // ── Program FSM Structure Tests ──────────────────────────────────────────────
 
 describe('PROGRAM_FSMS structure', () => {
-  it('defines all 5 programs', () => {
+  it('defines all 4 programs', () => {
     expect(Object.keys(PROGRAM_FSMS)).toEqual([
       'briefing',
       'focus',
-      'regroup',
       'preview',
       'calibration',
     ]);
@@ -285,7 +284,7 @@ describe('focus FSM', () => {
     });
   });
 
-  describe('regroup', () => {
+  describe('focus regroup', () => {
     it('refocused → executing (LLM)', () => {
       const t = resolveTransition('focus', PHASES.FOCUS_REGROUP, INPUT.REFOCUSED);
       expect(t).toEqual({ nextPhase: PHASES.FOCUS_EXECUTING, requiresLLM: true, response: null });
@@ -310,71 +309,42 @@ describe('focus FSM', () => {
   });
 });
 
-// ── Regroup FSM Tests ────────────────────────────────────────────────────────
-
-describe('regroup FSM', () => {
-  it('initial phase is stuck', () => {
-    expect(getInitialPhase('regroup')).toBe(PHASES.REGROUP_STUCK);
-  });
-
-  it('has 3 phases', () => {
-    expect(getProgramPhases('regroup')).toEqual([
-      PHASES.REGROUP_STUCK,
-      PHASES.REGROUP_REFOCUSING,
-      PHASES.REGROUP_RESUMED,
-    ]);
-  });
-
-  describe('stuck', () => {
-    it('text → refocusing (LLM)', () => {
-      const t = resolveTransition('regroup', PHASES.REGROUP_STUCK, INPUT.TEXT);
-      expect(t).toEqual({ nextPhase: PHASES.REGROUP_REFOCUSING, requiresLLM: true, response: null });
-    });
-
-    it('unknown input → stay (no LLM)', () => {
-      const t = resolveTransition('regroup', PHASES.REGROUP_STUCK, 'unknown');
-      expect(t).toEqual({ nextPhase: null, requiresLLM: false, response: null });
-    });
-  });
-
-  describe('refocusing', () => {
-    it('confirm → resumed (deterministic)', () => {
-      const t = resolveTransition('regroup', PHASES.REGROUP_REFOCUSING, INPUT.CONFIRM);
-      expect(t).toEqual({ nextPhase: PHASES.REGROUP_RESUMED, requiresLLM: false, response: 'Ready to resume.' });
-    });
-
-    it('text → refocusing (LLM, more discussion)', () => {
-      const t = resolveTransition('regroup', PHASES.REGROUP_REFOCUSING, INPUT.TEXT);
-      expect(t).toEqual({ nextPhase: PHASES.REGROUP_REFOCUSING, requiresLLM: true, response: null });
-    });
-
-    it('unknown input → stay (no LLM)', () => {
-      const t = resolveTransition('regroup', PHASES.REGROUP_REFOCUSING, 'unknown');
-      expect(t).toEqual({ nextPhase: null, requiresLLM: false, response: null });
-    });
-  });
-
-  describe('resumed', () => {
-    it('any input → stay with message', () => {
-      const t = resolveTransition('regroup', PHASES.REGROUP_RESUMED, INPUT.TEXT);
-      expect(t).toEqual({ nextPhase: null, requiresLLM: false, response: 'Regroup complete — ready to resume focus.' });
-    });
-  });
-});
-
 // ── Preview FSM Tests ────────────────────────────────────────────────────────
 
 describe('preview FSM', () => {
-  it('initial phase is planning', () => {
-    expect(getInitialPhase('preview')).toBe(PHASES.PREVIEW_PLANNING);
+  it('initial phase is regroup_journal', () => {
+    expect(getInitialPhase('preview')).toBe(PHASES.PREVIEW_REGROUP_JOURNAL);
   });
 
-  it('has 3 phases', () => {
+  it('has 4 phases', () => {
     expect(getProgramPhases('preview')).toEqual([
+      PHASES.PREVIEW_REGROUP_JOURNAL,
       PHASES.PREVIEW_PLANNING,
       PHASES.PREVIEW_CONFIRMING,
       PHASES.PREVIEW_DONE,
     ]);
+  });
+
+  describe('regroup_journal', () => {
+    it('text → regroup_journal (LLM, stay)', () => {
+      const t = resolveTransition('preview', PHASES.PREVIEW_REGROUP_JOURNAL, INPUT.TEXT);
+      expect(t).toEqual({ nextPhase: PHASES.PREVIEW_REGROUP_JOURNAL, requiresLLM: true, response: null });
+    });
+
+    it('confirm → planning (deterministic)', () => {
+      const t = resolveTransition('preview', PHASES.PREVIEW_REGROUP_JOURNAL, INPUT.CONFIRM);
+      expect(t).toEqual({ nextPhase: PHASES.PREVIEW_PLANNING, requiresLLM: false, response: 'Moving on to planning.' });
+    });
+
+    it('ready_signal → planning (deterministic)', () => {
+      const t = resolveTransition('preview', PHASES.PREVIEW_REGROUP_JOURNAL, INPUT.READY_SIGNAL);
+      expect(t).toEqual({ nextPhase: PHASES.PREVIEW_PLANNING, requiresLLM: false, response: null });
+    });
+
+    it('unknown input → stay (no LLM)', () => {
+      const t = resolveTransition('preview', PHASES.PREVIEW_REGROUP_JOURNAL, 'unknown');
+      expect(t).toEqual({ nextPhase: null, requiresLLM: false, response: null });
+    });
   });
 
   describe('planning', () => {
@@ -547,10 +517,6 @@ describe('isTerminalPhase', () => {
     expect(isTerminalPhase(PHASES.FOCUS_COMPLETED)).toBe(true);
   });
 
-  it('returns true for regroup resumed', () => {
-    expect(isTerminalPhase(PHASES.REGROUP_RESUMED)).toBe(true);
-  });
-
   it('returns true for preview done', () => {
     expect(isTerminalPhase(PHASES.PREVIEW_DONE)).toBe(true);
   });
@@ -562,7 +528,6 @@ describe('isTerminalPhase', () => {
   it('returns false for non-terminal phases', () => {
     expect(isTerminalPhase(PHASES.BRIEFING_HEADSPACE_CHECK)).toBe(false);
     expect(isTerminalPhase(PHASES.FOCUS_EXECUTING)).toBe(false);
-    expect(isTerminalPhase(PHASES.REGROUP_STUCK)).toBe(false);
     expect(isTerminalPhase(PHASES.PREVIEW_PLANNING)).toBe(false);
     expect(isTerminalPhase(PHASES.CALIBRATION_QUESTIONING)).toBe(false);
   });
@@ -639,7 +604,6 @@ describe('cross-program consistency', () => {
     const terminalPhases = [
       PHASES.BRIEFING_DONE,
       PHASES.FOCUS_COMPLETED,
-      PHASES.REGROUP_RESUMED,
       PHASES.PREVIEW_DONE,
       PHASES.CALIBRATION_DONE,
     ];
@@ -660,7 +624,6 @@ describe('cross-program consistency', () => {
     const terminalPhases = [
       PHASES.BRIEFING_DONE,
       PHASES.FOCUS_COMPLETED,
-      PHASES.REGROUP_RESUMED,
       PHASES.PREVIEW_DONE,
       PHASES.CALIBRATION_DONE,
     ];

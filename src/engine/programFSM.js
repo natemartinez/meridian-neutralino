@@ -1,7 +1,7 @@
 /**
  * Program FSM Definitions
  *
- * Each program (briefing, focus, regroup, preview, calibration) has its own
+ * Each program (briefing, focus, preview, calibration) has its own
  * finite state machine. Transitions are driven by:
  *
  *   1. User input type (text, rating, selection, confirmation)
@@ -32,12 +32,8 @@ export const PHASES = {
   FOCUS_REGROUP:            'regroup',
   FOCUS_COMPLETED:          'completed',
 
-  // Regroup
-  REGROUP_STUCK:            'stuck',
-  REGROUP_REFOCUSING:       'refocusing',
-  REGROUP_RESUMED:          'resumed',
-
   // Preview
+  PREVIEW_REGROUP_JOURNAL:  'regroup_journal',
   PREVIEW_PLANNING:         'planning',
   PREVIEW_CONFIRMING:       'confirming',
   PREVIEW_DONE:             'done',
@@ -198,46 +194,29 @@ export const PROGRAM_FSMS = {
     },
   },
 
-  // ── Regroup ─────────────────────────────────────────────────────────────────
-  //
-  // [*] → STUCK
-  //   STUCK → REFOCUSING: user describes what happened
-  //   REFOCUSING → RESUMED: user confirms they're ready
-  //   RESUMED → [*]
-  //
-  regroup: {
-    initial: PHASES.REGROUP_STUCK,
-
-    transitions: {
-      [PHASES.REGROUP_STUCK]: {
-        [INPUT.TEXT]:      llmTransition(PHASES.REGROUP_REFOCUSING),
-        _default:          stayTransition(),
-      },
-
-      [PHASES.REGROUP_REFOCUSING]: {
-        [INPUT.CONFIRM]:   deterministicTransition(PHASES.REGROUP_RESUMED, 'Ready to resume.'),
-        [INPUT.TEXT]:      llmTransition(PHASES.REGROUP_REFOCUSING),  // More discussion needed
-        _default:          stayTransition(),
-      },
-
-      [PHASES.REGROUP_RESUMED]: {
-        _default: stayTransition('Regroup complete — ready to resume focus.'),
-      },
-    },
-  },
-
   // ── Preview ─────────────────────────────────────────────────────────────────
   //
-  // [*] → PLANNING
+  // Phase 1: Regroup Journal — user reflects on their day (friction audit, etc.)
+  //   REGROUP_JOURNAL → REGROUP_JOURNAL: user types more (LLM discusses)
+  //   REGROUP_JOURNAL → PLANNING: user confirms or LLM emits [READY]
+  //
+  // Phase 2: Planning — user plans ahead
   //   PLANNING → CONFIRMING: user has discussed what's ahead
   //   CONFIRMING → DONE: user confirms the plan
   //   CONFIRMING → PLANNING: user wants to adjust
   //   DONE → [*]
   //
   preview: {
-    initial: PHASES.PREVIEW_PLANNING,
+    initial: PHASES.PREVIEW_REGROUP_JOURNAL,
 
     transitions: {
+      [PHASES.PREVIEW_REGROUP_JOURNAL]: {
+        [INPUT.TEXT]:          llmTransition(PHASES.PREVIEW_REGROUP_JOURNAL),  // LLM discusses reflection
+        [INPUT.CONFIRM]:       deterministicTransition(PHASES.PREVIEW_PLANNING, 'Moving on to planning.'),
+        [INPUT.READY_SIGNAL]:  deterministicTransition(PHASES.PREVIEW_PLANNING),
+        _default:              stayTransition(),
+      },
+
       [PHASES.PREVIEW_PLANNING]: {
         [INPUT.CONFIRM]:   llmTransition(PHASES.PREVIEW_CONFIRMING),
         [INPUT.TEXT]:      stayTransition(),  // User discussing tomorrow's plan
@@ -303,7 +282,7 @@ export const PROGRAM_FSMS = {
 /**
  * Resolves the next FSM state given the current program, phase, and input type.
  *
- * @param {string} programId - One of 'briefing', 'focus', 'regroup', 'preview', 'calibration'
+ * @param {string} programId - One of 'briefing', 'focus', 'preview', 'calibration'
  * @param {string|null} currentPhase - Current FSM phase (null = initial)
  * @param {string} inputType - One of the INPUT constants
  * @returns {{ nextPhase: string|null, requiresLLM: boolean, response: string|null }}
@@ -377,7 +356,6 @@ export function isTerminalPhase(phase) {
   return (
     phase === PHASES.BRIEFING_DONE ||
     phase === PHASES.FOCUS_COMPLETED ||
-    phase === PHASES.REGROUP_RESUMED ||
     phase === PHASES.PREVIEW_DONE ||
     phase === PHASES.CALIBRATION_DONE
   );

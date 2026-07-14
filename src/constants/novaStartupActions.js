@@ -50,14 +50,14 @@ export const ACTION_BUTTONS = [
     contextRequired: false,
   },
   {
-    id: 'calibration',
-    icon: '◆',
-    label: 'Explore Paths',
-    sublabel: 'Long-term vision',
+    id: 'find-the-win',
+    icon: '🎯',
+    label: 'Find the Win',
+    sublabel: 'Top 3 priorities for the day',
     color: T.accent,
     prompt:
-      'I want to review my long-term projects and roadmaps. Run a calibration on my Paths.',
-    targetProgram: 'calibration',
+      'Help me focus on my top 3 priorities for today. Guide me through a briefing and preview session to make these happen.',
+    targetProgram: 'briefing',
     contextRequired: false,
   },
   {

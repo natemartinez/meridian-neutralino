@@ -130,7 +130,7 @@ export function useExecutionEngine({
   /**
    * Initialize or switch to a program. Resets to the program's initial phase.
    *
-   * @param {string} programId - 'briefing' | 'focus' | 'regroup' | 'preview' | 'calibration'
+   * @param {string} programId - 'briefing' | 'focus' | 'preview' | 'calibration'
    */
   const setProgram = useCallback((programId) => {
     const initialPhase = getInitialPhase(programId);

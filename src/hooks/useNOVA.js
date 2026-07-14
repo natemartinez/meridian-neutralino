@@ -4,6 +4,7 @@ import { uid, progress, QUADRANTS } from '../utils/helpers.js';
 import { buildFullKnowledgeBlock, buildLightKnowledgeContext, buildStructuredKnowledgeBlock, decayKnowledge, markEntriesUsed } from '../utils/knowledge.js';
 import { computePlanningConfidence, NOVA_DEFAULT, updatePlanAccuracyHistory } from '../utils/nova.js';
 import { useNovaRetry } from './useNovaRetry.js';
+import { getInitialPhase } from '../engine/programFSM.js';
 import {
   CHAT_SCHEMA_OPENROUTER,
   INSIGHT_SCHEMA_OPENROUTER,
@@ -183,7 +184,7 @@ export function useNOVA({ apiKey, model, projects, focus, waypointContext, loade
    * The volatile Blackboard snapshot is injected separately via
    * buildBlackboardUserMessage() as a user-role message.
    */
-  const buildNOVASystemPrompt = useCallback((programId, isPreCraftedPrompt) => {
+  const buildNOVASystemPrompt = useCallback((programId, isPreCraftedPrompt, phase) => {
     const confidence = computePlanningConfidence(novaState.syncEvents);
     const routineNote = novaState.routine ? `Known pattern: ${novaState.routine.summary}` : '';
 
@@ -209,9 +210,12 @@ Respond with a valid JSON object matching this schema:
 
     if (programId === 'focus') return `${base} The user wants to lock in on a task. Respond with a JSON object where "content" contains a clean bulleted action plan (3–7 steps). No preamble, no sign-off, no conversation. Start each bullet with an action verb. If the task sounds overwhelming, silently break it into smaller steps. Set "options" to null — the user will type free-form.`;
 
-    if (programId === 'regroup') return `${base} The user has lost momentum. Your FIRST message must be: "What happened — did something interrupt you, or did you just lose the thread?" Be grounding, not motivational. Ask one question at a time. If you detect stress signals, offer one brief tip (breathing, task reframing, or size reduction).`;
-
     if (programId === 'preview') {
+      // Phase 1: Journal reflection — user reflects on their day
+      if (phase === 'regroup_journal') {
+        return `${base} The user is doing a journal reflection. Your FIRST message must be: "What happened — did something interrupt you, or did you just lose the thread?" Be grounding, not motivational. Ask one question at a time. If you detect stress signals, offer one brief tip (breathing, task reframing, or size reduction). Set "ready" to true when the user seems satisfied with their reflection.`;
+      }
+      // Phase 2: Planning ahead
       return `${base} The user is planning ahead. Your FIRST message must be a concise planning question. Suggest 2-4 specific tasks based on active goals and what's unfinished. Ask one question at a time. Set "ready" to true when the user seems satisfied.`;
     }
 
@@ -299,7 +303,10 @@ ${programContext ? `\n${programContext}` : ''}
   useEffect(() => {
     if (!loaded) return;
     if (!apiKey) return;
-    if (novaLoading) return;
+    if (novaLoading) {
+      console.log('[DEBUG] useNOVA auto-start: bailing out, novaLoading is true');
+      return;
+    }
 
     // Determine which program to auto-start
     let progId = null;
@@ -323,7 +330,8 @@ ${programContext ? `\n${programContext}` : ''}
       return;
     }
 
-    const systemPrompt = buildNOVASystemPrompt(progId);
+    const initialPhase = getInitialPhase(progId);
+    const systemPrompt = buildNOVASystemPrompt(progId, false, initialPhase);
     const schemaType = getSchemaForProgram(progId);
     setNovaLoading(true);
 
@@ -526,7 +534,7 @@ ${programContext ? `\n${programContext}` : ''}
     // When overrideText is provided (from startup action buttons), it's a pre-crafted prompt.
     // Pass this flag so buildNOVASystemPrompt can skip the headspace check for briefing.
     const isPreCraftedPrompt = !!overrideText;
-    const systemPrompt = buildNOVASystemPrompt(programId, isPreCraftedPrompt);
+    const systemPrompt = buildNOVASystemPrompt(programId, isPreCraftedPrompt, null);
     const schemaType = getSchemaForProgram(programId);
     const currentHistory = novaState.programChats[programId] || [];
 
@@ -789,6 +797,14 @@ Generate a JSON object with a "tasks" array of 5-7 tasks for ${isPlanningForTomo
     const today = new Date().toISOString().slice(0, 10);
     const plan  = novaState.dailyPlan;
     const confidence = computePlanningConfidence(novaState.syncEvents);
+    console.log('[DEBUG] useNOVA daily-plan effect', {
+      hasPlan: !!plan,
+      planDate: plan?.date,
+      today,
+      planGenLoading: novaState.planGenLoading,
+      confidence,
+      shouldGenerate: (!plan || plan.date !== today) && !novaState.planGenLoading && confidence >= 80,
+    });
     if ((!plan || plan.date !== today) && !novaState.planGenLoading && confidence >= 80) {
       generateNovaPlan();
     }

@@ -195,7 +195,7 @@ export function getNeglectedSkills(skills) {
 export const NOVA_DEFAULT = {
   syncEvents: [],
   routine: null,
-  programChats: { briefing: [], focus: null, regroup: [], preview: [], calibration: [] },
+  programChats: { briefing: [], focus: null, preview: [], calibration: [] },
   suggestedTasks: [],
   dailyPlan: null,
   planGenLoading: false,
@@ -242,10 +242,10 @@ export function determineAutoStartProgram({ apiKey, syncEvents, programChats, ho
     return Array.isArray(chat) && chat.length > 0;
   };
 
-  // Priority 1: Regroup — streak was broken
+  // Priority 1: Preview (journal reflection) — streak was broken
   // Streak was > 0 but last active was not today or yesterday
   if (streakDays > 0 && lastActiveDate && lastActiveDate !== today && lastActiveDate !== yesterday) {
-    if (!hasHistory('regroup')) return 'regroup';
+    if (!hasHistory('preview')) return 'preview';
   }
 
   // Priority 2: Briefing — morning hours (5:00 - 11:59)
@@ -273,7 +273,7 @@ export function determineAutoStartProgram({ apiKey, syncEvents, programChats, ho
  * @returns {{ progId: string, lastMessage: Object, messageCount: number } | null}
  */
 export function getLastActiveProgram(programChats) {
-  const progIds = ['briefing', 'focus', 'regroup', 'preview', 'calibration'];
+  const progIds = ['briefing', 'focus', 'preview', 'calibration'];
   let lastActive = null;
   let lastTs = 0;
 
