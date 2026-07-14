@@ -240,6 +240,13 @@ export default function useGoalActions({
     setJournalEntries(prev => [...prev, entry]);
   };
 
+  /** Extract a title string from a subtask item that may be a string or { title, description } object. */
+  const extractSubtaskTitle = (st) => {
+    if (typeof st === 'string') return st.trim();
+    if (st && typeof st === 'object') return String(st.title || st.name || '').trim();
+    return '';
+  };
+
   const handleBreakdownTask = (task, subTasks) => {
     // Find or create a project for this task, then add subtasks
     const existingProject = projects.find(p => p.id === task.goalId);
@@ -247,7 +254,7 @@ export default function useGoalActions({
       // Add subtasks to the existing project
       const newSubtasks = subTasks.map(st => ({
         id: uid(),
-        title: st.trim(),
+        title: extractSubtaskTitle(st),
         done: false,
         createdAt: Date.now(),
       }));
@@ -273,7 +280,7 @@ export default function useGoalActions({
         createdAt: Date.now(),
         subtasks: subTasks.map(st => ({
           id: uid(),
-          title: st.trim(),
+          title: extractSubtaskTitle(st),
           done: false,
           createdAt: Date.now(),
         })),

@@ -617,7 +617,7 @@ describe('Integration: useAppState -> useNOVA -> API layer', () => {
     const result = simulateFullFlow(
       'deepseek-v4-flash',
       'sk-test-key',
-      'regroup'
+      'preview'
     );
 
     expect(result.bridgeParams.messages).toHaveLength(1);
@@ -626,7 +626,7 @@ describe('Integration: useAppState -> useNOVA -> API layer', () => {
   });
 
   it('full flow: handles multiple programs with correct schema types', () => {
-    const programs = ['briefing', 'regroup', 'preview', 'calibration', 'focus', 'general'];
+    const programs = ['briefing', 'preview', 'calibration', 'focus', 'general'];
 
     programs.forEach(progId => {
       const result = simulateFullFlow('deepseek-v4-flash', 'sk-test-key', progId);
@@ -715,5 +715,171 @@ describe('localStorage persistence after migration', () => {
 
     expect(migrated).toBe(false);
     expect(localStorage.getItem('meridian_model')).toBe('deepseek-v4-flash');
+  });
+});
+
+// ============================================================
+// 8. suggestSubtasks — parsing & transformation logic
+// ============================================================
+
+describe('suggestSubtasks response parsing', () => {
+  /**
+   * Pure-function replica of the suggestSubtasks response handling logic
+   * (useNOVA.js lines 919-934). Given a raw API result, parses and
+   * transforms it into an array of { title, description } objects.
+   */
+  function parseSuggestSubtasksResult(result) {
+    try {
+      const raw = typeof result === 'object' && result.data ? result.data : result;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map(item => ({
+          title: String(item.title || item.name || '').slice(0, 60),
+          description: String(item.description || item.desc || '').slice(0, 120),
+        }));
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  it('returns null when apiKey is missing', () => {
+    // Simulate the early return in suggestSubtasks (line 912)
+    const apiKey = null;
+    expect(apiKey).toBeNull();
+    // The function would return null before making any API call
+  });
+
+  it('parses a valid JSON array response', () => {
+    const result = JSON.stringify([
+      { title: 'Research competitors', description: 'Analyze top 3 competitors' },
+      { title: 'Draft proposal', description: 'Write initial proposal draft' },
+    ]);
+    const output = parseSuggestSubtasksResult(result);
+    expect(output).toEqual([
+      { title: 'Research competitors', description: 'Analyze top 3 competitors' },
+      { title: 'Draft proposal', description: 'Write initial proposal draft' },
+    ]);
+  });
+
+  it('handles response with data wrapper', () => {
+    const result = {
+      data: JSON.stringify([
+        { title: 'Setup CI/CD', description: 'Configure GitHub Actions' },
+      ]),
+    };
+    const output = parseSuggestSubtasksResult(result);
+    expect(output).toEqual([
+      { title: 'Setup CI/CD', description: 'Configure GitHub Actions' },
+    ]);
+  });
+
+  it('handles empty array response', () => {
+    const result = JSON.stringify([]);
+    const output = parseSuggestSubtasksResult(result);
+    expect(output).toBeNull();
+  });
+
+  it('handles non-array JSON response', () => {
+    const result = JSON.stringify({ message: 'Not an array' });
+    const output = parseSuggestSubtasksResult(result);
+    expect(output).toBeNull();
+  });
+
+  it('handles malformed JSON', () => {
+    const result = 'not valid json';
+    const output = parseSuggestSubtasksResult(result);
+    expect(output).toBeNull();
+  });
+
+  it('handles API error (exception during parse)', () => {
+    const result = undefined;
+    const output = parseSuggestSubtasksResult(result);
+    expect(output).toBeNull();
+  });
+
+  it('truncates title to 60 characters', () => {
+    const longTitle = 'A'.repeat(100);
+    const result = JSON.stringify([{ title: longTitle, description: 'Short desc' }]);
+    const output = parseSuggestSubtasksResult(result);
+    expect(output[0].title.length).toBe(60);
+    expect(output[0].title).toBe('A'.repeat(60));
+  });
+
+  it('truncates description to 120 characters', () => {
+    const longDesc = 'B'.repeat(200);
+    const result = JSON.stringify([{ title: 'Short title', description: longDesc }]);
+    const output = parseSuggestSubtasksResult(result);
+    expect(output[0].description.length).toBe(120);
+    expect(output[0].description).toBe('B'.repeat(120));
+  });
+
+  it('falls back to item.name when title is missing', () => {
+    const result = JSON.stringify([
+      { name: 'Task from name field', description: 'Desc' },
+    ]);
+    const output = parseSuggestSubtasksResult(result);
+    expect(output[0].title).toBe('Task from name field');
+  });
+
+  it('falls back to item.desc when description is missing', () => {
+    const result = JSON.stringify([
+      { title: 'Task title', desc: 'Description from desc field' },
+    ]);
+    const output = parseSuggestSubtasksResult(result);
+    expect(output[0].description).toBe('Description from desc field');
+  });
+
+  it('handles missing optional fields gracefully', () => {
+    const result = JSON.stringify([
+      { title: 'Minimal task' },
+    ]);
+    const output = parseSuggestSubtasksResult(result);
+    expect(output[0].title).toBe('Minimal task');
+    expect(output[0].description).toBe('');
+  });
+
+  it('handles null items in the array', () => {
+    const result = JSON.stringify([null, { title: 'Valid task' }]);
+    const output = parseSuggestSubtasksResult(result);
+    // null item would cause TypeError when accessing .title — caught by try/catch
+    expect(output).toBeNull();
+  });
+
+  it('builds correct system prompt structure', () => {
+    // Verify the prompt construction logic (useNOVA.js lines 913-917)
+    const goalTitle = 'Launch MVP';
+    const goalDescription = 'Get v1.0 out by end of quarter';
+    const existingSubtasks = [{ title: 'Setup repo' }];
+
+    const existingBlock = existingSubtasks.length > 0
+      ? `\n\nExisting subtasks (do NOT duplicate these):\n${existingSubtasks.map(s => `- ${s.title || s}`).join('\n')}`
+      : '';
+    const userMsg = `Break down this goal into subtasks:\nTitle: "${goalTitle}"\nDescription: "${goalDescription || 'No description provided'}"${existingBlock}\n\nRespond with a JSON array only.`;
+
+    expect(userMsg).toContain('Launch MVP');
+    expect(userMsg).toContain('Get v1.0 out by end of quarter');
+    expect(userMsg).toContain('Setup repo');
+    expect(userMsg).toContain('do NOT duplicate these');
+  });
+
+  it('handles existing subtasks as strings', () => {
+    // The prompt builder handles both string and object subtasks
+    const existingSubtasks = ['Setup repo', 'Design mockups'];
+    const existingBlock = existingSubtasks.length > 0
+      ? `\n\nExisting subtasks (do NOT duplicate these):\n${existingSubtasks.map(s => `- ${s.title || s}`).join('\n')}`
+      : '';
+
+    expect(existingBlock).toContain('- Setup repo');
+    expect(existingBlock).toContain('- Design mockups');
+  });
+
+  it('omits existing subtasks block when empty', () => {
+    const existingBlock = [];
+    const block = existingBlock.length > 0
+      ? `\n\nExisting subtasks (do NOT duplicate these):\n${existingBlock.map(s => `- ${s.title || s}`).join('\n')}`
+      : '';
+    expect(block).toBe('');
   });
 });

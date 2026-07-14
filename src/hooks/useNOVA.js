@@ -875,10 +875,40 @@ Generate a JSON object with a "tasks" array of 5-7 tasks for ${isPlanningForTomo
     }
   }, [apiKey, projects, novaRetry]);
 
+  /**
+   * suggestSubtasks — asks NOVA to break a goal into actionable subtasks.
+   * Returns an array of { title, description } objects, or null on failure.
+   */
+  const suggestSubtasks = useCallback(async (goalTitle, goalDescription, existingSubtasks = []) => {
+    if (!apiKey) return null;
+    const system = 'You are NOVA, a task breakdown specialist. Given a goal, suggest 3-7 concrete, actionable subtasks. Return ONLY a JSON array of objects with "title" (string, max 60 chars) and "description" (string, max 120 chars, optional) fields. No markdown, no code fences, no extra text.';
+    const existingBlock = existingSubtasks.length > 0
+      ? `\n\nExisting subtasks (do NOT duplicate these):\n${existingSubtasks.map(s => `- ${s.title || s}`).join('\n')}`
+      : '';
+    const userMsg = `Break down this goal into subtasks:\nTitle: "${goalTitle}"\nDescription: "${goalDescription || 'No description provided'}"${existingBlock}\n\nRespond with a JSON array only.`;
+
+    try {
+      const result = await novaRetry.executeWithRetry(
+        () => askAI(system, userMsg, apiKey, { model })
+      );
+      const raw = typeof result === 'object' && result.data ? result.data : result;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map(item => ({
+          title: String(item.title || item.name || '').slice(0, 60),
+          description: String(item.description || item.desc || '').slice(0, 120),
+        }));
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, [apiKey, model, novaRetry]);
+
   return {
     novaState, setNovaState,
     novaChatInput, setNovaChatInput,
-    novaLoading,
+    novaLoading, setNovaLoading,
     novaSessionKey,
     knowledgePool, setKnowledgePool,
     knowledgePoolRef,
@@ -894,6 +924,7 @@ Generate a JSON object with a "tasks" array of 5-7 tasks for ${isPlanningForTomo
     generateNovaPlanRef,
     buildNOVASystemPrompt,
     scanWeeklyGoals,
+    suggestSubtasks,
     novaRetry,
     confirmInsight,
     dismissInsight,
