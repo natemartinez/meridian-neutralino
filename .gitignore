@@ -38,3 +38,7 @@ nova-key.txt
 # Planning documents (local only, never commit)
 /plans
 /inspo
+/docs
+
+# Sandbox
+scratchpad.js
