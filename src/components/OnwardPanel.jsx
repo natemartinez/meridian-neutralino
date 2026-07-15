@@ -193,30 +193,56 @@ export default function OnwardPanel({
           style={{ width:'100%', background:`${T.accent}18`, border:`1px solid ${T.accent}40`, borderRadius:6, padding:'8px', color:T.accent, fontFamily:"'Syne',sans-serif", fontSize:12, fontWeight:700, cursor: onwardForm.title.trim() ? 'pointer' : 'not-allowed', opacity: onwardForm.title.trim() ? 1 : .4 }}
         >+ Add Task</button>
       </div>
-      {/* Available Tasks - draggable subtasks/checkpoints */}
-      {availableTasks && availableTasks.length > 0 && (
-        <div style={{ padding:'12px 18px', borderBottom:`1px solid ${T.border}`, maxHeight:'200px', overflowY:'auto' }}>
-          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:8, color:T.muted, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>Available Tasks</div>
-          {availableTasks.map(task => (
-            <div
-              key={`${task.type}-${task.id}`}
-              draggable
-              onDragStart={() => onDragStart && onDragStart(task)}
-              style={{
-                display:'flex',
-                alignItems:'center',
-                gap:8,
-                padding:'6px 8px',
-                marginBottom:4,
-                background:T.card,
-                border:`1px solid ${T.border}`,
-                borderLeft:`3px solid ${task.goalId ? task.goalColor : T.border}`,
-                borderRadius:4,
-                cursor:'grab',
-                transition:'all 0.15s'
-              }}
-            >
-              <span style={{ flex:1, fontSize:9.5, color:T.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{task.title}</span>
+      {/* ── Available Tasks split into Target (selected-for-today) and Other ── */}
+      {(() => {
+        const targetGoalIds = new Set(selectedForToday || []);
+        // Tasks from availableTasks that belong to today's focus goals
+        const targetTasks = (availableTasks || []).filter(t => targetGoalIds.has(t.goalId));
+        // Other available tasks not in today's focus
+        const otherTasks = (availableTasks || []).filter(t => !targetGoalIds.has(t.goalId));
+        // Also include the goals themselves as target items (so they show even without subtasks)
+        const targetGoals = (selectedForToday || [])
+          .map(id => (projects || []).find(p => p.id === id))
+          .filter(Boolean);
+        const hasAny = targetTasks.length > 0 || otherTasks.length > 0 || targetGoals.length > 0;
+
+        const renderTask = (task, isTarget, customType) => (
+          <div
+            key={`${customType || task.type}-${task.id}`}
+            draggable={!customType}
+            onDragStart={() => !customType && onDragStart && onDragStart(task)}
+            style={{
+              display:'flex',
+              alignItems:'center',
+              gap:8,
+              padding:'6px 8px',
+              marginBottom:4,
+              background: isTarget ? `${T.green}06` : T.card,
+              border:`1px solid ${isTarget ? `${T.green}30` : T.border}`,
+              borderLeft:`3px solid ${isTarget ? T.green : (task.goalId ? task.goalColor : T.border)}`,
+              borderRadius:4,
+              cursor: customType ? 'pointer' : 'grab',
+              transition:'all 0.15s'
+            }}
+            onClick={customType === 'goal' ? () => {
+              if (onSelectGoal) onSelectGoal(task.id);
+            } : undefined}
+          >
+            <span style={{ flex:1, fontSize:9.5, color:T.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{task.title}</span>
+            {isTarget && (
+              <span style={{
+                fontFamily:"'IBM Plex Mono',monospace",
+                fontSize:7,
+                padding:'2px 6px',
+                borderRadius:3,
+                background: `${T.green}18`,
+                color: T.green,
+                textTransform:'uppercase',
+                fontWeight:700,
+                letterSpacing:'0.05em',
+              }}>Target</span>
+            )}
+            {!customType && (
               <span style={{
                 fontFamily:"'IBM Plex Mono',monospace",
                 fontSize:7,
@@ -226,6 +252,20 @@ export default function OnwardPanel({
                 color: task.type === 'subtask' ? T.blue : task.type === 'freeform' ? T.accent : T.purple,
                 textTransform:'uppercase'
               }}>{task.type === 'subtask' ? 'Subtask' : task.type === 'freeform' ? 'Task' : 'Checkpoint'}</span>
+            )}
+            {customType === 'goal' && (
+              <span style={{
+                fontFamily:"'IBM Plex Mono',monospace",
+                fontSize:7,
+                padding:'2px 6px',
+                borderRadius:3,
+                background: `${T.accent}18`,
+                color: T.accent,
+                textTransform:'uppercase',
+                fontWeight:700,
+              }}>Goal</span>
+            )}
+            {!customType && (
               <button
                 onClick={(e) => { e.stopPropagation(); onDeleteAvailableTask && onDeleteAvailableTask(task); }}
                 style={{
@@ -243,16 +283,36 @@ export default function OnwardPanel({
                 onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
                 title="Delete task"
               >×</button>
-            </div>
-          ))}
-        </div>
-      )}
-      {availableTasks && availableTasks.length === 0 && (
-        <div style={{ padding:'12px 18px', borderBottom:`1px solid ${T.border}` }}>
-          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:8, color:T.muted, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4 }}>Available Tasks</div>
-          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:T.muted, textAlign:'center', padding:'8px 0' }}>All caught up!</div>
-        </div>
-      )}
+            )}
+          </div>
+        );
+
+        return (
+          <div style={{ padding:'12px 18px', borderBottom:`1px solid ${T.border}`, maxHeight:'260px', overflowY:'auto' }}>
+            {(targetTasks.length > 0 || targetGoals.length > 0) && (
+              <>
+                <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:8, color:T.green, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8, fontWeight:700 }}>
+                  🎯 Target Tasks ({(targetTasks.length + targetGoals.length)})
+                </div>
+                {/* Show goals first */}
+                {targetGoals.map(g => renderTask({ id: g.id, title: g.title, goalId: g.id }, true, 'goal'))}
+                {/* Then subtasks/checkpoints under each goal */}
+                {targetTasks.map(t => renderTask(t, true, null))}
+                {otherTasks.length > 0 && <div style={{ height:1, background:T.border, margin:'8px 0' }} />}
+              </>
+            )}
+            {otherTasks.length > 0 && (
+              <>
+                <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:8, color:T.muted, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>Other Tasks</div>
+                {otherTasks.map(t => renderTask(t, false, null))}
+              </>
+            )}
+            {!hasAny && (
+              <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:T.muted, textAlign:'center', padding:'8px 0' }}>All caught up!</div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── Top Goals quick-add (today only) ── */}
       {isToday && topGoals.length > 0 && (
@@ -276,15 +336,6 @@ export default function OnwardPanel({
                 >+</button>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Selected for Today indicator (today only) ── */}
-      {isToday && selectedForToday.length > 0 && (
-        <div style={{ padding:'8px 18px', borderBottom:`1px solid ${T.border}`, background:`${T.green}08` }}>
-          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:8, color:T.green, letterSpacing:'0.08em' }}>
-            Today's Focus ({selectedForToday.length}/3)
           </div>
         </div>
       )}
