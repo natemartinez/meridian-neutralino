@@ -20,6 +20,7 @@ export default function useAppStyles() {
 
       /* ── SIGNAL ── */
       .sig{width:168px;flex-shrink:0;background:transparent;display:flex;flex-direction:column;transition:width .25s cubic-bezier(.4,0,.2,1);padding:12px 0;position:relative;}
+      .sig.sig-compass-open{width:400px;}
       .sig-inner{overflow:hidden;display:flex;flex-direction:column;}
       .sig.collapsed{width:48px;padding:12px 0;margin-left:18px;margin-right:12px;}
       .sig.collapsed .sec,
@@ -183,6 +184,7 @@ export default function useAppStyles() {
 
       /* Base sizes (1440px - 1919px) */
       .sig{width:235px;}
+      .sig.sig-compass-open{width:400px;}
       .sec{padding:14px 14px 10px;}
       .sig-add{margin:6px 14px 10px;padding:9px;}
       .wp.open{width:352px;}
@@ -206,6 +208,7 @@ export default function useAppStyles() {
 
       @media (max-width: 1439px) {
         .sig{width:216px;}
+        .sig.sig-compass-open{width:380px;}
         .wp.open{width:305px;}
         .wpi{width:305px;}
         .cmd.wp-open .ctb{padding-right:305px;}
@@ -227,6 +230,7 @@ export default function useAppStyles() {
 
       @media (max-width: 1365px) {
         .sig{width:193px;}
+        .sig.sig-compass-open{width:360px;}
         .wp.open{width:281px;}
         .wpi{width:281px;}
         .cmd.wp-open .ctb{padding-right:281px;}
@@ -249,6 +253,7 @@ export default function useAppStyles() {
 
       @media (min-width: 1920px) {
         .sig{width:278px;}
+        .sig.sig-compass-open{width:440px;}
         .wp.open{width:399px;}
         .wpi{width:399px;}
         .cmd.wp-open .ctb{padding-right:399px;}
@@ -280,6 +285,7 @@ export default function useAppStyles() {
 
       @media (min-width: 2560px) {
         .sig{width:259px;}
+        .sig.sig-compass-open{width:500px;}
         .wp.open{width:469px;}
         .wpi{width:469px;}
         .cmd.wp-open .ctb{padding-right:469px;}
@@ -313,6 +319,7 @@ export default function useAppStyles() {
 
       @media (max-width: 1200px) {
         .sig{width:129px;}
+        .sig.sig-compass-open{width:340px;}
         .wp.open{width:258px;}
         .wpi{width:258px;}
         .cmd.wp-open .ctb{padding-right:258px;}

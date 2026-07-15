@@ -1,4 +1,5 @@
 import { NODE_PALETTE } from './utils/theme.js';
+import { createActionRegistry } from './engine/actionRegistry.js';
 
 import ApiKeyScreen from './components/ApiKeyScreen.jsx';
 import AppRouter from './components/AppRouter.jsx';
@@ -32,15 +33,37 @@ function Meridian() {
     cancelPendingDrop: actions.cancelPendingDrop,
   });
 
+  // 5. Action Registry — wraps hook functions for NOVA action execution
+  const actionRegistry = createActionRegistry({
+    startSession: appState.startSession,
+    stopSession: appState.stopSession,
+    toggleSubtask: actions.toggleSubtask,
+    createGoalFromModal: actions.createGoalFromModal,
+    addOnwardItem: actions.addOnwardItem,
+    setFocus: appState.setFocus,
+    addKnowledgeEntry: appState.addKnowledgeEntry,
+    updateCorrections: appState.updateCorrections,
+    onSubNav: appState.onSubNav,
+    onOpenProgramWithPage: appState.onOpenProgramWithPage,
+    setSelectedForToday: appState.setSelectedForToday,
+    finishBriefing: () => {}, // stub — injected by NOVAProgramPanel at runtime
+    generateNovaPlan: appState.generateNovaPlan,
+    toggleOnwardDone: actions.toggleOnwardDone,
+    completeGoal: actions.completeGoal,
+    renameGoal: actions.renameGoal,
+    deleteGoal: actions.deleteGoal,
+  });
+
   if (!appState.loaded) return null;
   if (!appState.apiKey) return <ApiKeyScreen onSave={appState.setApiKey} />;
 
-  // 5. Render — pass everything as props to AppRouter
+  // 6. Render — pass everything as props to AppRouter
   return (
     <AppRouter
       {...appState}
       {...canvasHandlers}
       {...actions}
+      actionRegistry={actionRegistry}
       selected={selected}
       colorFor={colorFor}
     />
