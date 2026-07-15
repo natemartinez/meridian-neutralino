@@ -78,6 +78,13 @@ export default function useAppCanvas({
 }) {
   // ── Canvas draw loop ──────────────────────────────────────
   useEffect(() => {
+    console.log('[DEBUG] useAppCanvas draw-loop effect', {
+      mainPage,
+      loaded,
+      hasApiKey: !!apiKey,
+      isCanvasPage: isCanvasPage(mainPage),
+      hasCanvas: !!canvasRef.current,
+    });
     if (!loaded || !apiKey || !isCanvasPage(mainPage)) return;
     const canvas = canvasRef.current;
     if (!canvas) return;

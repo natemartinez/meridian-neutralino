@@ -36,6 +36,7 @@ function NOVAProgramPanel({
     sendNOVAMessage(progId, optionText);
   }, [novaLoading, sendNOVAMessage, progId]);
   const [briefingPhase, setBriefingPhase] = useState('chat'); // 'chat' | 'pick3' | 'breakdown' | 'done'
+  const [previewPhase, setPreviewPhase] = useState('regroup_journal'); // 'regroup_journal' | 'planning' | 'confirming' | 'done'
   const [breakdownTask, setBreakdownTask] = useState(null);
   const [breakdownInput, setBreakdownInput] = useState('');
 
@@ -105,14 +106,12 @@ function NOVAProgramPanel({
   const PROG_META = {
     briefing:    { label:'Goals',       color:'#F59E0B', desc:'Morning debrief' },
     focus:       { label:'Focus',       color: T.blue,   desc:'Deep focus' },
-    regroup:     { label:'Re-group',    color: T.purple, desc:'Reset & refocus' },
     preview:     { label:'Preview',     color: T.cyan,   desc:'Plan ahead' },
     calibration: { label:'Paths', color: T.accent, desc:'Roadmaps & projects' },
   };
   const meta     = PROG_META[progId] || PROG_META.briefing;
   const history  = novaState.programChats[progId] || [];
   const isFocus   = progId === 'focus';
-  const isRegroup = progId === 'regroup';
   const isBriefing = progId === 'briefing';
   const isPreview = progId === 'preview';
   const isCalibration = progId === 'calibration';
@@ -120,6 +119,7 @@ function NOVAProgramPanel({
   // ── Sub-nav items per program (moved from Compass bar) ──
   const SUB_NAVS = {
     focus:       [{ id: 'onward',   label: 'ONWARD' }, { id: 'worklogs', label: 'WORK LOGS' }],
+    preview:     [{ id: 'preview-calendar', label: 'CALENDAR' }],
   };
   const subNavs = SUB_NAVS[progId] || [];
   const focusPlan = novaState.programChats.focus;
@@ -307,19 +307,17 @@ function NOVAProgramPanel({
                 ))}
               </>
             )}
-            {progId !== 'regroup' && (
-              <>
-                <button
-                  onClick={() => setShowContext(s => !s)}
-                  style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color: showContext ? meta.color : T.muted, cursor:'pointer', fontSize:9, padding:'2px 6px', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.05em' }}
-                  title="Toggle system prompt debug view"
-                >{showContext ? 'HIDE CTX' : 'SHOW CTX'}</button>
-                <button
-                  onClick={() => onNewSession(progId)}
-                  style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color:T.muted, cursor:'pointer', fontSize:9, padding:'2px 6px', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.05em' }}
-                >NEW SESSION</button>
-              </>
-            )}
+            <>
+              <button
+                onClick={() => setShowContext(s => !s)}
+                style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color: showContext ? meta.color : T.muted, cursor:'pointer', fontSize:9, padding:'2px 6px', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.05em' }}
+                title="Toggle system prompt debug view"
+              >{showContext ? 'HIDE CTX' : 'SHOW CTX'}</button>
+              <button
+                onClick={() => onNewSession(progId)}
+                style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color:T.muted, cursor:'pointer', fontSize:9, padding:'2px 6px', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.05em' }}
+              >NEW SESSION</button>
+            </>
           </div>
         </div>
       </div>
@@ -331,8 +329,8 @@ function NOVAProgramPanel({
         </div>
       )}
 
-      {/* ── Re-group Panel ── */}
-      {isRegroup ? (
+      {/* ── Journal Reflection Panel (Preview Phase 1) ── */}
+      {isPreview && previewPhase === 'regroup_journal' ? (
         <RegroupPanel
           sessions={sessions || []}
           brainDumpEntries={brainDumpEntries || []}

@@ -61,6 +61,11 @@ export default function useAppState() {
   const [skills, setSkills]                   = useState([]);
   const [onwardForm, setOnwardForm]           = useState({ title:'', hour:480, priority:'low', goalId:null, duration:60 });
 
+  // ── Preview calendar state ──
+  const [previewPlanItems, setPreviewPlanItems] = useLocalStorageState('meridian_preview_plan', []);
+  const [previewPlanForm, setPreviewPlanForm]   = useState({ title:'', hour:480, priority:'low', goalId:null, duration:60, type:'task', note:'' });
+  const [selectedPreviewDate, setSelectedPreviewDate] = useState(() => new Date().toISOString().slice(0, 10));
+
   // Drag and drop state for subtasks/checkpoints to time blocks
   const [draggedTask, setDraggedTask]         = useState(null);
   const [dragOverHour, setDragOverHour]       = useState(null);
@@ -157,7 +162,7 @@ export default function useAppState() {
   const [onwardClickedItem, setOnwardClickedItem] = useState(null);
   const [selectedOnwardDate, setSelectedOnwardDate] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarView, setSidebarView] = useState('session-history'); // 'session-history' | 'programs'
+  const [sidebarView, setSidebarView] = useState('programs'); // 'session-history' | 'programs'
   const [sunId, setSunId] = useLocalStorageState('meridian_sun_id', null);
 
   // ── NOVA ──
@@ -176,10 +181,12 @@ export default function useAppState() {
     generateNovaPlan,
     buildNOVASystemPrompt,
     scanWeeklyGoals,
+    suggestSubtasks,
     novaRetry,
     confirmInsight,
     dismissInsight,
     recordPlanAccuracy,
+    setNovaLoading,
   } = useNOVA({ apiKey, model, projects, focus, waypointContext, loaded, pendingAutoStart, setPendingAutoStart });
 
   // ── NOVA Active Interactions ──
@@ -333,13 +340,41 @@ export default function useAppState() {
     activePageRef.current = page;
     novaInteractions.fireEvent('page_navigated', { page });
     // Use the same program-aware logic for sub-nav navigation
-    const waypointPages = ['onward', 'map', 'skills'];
+    const waypointPages = ['onward', 'map', 'skills', 'preview-calendar'];
     if (waypointPages.includes(page)) {
       openWaypoint({ type: 'canvas-panel', id: page });
     } else {
       closeWaypoint();
     }
   }, [setActivePage, openWaypoint, closeWaypoint, novaInteractions]);
+
+  // ── Preview calendar action handlers ──
+  const addPreviewItem = useCallback(() => {
+    if (!previewPlanForm.title.trim()) return;
+    const newItem = {
+      id: uid(),
+      title: previewPlanForm.title.trim(),
+      date: selectedPreviewDate,
+      hour: previewPlanForm.hour,
+      duration: previewPlanForm.duration || 60,
+      priority: previewPlanForm.priority,
+      goalId: previewPlanForm.goalId,
+      type: previewPlanForm.type || 'task',
+      note: previewPlanForm.note || '',
+      done: false,
+      createdAt: Date.now(),
+    };
+    setPreviewPlanItems(prev => [...prev, newItem]);
+    setPreviewPlanForm(f => ({ ...f, title: '', note: '' }));
+  }, [previewPlanForm, selectedPreviewDate, setPreviewPlanItems, setPreviewPlanForm]);
+
+  const deletePreviewItem = useCallback((id) => {
+    setPreviewPlanItems(prev => prev.filter(i => i.id !== id));
+  }, [setPreviewPlanItems]);
+
+  const togglePreviewDone = useCallback((id) => {
+    setPreviewPlanItems(prev => prev.map(i => i.id === id ? { ...i, done: !i.done } : i));
+  }, [setPreviewPlanItems]);
 
   // ── Tracking hook ──
   const {
@@ -357,7 +392,7 @@ export default function useAppState() {
   const handleNewSession = useCallback((programId) => {
     onNewSession(programId);
     // Create a tracking session so SessionHistoryLog sidebar can display it
-    const labelMap = { briefing: 'Goals Session', focus: 'Focus Session', regroup: 'Re-group Session', preview: 'Preview Session', calibration: 'Paths Session' };
+    const labelMap = { briefing: 'Goals Session', focus: 'Focus Session', preview: 'Preview Session', calibration: 'Paths Session' };
     const label = labelMap[programId] || `${programId} Session`;
     startSession(label, null, programId);
   }, [onNewSession, startSession]);
@@ -627,6 +662,12 @@ export default function useAppState() {
     xpSkills, setXpSkills,
     resizeDrag, setResizeDrag,
 
+    // Preview calendar
+    previewPlanItems, setPreviewPlanItems,
+    previewPlanForm, setPreviewPlanForm,
+    selectedPreviewDate, setSelectedPreviewDate,
+    addPreviewItem, deletePreviewItem, togglePreviewDone,
+
     // Refs
     canvasRef, animRef, animT, emptyAlpha, starsRef,
     nodeDragged, mouseDownPos, projectsRef,
@@ -645,12 +686,12 @@ export default function useAppState() {
     // NOVA
     novaState, setNovaState,
     novaChatInput, setNovaChatInput,
-    novaLoading, knowledgePool,
+    novaLoading, setNovaLoading, knowledgePool,
     addSyncEvent, onNewSession: handleNewSession,
     addKnowledgeEntry, deleteKnowledgeEntry, editKnowledgeEntry,
     updateCorrections, sendNOVAMessage,
     generateNovaPlan, buildNOVASystemPrompt,
-    scanWeeklyGoals, novaRetry,
+    scanWeeklyGoals, suggestSubtasks, novaRetry,
     confirmInsight, dismissInsight, recordPlanAccuracy,
 
     // NOVA Interactions

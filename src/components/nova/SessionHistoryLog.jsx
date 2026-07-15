@@ -5,12 +5,11 @@ import { PROGRAM_DEFAULT_PAGES } from '../../constants/programs.js';
 const PROG_META = {
   briefing:     { label: 'Goals',      color: '#F59E0B' },
   focus:        { label: 'Focus',      color: T.blue },
-  regroup:      { label: 'Re-group',   color: T.purple },
   preview:      { label: 'Preview',    color: T.cyan },
   calibration:  { label: 'Paths',      color: T.accent },
 };
 
-const PROG_ORDER = ['briefing', 'focus', 'regroup', 'preview', 'calibration'];
+const PROG_ORDER = ['briefing', 'focus', 'preview', 'calibration'];
 
 function fmtTime(iso) {
   const d = new Date(iso);

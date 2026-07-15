@@ -28,12 +28,6 @@ const INTENT_ROUTES = [
     label: 'Focus',
   },
   {
-    keywords: ['regroup', 'reset', 'refocus', 'break', 'recharge', 'reset my mind', 'overwhelm'],
-    programId: 'regroup',
-    prompt: 'I need to regroup and reset my focus.',
-    label: 'Re-group',
-  },
-  {
     keywords: ['preview', 'tomorrow', 'plan ahead', 'next day', 'schedule', 'upcoming'],
     programId: 'preview',
     prompt: 'Preview tomorrow and help me plan ahead.',
@@ -136,7 +130,7 @@ export default function RoutingChatBox({
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask NOVA anything — brief the day, focus, regroup, preview tomorrow, explore paths…"
+          placeholder="Ask NOVA anything — brief the day, focus, preview tomorrow, explore paths…"
           rows={1}
           style={{
             flex: 1,

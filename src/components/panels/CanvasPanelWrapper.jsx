@@ -3,6 +3,7 @@ import { T } from '../../utils/theme.js';
 import OnwardPanel from '../OnwardPanel.jsx';
 import MapPanel from '../MapPanel.jsx';
 import SkillsPanel from '../SkillsPanel.jsx';
+import PreviewCalendar from './PreviewCalendar.jsx';
 
 export default function CanvasPanelWrapper({ panelId, ...props }) {
   // Resolve topGoals ID array to full goal objects
@@ -77,6 +78,22 @@ export default function CanvasPanelWrapper({ panelId, ...props }) {
             selectedSkillId={props.selectedSkillId}
             onUpdateLevel={props.updateSkillLevel}
             onAddSubskill={props.addSubskill}
+          />
+        )}
+        {panelId === 'preview-calendar' && (
+          <PreviewCalendar
+            previewPlanItems={props.previewPlanItems}
+            previewPlanForm={props.previewPlanForm}
+            setPreviewPlanForm={props.setPreviewPlanForm}
+            projects={props.projects}
+            onAddPreviewItem={props.addPreviewItem}
+            onDeletePreviewItem={props.deletePreviewItem}
+            onTogglePreviewDone={props.togglePreviewDone}
+            selectedDate={props.selectedPreviewDate}
+            onDateChange={props.setSelectedPreviewDate}
+            setModal={props.setModal}
+            topGoals={props.topGoals}
+            onToggleTopGoal={props.onToggleTopGoal}
           />
         )}
       </div>

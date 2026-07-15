@@ -50,28 +50,14 @@ const PROGRAMS = [
     ),
   },
   {
-    id: 'regroup',
-    label: 'Re-group',
-    desc: 'Reset & refocus',
-    color: T.purple,
-    defaultPage: null,
-    subNavs: [],
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 13 13">
-        <path d="M2 6.5 A4.5 4.5 0 0 1 10 3.5" fill="none" stroke={T.purple} strokeWidth="1.4" strokeLinecap="round"/>
-        <path d="M11 6.5 A4.5 4.5 0 0 1 3 9.5" fill="none" stroke={T.purple} strokeWidth="1.4" strokeLinecap="round"/>
-        <polygon points="10,1.5 12,4 8,4" fill={T.purple}/>
-        <polygon points="3,8.5 1,11 5,11" fill={T.purple}/>
-      </svg>
-    ),
-  },
-  {
     id: 'preview',
     label: 'Preview',
     desc: 'Plan ahead',
     color: T.cyan,
     defaultPage: 'map',
-    subNavs: [],
+    subNavs: [
+      { id: 'preview-calendar', label: 'CALENDAR' },
+    ],
     icon: (
       <svg width="16" height="16" viewBox="0 0 13 13">
         <path d="M6.5 1.5 L11.5 6.5 L6.5 11.5 L1.5 6.5 Z" fill="none" stroke={T.cyan} strokeWidth="1.4"/>

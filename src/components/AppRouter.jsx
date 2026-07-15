@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { T, NODE_PALETTE } from '../utils/theme.js';
 import { uid } from '../utils/helpers.js';
 import { getLastActiveProgram } from '../utils/nova.js';
@@ -27,6 +27,7 @@ import NovaInsightsPanel from './nova/NovaInsightsPanel.jsx';
 import NOVAProgramPanel from './nova/NOVAProgramPanel.jsx';
 import NovaToast from './nova/NovaToast.jsx';
 import StartupCanvas from './nova/StartupCanvas.jsx';
+import NovaCompassChat from './nova/NovaCompassChat.jsx';
 
 /**
  * AppRouter — renders the full JSX tree for the Meridian application.
@@ -63,7 +64,7 @@ export default function AppRouter({
   selectedSkillId, setSelectedSkillId,
   mainPage, setMainPage,
   showStartupCanvas, setShowStartupCanvas,
-  pendingAutoStart,
+  pendingAutoStart, setPendingAutoStart,
   intensity, setIntensity,
   showApiKey, setShowApiKey,
   showMindCheckCard, setShowMindCheckCard,
@@ -96,6 +97,12 @@ export default function AppRouter({
   resizeDrag, setResizeDrag,
   setForm,
 
+  // ── Preview calendar ──
+  previewPlanItems, setPreviewPlanItems,
+  previewPlanForm, setPreviewPlanForm,
+  selectedPreviewDate, setSelectedPreviewDate,
+  addPreviewItem, deletePreviewItem, togglePreviewDone,
+
   // ── Refs ──
   canvasRef,
   activePageRef,
@@ -103,12 +110,12 @@ export default function AppRouter({
   // ── NOVA ──
   novaState, setNovaState,
   novaChatInput, setNovaChatInput,
-  novaLoading, knowledgePool,
+  novaLoading, setNovaLoading, knowledgePool,
   addSyncEvent, onNewSession,
   addKnowledgeEntry, deleteKnowledgeEntry, editKnowledgeEntry,
   updateCorrections, sendNOVAMessage,
   generateNovaPlan, buildNOVASystemPrompt,
-  scanWeeklyGoals, novaRetry,
+  scanWeeklyGoals, suggestSubtasks, novaRetry,
   confirmInsight, dismissInsight, recordPlanAccuracy,
 
   // ── NOVA Interactions ──
@@ -129,6 +136,9 @@ export default function AppRouter({
   // ── Waypoint / navigation helpers ──
   openWaypoint, closeWaypoint,
   onOpenProgramWithPage, onSubNav,
+
+  // ── Action Registry (for NOVA Compass) ──
+  actionRegistry,
 
   // ── Canvas mouse handlers ──
   onCanvasMouseDown, onCanvasMouseMove, onCanvasMouseUp,
@@ -170,6 +180,7 @@ export default function AppRouter({
   const appStyles = useAppStyles();
   const selected  = projects.find((p) => p.id === selectedId);
   const colorFor  = (i) => NODE_PALETTE[i % NODE_PALETTE.length];
+  const [novaCompassOpen, setNovaCompassOpen] = useState(false);
 
   return (
     <>
@@ -177,22 +188,41 @@ export default function AppRouter({
 
       <div className="app-shell" style={{ position:'relative' }}>
         {/* ═══ SIGNAL ═══ */}
-        <div className={`sig${sidebarCollapsed ? ' collapsed' : ''}`}>
+        <div className={`sig${sidebarCollapsed ? ' collapsed' : ''}${novaCompassOpen ? ' sig-compass-open' : ''}`}>
           <div className="sig-inner">
             <NovaSidebarBlock
               novaState={novaState}
               mainPage={mainPage}
               onOpenInsights={() => setMainPage('nova-insights')}
-              onBackToHQ={() => { setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; setShowStartupCanvas(true); closeWaypoint(); }}
+              onBackToHQ={() => { setNovaLoading(false); setPendingAutoStart(null); setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; setShowStartupCanvas(true); closeWaypoint(); }}
+              novaCompassOpen={novaCompassOpen}
+              onToggleCompass={() => setNovaCompassOpen(v => !v)}
+              collapsed={sidebarCollapsed}
             />
-            {sidebarView === 'session-history' ? (
+            {novaCompassOpen ? (
+              <NovaCompassChat
+                novaState={novaState}
+                setNovaState={setNovaState}
+                novaLoading={novaLoading}
+                sendNOVAMessage={sendNOVAMessage}
+                mainPage={mainPage}
+                activePage={activePage}
+                projects={projects}
+                setProjects={setProjects}
+                onwardItems={onwardItems}
+                setOnwardItems={setOnwardItems}
+                actionRegistry={actionRegistry}
+                novaInteractions={novaInteractions}
+                onClose={() => setNovaCompassOpen(false)}
+              />
+            ) : sidebarView === 'session-history' ? (
               <SessionHistoryLog
                 collapsed={sidebarCollapsed}
                 sessions={sessions}
                 novaState={novaState}
                 mainPage={mainPage}
                 onOpenProgram={(id) => setMainPage(`program-${id}`)}
-                onBackToHQ={() => { setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; setShowStartupCanvas(true); closeWaypoint(); }}
+                onBackToHQ={() => { setNovaLoading(false); setPendingAutoStart(null); setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; setShowStartupCanvas(true); closeWaypoint(); }}
                 onOpenProgramWithPage={onOpenProgramWithPage}
                 addSyncEvent={addSyncEvent}
                 onTogglePrograms={() => setSidebarView('programs')}
@@ -202,7 +232,7 @@ export default function AppRouter({
                 collapsed={sidebarCollapsed}
                 mainPage={mainPage}
                 onOpenProgram={(id) => { setMainPage(`program-${id}`); }}
-                onBackToHQ={() => { setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; setShowStartupCanvas(true); closeWaypoint(); }}
+                onBackToHQ={() => { setNovaLoading(false); setPendingAutoStart(null); setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; setShowStartupCanvas(true); closeWaypoint(); }}
                 addSyncEvent={addSyncEvent}
                 onOpenProgramWithPage={onOpenProgramWithPage}
                 onSubNavNavigate={(programId, subNavId) => {
@@ -247,6 +277,39 @@ export default function AppRouter({
             onMouseEnter={e => { e.currentTarget.style.opacity='1'; e.currentTarget.style.color=T.text; e.currentTarget.style.borderColor='#7a8ba3'; }}
             onMouseLeave={e => { e.currentTarget.style.opacity='0.5'; e.currentTarget.style.color=T.muted; e.currentTarget.style.borderColor=T.border; }}
           >{sidebarCollapsed ? '▸' : '◂'}</button>
+
+          {/* ── Floating compass for collapsed sidebar ── */}
+          {sidebarCollapsed && (
+            <button
+              onClick={() => { setSidebarCollapsed(false); setNovaCompassOpen(true); }}
+              title="Open NOVA Chat"
+              style={{
+                position:'fixed',
+                left:8,
+                top:'50%',
+                transform:'translateY(-50%)',
+                zIndex:1000,
+                width:36,
+                height:36,
+                borderRadius:'50%',
+                background:T.card,
+                border:`1px solid ${novaCompassOpen ? T.accent : T.border}`,
+                display:'flex',
+                alignItems:'center',
+                justifyContent:'center',
+                cursor:'pointer',
+                fontSize:18,
+                lineHeight:1,
+                padding:0,
+                transition:'all .2s',
+                boxShadow: novaCompassOpen ? `0 0 12px ${T.accent}40` : 'none',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = T.accent + '80'; e.currentTarget.style.boxShadow = `0 0 12px ${T.accent}30`; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = novaCompassOpen ? T.accent : T.border; e.currentTarget.style.boxShadow = novaCompassOpen ? `0 0 12px ${T.accent}40` : 'none'; }}
+            >
+              🧭
+            </button>
+          )}
         </div>
 
         {/* ═══ COMMAND ═══ */}
@@ -257,7 +320,7 @@ export default function AppRouter({
               <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                 {(() => {
                   const progId = extractProgId(mainPage);
-                  const labelMap = { briefing:'Goals', focus:'Focus', regroup:'Re-group', preview:'Preview', calibration:'Paths' };
+                  const labelMap = { briefing:'Goals', focus:'Focus', preview:'Preview', calibration:'Paths' };
                   const label = labelMap[progId];
                   if (!label) return null;
                   const isBriefing = progId === 'briefing';
@@ -421,6 +484,12 @@ export default function AppRouter({
                 onwardItems={onwardItems}
                 projects={projects}
                 selectedForToday={selectedForToday}
+                setSelectedForToday={setSelectedForToday}
+                suggestSubtasks={suggestSubtasks}
+                handleBreakdownTask={handleBreakdownTask}
+                toggleSubtask={toggleSubtask}
+                setSelectedId={setSelectedId}
+                setOnwardClickedItem={setOnwardClickedItem}
                 T={T}
               />
             ) : isCanvasPage(mainPage) && (
@@ -592,43 +661,6 @@ export default function AppRouter({
                 recordPlanAccuracy={recordPlanAccuracy}
               />
             )}
-            {mainPage === 'program-regroup' && (
-              <NOVAProgramPanel
-                progId="regroup"
-                novaState={novaState}
-                setNovaState={setNovaState}
-                novaChatInput={novaChatInput}
-                setNovaChatInput={setNovaChatInput}
-                novaLoading={novaLoading}
-                sendNOVAMessage={sendNOVAMessage}
-                addSyncEvent={addSyncEvent}
-                setOnwardItems={setOnwardItems}
-                uid={uid}
-                onBack={() => setMainPage('hq')}
-                T={T}
-                onNewSession={onNewSession}
-                buildNOVASystemPrompt={buildNOVASystemPrompt}
-                onwardItems={onwardItems}
-                projects={projects}
-                selectedForToday={selectedForToday}
-                setSelectedForToday={setSelectedForToday}
-                deferredItems={deferredItems}
-                setDeferredItems={setDeferredItems}
-                backlogItems={backlogItems}
-                setBacklogItems={setBacklogItems}
-                onBreakdownTask={handleBreakdownTask}
-                sessions={sessions}
-                brainDumpEntries={brainDumpEntries}
-                onBrainDump={handleBrainDump}
-                journalEntries={journalEntries}
-                onJournalEntry={handleJournalEntry}
-                onBreakdownSuggestion={handleBreakdownSuggestion}
-                novaRetry={novaRetry}
-                confirmInsight={confirmInsight}
-                dismissInsight={dismissInsight}
-                onSubNav={onSubNav}
-              />
-            )}
           </div>
         </div>
 
@@ -712,6 +744,14 @@ export default function AppRouter({
                 topGoals={topGoals}
                 onToggleTopGoal={toggleTopGoal}
                 setSunId={setSunId}
+                previewPlanItems={previewPlanItems}
+                previewPlanForm={previewPlanForm}
+                setPreviewPlanForm={setPreviewPlanForm}
+                selectedPreviewDate={selectedPreviewDate}
+                setSelectedPreviewDate={setSelectedPreviewDate}
+                addPreviewItem={addPreviewItem}
+                deletePreviewItem={deletePreviewItem}
+                togglePreviewDone={togglePreviewDone}
               />
             )}
 
