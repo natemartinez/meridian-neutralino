@@ -98,9 +98,13 @@ is_vite_running() {
 
 # --- Helper: launch Neutralino binary directly (connects to existing Vite server) ---
 launch_neutralino() {
-  local binary="$PROJECT_DIR/bin/neutralino-mac_arm64"
+  # Prefer the production-built binary (named "meridian-mac_arm64"), fall back to dev binary
+  local binary="$PROJECT_DIR/dist/meridian/meridian-mac_arm64"
   if [ ! -x "$binary" ]; then
-    echo "ERROR: Neutralino binary not found at $binary"
+    binary="$PROJECT_DIR/bin/neutralino-mac_arm64"
+  fi
+  if [ ! -x "$binary" ]; then
+    echo "ERROR: Neutralino binary not found"
     return 1
   fi
   echo "Opening Neutralino window connected to existing dev server at $DEV_URL..."

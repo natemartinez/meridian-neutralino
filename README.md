@@ -1,1 +1,2 @@
 
+Meridian is a smart desktop app designed to kill procrastination and help you actually get things done. Using a built-in AI coach named NOVA, it walks you through structured daily routines like morning planning and distraction-free deep work. Instead of overwhelming you with a giant to-do list, the app guides you to break huge projects down into bite-sized task so you know exactly what to tackle next.

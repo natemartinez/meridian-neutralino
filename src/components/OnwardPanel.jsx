@@ -206,6 +206,18 @@ export default function OnwardPanel({
           .filter(Boolean);
         const hasAny = targetTasks.length > 0 || otherTasks.length > 0 || targetGoals.length > 0;
 
+        // ── Collapsible goal header state ──
+        const [expandedGoals, setExpandedGoals] = React.useState(() => new Set());
+
+        const toggleGoal = (goalId) => {
+          setExpandedGoals(prev => {
+            const next = new Set(prev);
+            if (next.has(goalId)) next.delete(goalId);
+            else next.add(goalId);
+            return next;
+          });
+        };
+
         const renderTask = (task, isTarget, customType) => (
           <div
             key={`${customType || task.type}-${task.id}`}
@@ -243,15 +255,20 @@ export default function OnwardPanel({
               }}>Target</span>
             )}
             {!customType && (
-              <span style={{
-                fontFamily:"'IBM Plex Mono',monospace",
-                fontSize:7,
-                padding:'2px 6px',
-                borderRadius:3,
-                background: task.type === 'subtask' ? `${T.blue}15` : task.type === 'freeform' ? `${T.accent}15` : `${T.purple}15`,
-                color: task.type === 'subtask' ? T.blue : task.type === 'freeform' ? T.accent : T.purple,
-                textTransform:'uppercase'
-              }}>{task.type === 'subtask' ? 'Subtask' : task.type === 'freeform' ? 'Task' : 'Checkpoint'}</span>
+              <span
+                style={{
+                  fontFamily:"'IBM Plex Mono',monospace",
+                  fontSize:7,
+                  padding:'2px 6px',
+                  borderRadius:3,
+                  background: task.type === 'subtask' ? `${T.blue}15` : task.type === 'freeform' ? `${T.accent}15` : `${T.purple}15`,
+                  color: task.type === 'subtask' ? T.blue : task.type === 'freeform' ? T.accent : T.purple,
+                  textTransform:'uppercase',
+                  position:'relative',
+                  cursor: task.type === 'checkpoint' ? 'help' : 'default',
+                }}
+                title={task.type === 'checkpoint' ? "Checkpoints mark stages of a project where it's natural to take a break. Place them between groups of subtasks to track progress at major milestones." : undefined}
+              >{task.type === 'subtask' ? 'Subtask' : task.type === 'freeform' ? 'Task' : 'Checkpoint'}</span>
             )}
             {customType === 'goal' && (
               <span style={{
@@ -287,17 +304,96 @@ export default function OnwardPanel({
           </div>
         );
 
+        // ── Group target tasks by goalId ──
+        const tasksByGoal = {};
+        targetTasks.forEach(t => {
+          if (!tasksByGoal[t.goalId]) tasksByGoal[t.goalId] = [];
+          tasksByGoal[t.goalId].push(t);
+        });
+
         return (
           <div style={{ padding:'12px 18px', borderBottom:`1px solid ${T.border}`, maxHeight:'260px', overflowY:'auto' }}>
             {(targetTasks.length > 0 || targetGoals.length > 0) && (
               <>
                 <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:8, color:T.green, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8, fontWeight:700 }}>
-                  🎯 Target Tasks ({(targetTasks.length + targetGoals.length)})
+                  🎯 Target Tasks ({targetTasks.length})
                 </div>
-                {/* Show goals first */}
-                {targetGoals.map(g => renderTask({ id: g.id, title: g.title, goalId: g.id }, true, 'goal'))}
-                {/* Then subtasks/checkpoints under each goal */}
-                {targetTasks.map(t => renderTask(t, true, null))}
+                {/* Show goals as collapsible dropdown headers with nested subtasks */}
+                {targetGoals.map(g => {
+                  const goalTasks = tasksByGoal[g.id] || [];
+                  const isExpanded = expandedGoals.has(g.id);
+                  const taskCount = goalTasks.length;
+                  return (
+                    <div key={`goal-group-${g.id}`} style={{ marginBottom:4 }}>
+                      {/* Goal header — non-draggable, visually distinct */}
+                      <div
+                        onClick={() => toggleGoal(g.id)}
+                        style={{
+                          display:'flex',
+                          alignItems:'center',
+                          gap:8,
+                          padding:'6px 8px',
+                          marginBottom: isExpanded && taskCount > 0 ? 4 : 0,
+                          background: `${g.color}10`,
+                          border:`1px solid ${g.color}30`,
+                          borderLeft:`3px solid ${g.color}`,
+                          borderRadius:4,
+                          cursor:'pointer',
+                          transition:'all 0.15s',
+                          userSelect:'none',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = `${g.color}18`; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = `${g.color}10`; }}
+                      >
+                        {/* Expand/collapse chevron */}
+                        <span style={{
+                          fontSize:8,
+                          color:g.color,
+                          transition:'transform 0.15s',
+                          transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                          display:'inline-block',
+                          fontFamily:"'IBM Plex Mono',monospace",
+                          lineHeight:1,
+                        }}>▶</span>
+                        {/* Goal title */}
+                        <span style={{
+                          flex:1,
+                          fontSize:9.5,
+                          fontWeight:700,
+                          color:g.color,
+                          overflow:'hidden',
+                          textOverflow:'ellipsis',
+                          whiteSpace:'nowrap',
+                          fontFamily:"'Syne',sans-serif",
+                        }}>{g.title}</span>
+                        {/* Task count badge */}
+                        {taskCount > 0 && (
+                          <span style={{
+                            fontFamily:"'IBM Plex Mono',monospace",
+                            fontSize:7,
+                            padding:'2px 6px',
+                            borderRadius:3,
+                            background: `${g.color}20`,
+                            color: g.color,
+                            fontWeight:700,
+                          }}>{taskCount} {taskCount === 1 ? 'item' : 'items'}</span>
+                        )}
+                        {taskCount === 0 && (
+                          <span style={{
+                            fontFamily:"'IBM Plex Mono',monospace",
+                            fontSize:7,
+                            padding:'2px 6px',
+                            borderRadius:3,
+                            background: `${T.muted}15`,
+                            color: T.muted,
+                          }}>Empty</span>
+                        )}
+                      </div>
+                      {/* Expanded subtasks/checkpoints */}
+                      {isExpanded && goalTasks.map(t => renderTask(t, true, null))}
+                    </div>
+                  );
+                })}
                 {otherTasks.length > 0 && <div style={{ height:1, background:T.border, margin:'8px 0' }} />}
               </>
             )}

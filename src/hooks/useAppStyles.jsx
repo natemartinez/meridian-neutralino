@@ -90,6 +90,7 @@ export default function useAppStyles() {
       .wp-pgtr{height:5px;background:${T.dim};border-radius:3px;overflow:hidden;}
       .wp-pgf{height:100%;border-radius:3px;transition:width .4s;}
       .wp-bdy{flex:1;overflow-y:auto;overflow-x:hidden;padding:9px 13px 4px;}
+      .wp-ftr{flex-shrink:0;padding:4px 13px 12px;border-top:1px solid ${T.border}40;}
       .wp-bdy::-webkit-scrollbar{width:3px;}
       .wp-bdy::-webkit-scrollbar-thumb{background:${T.border};border-radius:2px;}
       .wsh{font-size:7.5px;color:${T.muted};text-transform:uppercase;letter-spacing:.11em;margin:10px 0 5px;display:flex;align-items:center;gap:4px;font-family:'IBM Plex Mono',monospace;}
@@ -194,6 +195,7 @@ export default function useAppStyles() {
       .wp-hd{padding:16px 16px 12px;}
       .wp-pg{padding:12px 16px;}
       .wp-bdy{padding:12px 16px 6px;}
+      .wp-ftr{padding:6px 16px 14px;}
       .wp-ai{margin:10px 14px 14px;}
       .wp-ai-h{padding:12px 14px 10px;}
       .wp-ai-b{padding:12px 14px;}
@@ -218,6 +220,7 @@ export default function useAppStyles() {
         .wp-hd{padding:14px 14px 10px;}
         .wp-pg{padding:10px 14px;}
         .wp-bdy{padding:10px 14px 5px;}
+        .wp-ftr{padding:5px 14px 12px;}
         .wp-ai{margin:8px 12px 12px;}
         .wp-ai-h{padding:10px 12px 8px;}
         .wp-ai-b{padding:10px 12px;}
@@ -240,6 +243,7 @@ export default function useAppStyles() {
         .wp-hd{padding:12px 12px 9px;}
         .wp-pg{padding:9px 12px;}
         .wp-bdy{padding:9px 12px 4px;}
+        .wp-ftr{padding:4px 12px 10px;}
         .wp-ai{margin:7px 10px 10px;}
         .wp-ai-h{padding:9px 10px 7px;}
         .wp-ai-b{padding:9px 10px;}
@@ -263,6 +267,7 @@ export default function useAppStyles() {
         .wp-hd{padding:20px 20px 16px;}
         .wp-pg{padding:14px 20px;}
         .wp-bdy{padding:14px 20px 8px;}
+        .wp-ftr{padding:8px 20px 18px;}
         .wp-ai{margin:12px 18px 18px;}
         .wp-ai-h{padding:14px 18px 12px;}
         .wp-ai-b{padding:14px 18px;}
@@ -295,6 +300,7 @@ export default function useAppStyles() {
         .wp-hd{padding:24px 24px 20px;}
         .wp-pg{padding:18px 24px;}
         .wp-bdy{padding:18px 24px 10px;}
+        .wp-ftr{padding:10px 24px 22px;}
         .wp-ai{margin:14px 22px 22px;}
         .wp-ai-h{padding:16px 22px 14px;}
         .wp-ai-b{padding:16px 22px;}
@@ -325,6 +331,7 @@ export default function useAppStyles() {
         .cmd.wp-open .ctb{padding-right:258px;}
         .cmd.wp-open .cv{width:calc(100% - 258px);}
         .sec{padding:8px 9px 5px;}
+        .wp-ftr{padding:4px 9px 10px;}
         .fci-ico{width:20px;height:20px;}
         .wp-ai-orb{width:24px;height:24px;}
       }

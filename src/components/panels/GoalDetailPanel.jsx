@@ -10,11 +10,11 @@ export default function GoalDetailPanel({
   addSubtask, addCheckpoint, completeGoal, renameGoal,
   closeWaypoint, setConfirmDelete,
   topGoals, onToggleTopGoal,
-  companionLoading, aiMsg,
-  checkIn, suggestSubtask,
+  onOrganize,
 }) {
   if (!proj) return null;
   const pct = progress(proj);
+  const hasSubtasks = (proj.subtasks?.length || 0) > 0 || (proj.checkpoints?.length || 0) > 0;
 
   return (
     <>
@@ -86,6 +86,27 @@ export default function GoalDetailPanel({
             <div className="wsh" style={{ marginTop: proj.subtasks.length ? 10 : 0 }}>
               <svg width="10" height="10" viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7" rx="1.5" fill="none" stroke={T.blue} strokeWidth="1.2" transform="rotate(45 5 5)"/></svg>
               <span style={{ color: T.blue }}>Checkpoints</span>
+              {/* Checkpoint info tooltip */}
+              <span
+                style={{
+                  position:'relative',
+                  display:'inline-flex',
+                  alignItems:'center',
+                  justifyContent:'center',
+                  marginLeft:4,
+                  width:14,
+                  height:14,
+                  borderRadius:'50%',
+                  background:`${T.blue}20`,
+                  color:T.blue,
+                  fontSize:8,
+                  fontWeight:700,
+                  cursor:'help',
+                  fontFamily:"'IBM Plex Mono',monospace",
+                  lineHeight:1,
+                }}
+                title="Checkpoints mark stages of a project where it's natural to take a break. Place them between groups of subtasks to track progress at major milestones."
+              >ⓘ</span>
             </div>
             {proj.checkpoints.map(cp => (
               <div key={cp.id} className="wti">
@@ -98,6 +119,8 @@ export default function GoalDetailPanel({
             ))}
           </>
         )}
+      </div>
+      <div className="wp-ftr">
         <div className="w-add-row">
           <input
             className="w-add-inp"
@@ -128,37 +151,47 @@ export default function GoalDetailPanel({
             ★ Top Goal · <span style={{ cursor:'pointer', textDecoration:'underline' }} onClick={() => onToggleTopGoal(proj.id)}>Remove</span>
           </div>
         )}
-      </div>
-      <div className="wp-ai">
-        <div className="wp-ai-h">
-          <div className="wp-ai-orb">
-            <svg width="13" height="13" viewBox="0 0 13 13"><polygon points="6.5,1 8,5 12.5,5.2 9.2,8 10.3,12.5 6.5,9.8 2.7,12.5 3.8,8 0.5,5.2 5,5" fill="currentColor"/></svg>
-          </div>
-          <div>
-            <div className="wp-ai-lbl">NOVA</div>
-            <div className="wp-ai-sub">Contextual reflection</div>
-          </div>
-          <div className="wp-ai-dot" />
-        </div>
-        <div className="wp-ai-b">
-          <div className="wp-ai-msg">
-            {companionLoading ? 'thinking...' : (aiMsg || 'Ask for a check-in or subtask suggestion.')}
-          </div>
-          <div className="wp-ai-btns">
-            <button
-              className="waib"
-              style={{ color: proj.color, borderColor:`${proj.color}40`, background:`${proj.color}10` }}
-              onClick={checkIn}
-              disabled={companionLoading}
-            >✦ Check In</button>
-            <button
-              className="waib"
-              style={{ color: T.purple, borderColor:`${T.purple}40`, background:`${T.purple}10` }}
-              onClick={suggestSubtask}
-              disabled={companionLoading}
-            >+ Suggest</button>
-          </div>
-        </div>
+        {/* Organize button — shown when goal has subtasks/checkpoints */}
+        {hasSubtasks && onOrganize && (
+          <button
+            onClick={onOrganize}
+            style={{
+              marginTop:12,
+              width:'100%',
+              padding:'10px 12px',
+              borderRadius:8,
+              border:'none',
+              color:'#fff',
+              fontFamily:"'Syne',sans-serif",
+              fontSize:12,
+              fontWeight:700,
+              cursor:'pointer',
+              letterSpacing:'0.08em',
+              position:'relative',
+              overflow:'hidden',
+              background: `linear-gradient(
+                to bottom,
+                rgba(247,113,113,0.55) 0%,
+                rgba(247,113,113,0.55) 33.33%,
+                rgba(240,180,41,0.55) 33.33%,
+                rgba(240,180,41,0.55) 66.66%,
+                rgba(83,170,255,0.55) 66.66%,
+                rgba(83,170,255,0.55) 100%
+              )`,
+              boxShadow: '0 2px 8px rgba(255,107,53,0.3)',
+              textShadow: '0 1px 3px rgba(0,0,0,0.4)',
+              transition:'all 0.2s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'scale(1.02)';
+              e.currentTarget.style.boxShadow = '0 4px 14px rgba(255,107,53,0.45)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(255,107,53,0.3)';
+            }}
+          >✦ ORGANIZE TASKS ✦</button>
+        )}
       </div>
     </>
   );

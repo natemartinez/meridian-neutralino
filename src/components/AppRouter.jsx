@@ -697,6 +697,12 @@ export default function AppRouter({
                   suggestSubtask={suggestSubtask}
                   topGoals={topGoals}
                   onToggleTopGoal={toggleTopGoal}
+                  onOrganize={() => {
+                    setMainPage('program-focus');
+                    setActivePage('onward');
+                    activePageRef.current = 'onward';
+                    openWaypoint({ type: 'canvas-panel', id: 'onward' });
+                  }}
                 />
               );
             })()}
