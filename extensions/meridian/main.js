@@ -6,6 +6,9 @@ const path = require('path');
 const Database = require('better-sqlite3');
 const os = require('os');
 
+// ── Rate limiting state ──
+let lastKillTime = 0;
+
 // ── Paths (replaces app.getPath) ──
 const HOME = os.homedir();
 const DATA_DIR = path.join(HOME, '.config', 'meridian');
@@ -67,82 +70,102 @@ class MeridianExtension {
       // ── Auth ──
       case 'getApiKey': {
         try {
-          const { keytar } = require('keytar');
-          const key = await keytar.getPassword('Meridian', 'api-key');
-          return { success: true, data: key };
+          const key = await Neutralino.storage.getData('meridian_api_key');
+          return { success: true, data: key || null };
         } catch {
+          // Fallback: check settings file for legacy key (pre-H1 migration)
           try {
             const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'));
-            return { success: true, data: settings.apiKey || null };
-          } catch { return { success: true, data: null }; }
+            if (settings.apiKey) {
+              const legacyKey = settings.apiKey;
+              // Migrate legacy key to Neutralino storage and remove from file
+              try { await Neutralino.storage.setData('meridian_api_key', legacyKey); } catch {}
+              delete settings.apiKey;
+              fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+              return { success: true, data: legacyKey };
+            }
+          } catch {}
+          return { success: true, data: null };
         }
       }
       case 'setApiKey': {
         try {
-          const { keytar } = require('keytar');
-          await keytar.setPassword('Meridian', 'api-key', params);
-        } catch {
-          let settings = {};
-          try { settings = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8')); } catch {}
-          settings.apiKey = params;
-          fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+          await Neutralino.storage.setData('meridian_api_key', params);
+          return { success: true };
+        } catch (err) {
+          return { success: false, error: `Failed to store API key: ${err.message}` };
         }
-        return { success: true };
       }
 
       // ── AI (reused from main.js fetch logic) ──
       case 'aiQuery': {
-        const { systemPrompt, userMsg, apiKey, model, schemaType } = params;
-        const headers = {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        };
-        const body = {
-          model: model || 'deepseek-v4-flash',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userMsg },
-          ],
-          max_tokens: 4096,
-        };
-        // DeepSeek supports json_object (not json_schema).
-        // When schemaType is provided, use json_object to enforce JSON output.
-        if (schemaType) {
-          body.response_format = { type: 'json_object' };
+        try {
+          const { systemPrompt, userMsg, apiKey, model, schemaType } = params || {};
+          const headers = {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          };
+          const body = {
+            model: model || 'deepseek-v4-flash',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userMsg },
+            ],
+            max_tokens: 4096,
+          };
+          // DeepSeek supports json_object (not json_schema).
+          // When schemaType is provided, use json_object to enforce JSON output.
+          if (schemaType) {
+            body.response_format = { type: 'json_object' };
+          }
+          const r = await fetch('https://api.deepseek.com/chat/completions', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(30000),
+          });
+          if (!r.ok) {
+            const errText = await r.text().catch(() => 'Unknown error');
+            return { success: false, error: `API returned ${r.status}: ${errText}` };
+          }
+          const data = await r.json();
+          return { success: true, data: data.choices?.[0]?.message?.content || '' };
+        } catch (err) {
+          return { success: false, error: err.message || String(err) };
         }
-        const r = await fetch('https://api.deepseek.com/chat/completions', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(body),
-          signal: AbortSignal.timeout(30000),
-        });
-        const data = await r.json();
-        return { success: true, data: data.choices?.[0]?.message?.content || '' };
       }
       case 'aiChat': {
-        const { messages, apiKey, model, schemaType } = params;
-        const headers = {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        };
-        const body = {
-          model: model || 'deepseek-v4-flash',
-          messages,
-          max_tokens: 4096,
-        };
-        // DeepSeek supports json_object (not json_schema).
-        // When schemaType is provided, use json_object to enforce JSON output.
-        if (schemaType) {
-          body.response_format = { type: 'json_object' };
+        try {
+          const { messages, apiKey, model, schemaType } = params || {};
+          const headers = {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          };
+          const body = {
+            model: model || 'deepseek-v4-flash',
+            messages,
+            max_tokens: 4096,
+          };
+          // DeepSeek supports json_object (not json_schema).
+          // When schemaType is provided, use json_object to enforce JSON output.
+          if (schemaType) {
+            body.response_format = { type: 'json_object' };
+          }
+          const r = await fetch('https://api.deepseek.com/chat/completions', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(45000),
+          });
+          if (!r.ok) {
+            const errText = await r.text().catch(() => 'Unknown error');
+            return { success: false, error: `API returned ${r.status}: ${errText}` };
+          }
+          const data = await r.json();
+          return { success: true, data: data.choices?.[0]?.message?.content || '' };
+        } catch (err) {
+          return { success: false, error: err.message || String(err) };
         }
-        const r = await fetch('https://api.deepseek.com/chat/completions', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(body),
-          signal: AbortSignal.timeout(45000),
-        });
-        const data = await r.json();
-        return { success: true, data: data.choices?.[0]?.message?.content || '' };
       }
 
       // ── Filesystem ──
@@ -256,7 +279,14 @@ class MeridianExtension {
         return { success: true, data: rows };
       }
 
-      case 'killProcess':
+      case 'killProcess': {
+        // Rate limit: only allow one kill attempt per 5-second window
+        // Prevents abuse if renderer is compromised (DoS mitigation)
+        const now = Date.now();
+        if (now - lastKillTime < 5000) {
+          return { success: false, error: 'killProcess rate limited' };
+        }
+        lastKillTime = now;
         // Called when the close button is clicked and Neutralino.app.exit(0)
         // fails. This kills the entire process group to ensure clean shutdown.
         // The extension runs as a child process of the Neutralino server.
@@ -270,6 +300,7 @@ class MeridianExtension {
         // Give a moment for the signal to be delivered, then exit ourselves
         setTimeout(() => process.exit(0), 100);
         return { success: true };
+      }
 
       default:
         return { success: false, error: `Unknown method: ${method}` };

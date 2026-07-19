@@ -1,6 +1,12 @@
 import { T } from './theme.js';
 
-export const uid = () => Math.random().toString(36).slice(2, 9);
+export const uid = () => {
+  try {
+    return crypto.randomUUID().slice(0, 7);
+  } catch {
+    return Math.random().toString(36).slice(2, 9);
+  }
+};
 
 export const projectPos = (i) => ({ x: 240 + i * 440, y: 270 });
 
@@ -52,8 +58,13 @@ export function calculateQuadrant(pos, axisX, axisY) {
  * @returns {'q1'|'q2'|'q3'|'q4'}
  */
 export function inferInitialQuadrant(goalData) {
-  const isUrgent = !!goalData.deadline &&
-    (new Date(goalData.deadline) - new Date()) / 86400000 <= 7;
+  let isUrgent = false;
+  if (goalData.deadline) {
+    const deadlineDate = new Date(goalData.deadline);
+    if (!isNaN(deadlineDate.getTime())) {
+      isUrgent = (deadlineDate - new Date()) / 86400000 <= 7;
+    }
+  }
   const isImportant = goalData.priority === 'high' || goalData.scale === 'long';
 
   if (isUrgent && isImportant) return 'q1';
@@ -96,6 +107,7 @@ export const progress = (p) => {
  * Returns { microId, targetDay } or null.
  */
 export function parseDeferClue(title) {
+  if (typeof title !== 'string' || title.length > 200) return null;
   const match = title.match(/\b(Micro\s+\d+)\s*[-–—]\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i);
   if (!match) return null;
   return { microId: match[1], targetDay: match[2] };
@@ -195,6 +207,7 @@ export function calculateDeadlineAlerts(projectsList) {
     if (!p.deadline || p.subtasks?.every(s => s.done)) return;
 
     const deadline = new Date(p.deadline);
+    if (isNaN(deadline.getTime())) return; // Skip invalid dates
     const diffDays = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) {
@@ -211,4 +224,19 @@ export function calculateDeadlineAlerts(projectsList) {
     if (b.type === 'overdue' && a.type !== 'overdue') return 1;
     return a.days - b.days;
   });
+}
+
+/**
+ * Sanitize LLM response content before storing in React state.
+ * Strips HTML, limits length, and normalizes whitespace.
+ * @param {string} content - Raw LLM response text
+ * @returns {string} Sanitized text safe for React state
+ */
+export function sanitizeLLMContent(content) {
+  if (typeof content !== 'string') return '';
+  return content
+    .replace(/<[^>]*>/g, '')       // Strip HTML tags
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '') // Strip control characters
+    .trim()
+    .slice(0, 50000);              // 50KB limit
 }

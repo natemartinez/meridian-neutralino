@@ -5,6 +5,10 @@
 
 import { init } from '@neutralinojs/lib';
 
+// ── Neutralino auth token (module-scoped, not exposed on window) ──
+let _nlToken = null;
+let _nlPort = null;
+
 // ── Detect runtime environment ──
 const isNeutralino = () => typeof Neutralino !== 'undefined' && !!Neutralino.extensions;
 
@@ -57,11 +61,10 @@ async function ext(method, params) {
     return browserFetchAI(method, params);
   }
   if (method === 'getApiKey') {
-    return localStorage.getItem('meridian_api_key') || null;
+    return null; // API key is stored in OS keychain via extension only
   }
   if (method === 'setApiKey') {
-    localStorage.setItem('meridian_api_key', params);
-    return;
+    return; // API key is stored in OS keychain via extension only
   }
   if (method === 'getModel') {
     return localStorage.getItem('meridian_model') || null;
@@ -153,6 +156,11 @@ window.nova = {
   // before the app module ever loads, so they should already be available.
   if (window.NL_TOKEN && window.NL_PORT) {
     // Already have auth from production __neutralino_globals.js — proceed
+    _nlToken = window.NL_TOKEN;
+    _nlPort = window.NL_PORT;
+    // Clear from window to reduce XSS exposure
+    delete window.NL_TOKEN;
+    delete window.NL_PORT;
     init();
     registerWindowCloseHandler();
     return;
@@ -164,8 +172,8 @@ window.nova = {
     if (res.ok) {
       const auth = await res.json();
       if (auth.nlToken) {
-        window.NL_TOKEN = auth.nlToken;
-        window.NL_PORT = auth.nlPort;
+        _nlToken = auth.nlToken;
+        _nlPort = auth.nlPort;
       }
     }
   } catch (_) {
@@ -175,18 +183,18 @@ window.nova = {
   // ── Step 3: Fallback — fetch __neutralino_globals.js directly ──
   // This handles cases where the script tag didn't set the globals
   // (e.g., when loaded via file:// or other non-standard setups).
-  if (!window.NL_TOKEN) {
+  if (!_nlToken) {
     try {
       const res = await fetch('__neutralino_globals.js');
       if (res.ok) {
         const text = await res.text();
         const match = text.match(/var NL_TOKEN='([^']*)'/);
         if (match && match[1]) {
-          window.NL_TOKEN = match[1];
+          _nlToken = match[1];
         }
         const portMatch = text.match(/var NL_PORT=(\d+)/);
         if (portMatch && portMatch[1]) {
-          window.NL_PORT = portMatch[1];
+          _nlPort = portMatch[1];
         }
       }
     } catch (_) {

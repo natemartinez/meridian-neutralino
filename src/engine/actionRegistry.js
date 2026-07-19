@@ -248,8 +248,12 @@ export function createActionRegistry(hookFns) {
       return { success: false, error: `Unknown action: ${actionId}` };
     }
 
-    if (!action.precondition(blackboard, params)) {
-      return { success: false, error: `Precondition failed for action: ${actionId}` };
+    try {
+      if (!action.precondition(blackboard, params)) {
+        return { success: false, error: `Precondition failed for action: ${actionId}` };
+      }
+    } catch (err) {
+      return { success: false, error: `Precondition error for ${actionId}: ${err.message}` };
     }
 
     try {

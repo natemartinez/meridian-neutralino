@@ -22,9 +22,9 @@ export default function ApiKeyScreen({ onSave }) {
     setSaving(true);
     // Save to extension (Neutralino keychain) — may fail if WebSocket not connected
     try { await (window.electronAPI?.setApiKey(trimmed) ?? Promise.resolve()); }
-    catch { /* extension unavailable — localStorage fallback handles persistence */ }
-    // Always persist to localStorage as the reliable fallback
-    localStorage.setItem('meridian_api_key', trimmed);
+    catch {
+      console.warn('[ApiKeyScreen] Extension unavailable — API key will not persist across sessions');
+    }
     onSave(trimmed);
   };
 

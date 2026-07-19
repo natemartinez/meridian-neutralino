@@ -245,10 +245,18 @@ export function useExecutionEngine({
         // Response is plain text — no structured actions
       }
 
-      // Dispatch any actions through the registry
+      // Filter LLM-requested actions through phase-appropriate allowlist
       const actionResults = [];
       if (actionRegistry && actions.length > 0) {
+        const availableActionIds = new Set(
+          getAvailableActions(blackboard).map(a => a.id)
+        );
         for (const actionId of actions) {
+          if (!availableActionIds.has(actionId)) {
+            console.warn(`[Engine] LLM requested action "${actionId}" which is not available in current phase — blocked`);
+            actionResults.push({ actionId, success: false, error: 'Action not available in current phase' });
+            continue;
+          }
           const result = actionRegistry.dispatch(actionId, {}, blackboard);
           actionResults.push({ actionId, ...result });
         }

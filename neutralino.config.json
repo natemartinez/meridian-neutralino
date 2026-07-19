@@ -18,7 +18,6 @@
     "window.*",
     "events.*",
     "extensions.*",
-    "os.*",
     "debug.log"
   ],
   "globalVariables": {},
@@ -33,12 +32,16 @@
       "fullScreen": false,
       "alwaysOnTop": false,
       "icon": "/resources/icons/appIcon.png",
-      "enableInspector": true,
+      "enableInspector": false,
       "borderless": false,
       "maximize": false,
       "hidden": false,
       "resizable": true,
-      "exitProcessOnClose": true
+      "exitProcessOnClose": true,
+      "nativeBlockList": [
+        "os.*",
+        "filesystem.*"
+      ]
     },
     "browser": {
       "globalVariables": {},
