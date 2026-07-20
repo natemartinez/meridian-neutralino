@@ -35,6 +35,7 @@ jobs:
         run: npm test
 
       - name: Download Neutralino client library and template resources
+        shell: bash
         run: |
           mkdir -p resources/js resources/icons
           curl -sL -o resources/js/neutralino.js \
