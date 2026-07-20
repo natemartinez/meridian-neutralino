@@ -34,6 +34,16 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Download Neutralino client library and template resources
+        run: |
+          mkdir -p resources/js resources/icons
+          curl -sL -o resources/js/neutralino.js \
+            "https://cdn.jsdelivr.net/npm/@neutralinojs/lib@6.8.0/dist/neutralino.js"
+          curl -sL -o resources/js/neutralino.d.ts \
+            "https://cdn.jsdelivr.net/npm/@neutralinojs/lib@6.8.0/dist/neutralino.d.ts"
+          curl -sL -o resources/icons/appIcon.png \
+            "https://raw.githubusercontent.com/neutralinojs/neutralinojs-minimal/main/resources/icons/appIcon.png"
+
       - name: Build production binary
         run: npm run dist
 
