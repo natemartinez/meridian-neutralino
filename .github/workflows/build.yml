@@ -52,8 +52,9 @@ jobs:
         with:
           name: meridian-${{ matrix.os }}
           path: |
-            dist/Meridian*
-            dist/*.exe
+            dist/meridian/meridian-*
+            dist/meridian/*.exe
+            dist/meridian/resources.neu
           if-no-files-found: error
 
       - name: Publish to GitHub Releases
@@ -61,6 +62,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/Meridian*
-            dist/*.exe
+            dist/meridian/meridian-*
+            dist/meridian/*.exe
+            dist/meridian/resources.neu
           generate_release_notes: true
