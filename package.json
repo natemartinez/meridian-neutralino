@@ -27,7 +27,7 @@
     "build": "vite build",
     "predist": "bash scripts/validate-config.sh",
     "start": "npx neu run",
-    "dist": "vite build && mkdir -p resources && npx neu build --release",
+    "dist": "vite build && mkdir -p resources && npx neu build",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/",
