@@ -19,7 +19,7 @@
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
 /** Endpoint used for lightweight auth verification */
-const AUTH_ENDPOINT = '/auth';
+const AUTH_ENDPOINT = '/models'; // /models requires auth; returns 401 for invalid keys
 
 /** Expected format for OpenRouter API keys */
 const OPENROUTER_KEY_PATTERN = /^sk-or-v1-[0-9a-f]{64}$/;

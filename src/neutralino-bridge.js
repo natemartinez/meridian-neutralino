@@ -20,17 +20,16 @@ async function browserFetchAI(endpoint, params) {
     'Content-Type': 'application/json',
   };
   const body = messages
-    ? { model: model || 'deepseek-v4-flash', messages, max_tokens: 4096 }
-    : { model: model || 'deepseek-v4-flash', messages: [
+    ? { model: model || 'deepseek/deepseek-chat', messages, max_tokens: 4096 }
+    : { model: model || 'deepseek/deepseek-chat', messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userMsg },
       ], max_tokens: 4096 };
-  // DeepSeek supports json_object (not json_schema).
-  // When schemaType is provided, use json_object to enforce JSON output.
+  // OpenRouter supports json_object via response_format.
   if (schemaType) {
     body.response_format = { type: 'json_object' };
   }
-  const r = await fetch('https://api.deepseek.com/chat/completions', {
+  const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers,
     body: JSON.stringify(body),

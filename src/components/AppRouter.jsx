@@ -328,6 +328,7 @@ export default function AppRouter({
                     <>
                       <button
                         onClick={() => setModal(true)}
+                        className={projects.filter(p => !p.completedAt).length === 0 ? 'breathe-glow' : ''}
                         style={{
                           fontFamily:"'IBM Plex Mono',monospace",
                           fontSize:11,

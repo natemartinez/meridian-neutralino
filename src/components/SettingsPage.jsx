@@ -109,7 +109,7 @@ export default function SettingsPage({ apiKey, setApiKey, model, setModel, inten
               {modelSaved ? '✓ saved' : 'save'}
             </button>
           </div>
-          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted }}>Model ID — e.g. deepseek/deepseek-v4-flash</div>
+          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted }}>Model ID — e.g. deepseek/deepseek-chat:free (OpenRouter format)</div>
         </div>
         {/* Nova Knowledge Pool */}
         <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:'18px 20px', marginBottom:16 }}>

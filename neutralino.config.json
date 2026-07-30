@@ -84,7 +84,7 @@
       "devCommand": "vite",
       "buildCommand": "vite build",
       "patchFile": "/resources/index.html",
-      "devUrl": "http://localhost:5173",
+      "devUrl": "http://localhost:5174",
       "waitTimeout": 20000
     }
   }

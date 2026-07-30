@@ -47,3 +47,18 @@ html, body, #root { margin: 0; padding: 0; height: 100%; background: #0c111a; }
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+
+/* Breathing glow for + Create Goal when there are no goals */
+@keyframes breatheGlow {
+  0%, 100% {
+    box-shadow: 0 0 6px rgba(240, 180, 41, 0.15);
+    border-color: rgba(240, 180, 41, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(240, 180, 41, 0.4), 0 0 40px rgba(240, 180, 41, 0.12);
+    border-color: rgba(240, 180, 41, 0.7);
+  }
+}
+.breathe-glow {
+  animation: breatheGlow 2.2s ease-in-out infinite;
+}

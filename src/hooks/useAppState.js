@@ -30,22 +30,24 @@ export default function useAppState() {
   const [dragging, setDragging]     = useState(null);
   const [loaded, setLoaded]         = useState(false);
   const [apiKey, setApiKey]         = useState(() => localStorage.getItem('meridian_api_key') || null);
-  // Migrate old OpenRouter model names (e.g. "deepseek/deepseek-v4-flash") to DeepSeek direct format
+  // Model names follow OpenRouter's provider/model format (e.g. "deepseek/deepseek-chat").
+  // Previously the app used bare DeepSeek model names without the provider prefix.
   const [model, setModel]           = useState(() => {
     const saved = localStorage.getItem('meridian_model');
-    if (saved && saved.startsWith('deepseek/')) {
-      const migrated = saved.replace('deepseek/', '');
+    // Migrate old bare model names to OpenRouter format (add "deepseek/" prefix)
+    if (saved && !saved.includes('/') && saved.startsWith('deepseek-')) {
+      const migrated = saved.replace('deepseek-', 'deepseek/');
       localStorage.setItem('meridian_model', migrated);
       console.warn(
         `[ModelMigration] Migrated legacy model name "${saved}" → "${migrated}". ` +
-        `The "deepseek/" prefix is no longer needed when using DeepSeek's direct API.`
+        `OpenRouter requires the "provider/model" format.`
       );
       return migrated;
     }
-    if (saved && !saved.startsWith('sk-') && !saved.startsWith('deepseek-v') && !saved.startsWith('gpt') && !saved.startsWith('claude') && !saved.startsWith('o')) {
+    if (saved && !saved.startsWith('sk-') && !saved.includes('/')) {
       console.warn(
         `[ModelMigration] Unrecognized model name "${saved}" loaded from settings. ` +
-        `Expected format: "deepseek-v4-flash" or "deepseek-v4-pro".`
+        `Expected OpenRouter format: "provider/model" (e.g. "deepseek/deepseek-chat").`
       );
     }
     return saved || '';

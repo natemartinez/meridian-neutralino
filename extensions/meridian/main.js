@@ -17,6 +17,10 @@ const STATE_FILE = path.join(DATA_DIR, 'meridian-state.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 const DB_FILE = path.join(DATA_DIR, 'nova-memory.db');
 
+// ── OpenRouter API ──
+const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
+const DEFAULT_MODEL = 'deepseek/deepseek-chat';
+
 // ── Database (reused from main.js) ──
 let db;
 function initDb() {
@@ -50,6 +54,36 @@ function initDb() {
       updated_at INTEGER NOT NULL, insight_id TEXT
     );
   `);
+}
+
+// ── OpenRouter API call helper ──
+async function callOpenRouter(messages, params = {}) {
+  const { apiKey, model, schemaType, signal } = params;
+  const headers = {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
+  const body = {
+    model: model || DEFAULT_MODEL,
+    messages,
+    max_tokens: 4096,
+  };
+  // OpenRouter supports json_object via response_format.
+  if (schemaType) {
+    body.response_format = { type: 'json_object' };
+  }
+  const r = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+    signal: signal || AbortSignal.timeout(45000),
+  });
+  if (!r.ok) {
+    const errText = await r.text().catch(() => 'Unknown error');
+    return { success: false, error: `API returned ${r.status}: ${errText}` };
+  }
+  const data = await r.json();
+  return { success: true, data: data.choices?.[0]?.message?.content || '' };
 }
 
 // ── Extension Message Handler ──
@@ -97,39 +131,14 @@ class MeridianExtension {
         }
       }
 
-      // ── AI (reused from main.js fetch logic) ──
+      // ── AI via OpenRouter ──
       case 'aiQuery': {
         try {
           const { systemPrompt, userMsg, apiKey, model, schemaType } = params || {};
-          const headers = {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          };
-          const body = {
-            model: model || 'deepseek-v4-flash',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userMsg },
-            ],
-            max_tokens: 4096,
-          };
-          // DeepSeek supports json_object (not json_schema).
-          // When schemaType is provided, use json_object to enforce JSON output.
-          if (schemaType) {
-            body.response_format = { type: 'json_object' };
-          }
-          const r = await fetch('https://api.deepseek.com/chat/completions', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(body),
-            signal: AbortSignal.timeout(30000),
-          });
-          if (!r.ok) {
-            const errText = await r.text().catch(() => 'Unknown error');
-            return { success: false, error: `API returned ${r.status}: ${errText}` };
-          }
-          const data = await r.json();
-          return { success: true, data: data.choices?.[0]?.message?.content || '' };
+          return await callOpenRouter([
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMsg },
+          ], { apiKey, model, schemaType, signal: AbortSignal.timeout(30000) });
         } catch (err) {
           return { success: false, error: err.message || String(err) };
         }
@@ -137,32 +146,7 @@ class MeridianExtension {
       case 'aiChat': {
         try {
           const { messages, apiKey, model, schemaType } = params || {};
-          const headers = {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          };
-          const body = {
-            model: model || 'deepseek-v4-flash',
-            messages,
-            max_tokens: 4096,
-          };
-          // DeepSeek supports json_object (not json_schema).
-          // When schemaType is provided, use json_object to enforce JSON output.
-          if (schemaType) {
-            body.response_format = { type: 'json_object' };
-          }
-          const r = await fetch('https://api.deepseek.com/chat/completions', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(body),
-            signal: AbortSignal.timeout(45000),
-          });
-          if (!r.ok) {
-            const errText = await r.text().catch(() => 'Unknown error');
-            return { success: false, error: `API returned ${r.status}: ${errText}` };
-          }
-          const data = await r.json();
-          return { success: true, data: data.choices?.[0]?.message?.content || '' };
+          return await callOpenRouter(messages, { apiKey, model, schemaType, signal: AbortSignal.timeout(45000) });
         } catch (err) {
           return { success: false, error: err.message || String(err) };
         }

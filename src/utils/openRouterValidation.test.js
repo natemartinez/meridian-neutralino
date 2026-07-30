@@ -201,7 +201,7 @@ describe('validateOpenRouterKey', () => {
     await validateOpenRouterKey(key);
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://openrouter.ai/api/v1/auth',
+      'https://openrouter.ai/api/v1/models',
       expect.objectContaining({
         method: 'GET',
         headers: expect.objectContaining({

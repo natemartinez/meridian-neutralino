@@ -122,7 +122,7 @@ async function parseApiError(response) {
  * @param {string} userMsg - User message
  * @param {string} apiKey - API key
  * @param {Object} [options]
- * @param {string} [options.model] - Model ID (e.g. "deepseek-v4-flash")
+ * @param {string} [options.model] - Model ID in OpenRouter format (e.g. "deepseek/deepseek-chat")
  * @param {Object|null} [options.schemaType] - Schema definition (triggers json_object mode)
  * @param {Object} [options.retryOptions] - passed through to withRetry
  * @returns {Promise<string>} response text
@@ -172,7 +172,7 @@ export async function askAI(systemPrompt, userMsg, apiKey, options = {}) {
  * @param {Array} messages - array of {role, content} objects
  * @param {string} apiKey - API key
  * @param {Object} [options]
- * @param {string} [options.model] - Model ID (e.g. "deepseek-v4-flash")
+ * @param {string} [options.model] - Model ID in OpenRouter format (e.g. "deepseek/deepseek-chat")
  * @param {Object|null} [options.schemaType] - Schema definition (triggers json_object mode)
  * @param {Object} [options.retryOptions] - passed through to withRetry
  * @returns {Promise<string>} response text
