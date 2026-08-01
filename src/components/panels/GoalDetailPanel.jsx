@@ -10,7 +10,6 @@ export default function GoalDetailPanel({
   addSubtask, addCheckpoint, completeGoal, renameGoal,
   closeWaypoint, setConfirmDelete,
   topGoals, onToggleTopGoal,
-  onOrganize,
 }) {
   const [expandedCPs, setExpandedCPs] = useState(() => new Set());
   const [activeCP, setActiveCP] = useState(null); // which checkpoint the add input targets

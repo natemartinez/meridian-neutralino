@@ -10,7 +10,6 @@ export const PROGRAMS_WITH_CANVAS = [
   'program-focus',
   'program-preview',
   'program-calibration',
-  'program-organize',
 ];
 
 // Default canvas page for each program
@@ -19,7 +18,6 @@ export const PROGRAM_DEFAULT_PAGES = {
   focus: 'onward',
   preview: 'map',
   calibration: 'paths',
-  organize: 'paths',
 };
 
 /**

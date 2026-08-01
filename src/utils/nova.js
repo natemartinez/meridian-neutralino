@@ -196,6 +196,7 @@ export const NOVA_DEFAULT = {
   syncEvents: [],
   routine: null,
   programChats: { briefing: [], focus: null, preview: [], calibration: [] },
+  organizeAnalysis: null,
   suggestedTasks: [],
   dailyPlan: null,
   planGenLoading: false,
@@ -273,7 +274,7 @@ export function determineAutoStartProgram({ apiKey, syncEvents, programChats, ho
  * @returns {{ progId: string, lastMessage: Object, messageCount: number } | null}
  */
 export function getLastActiveProgram(programChats) {
-  const progIds = ['briefing', 'focus', 'preview', 'calibration', 'organize'];
+  const progIds = ['briefing', 'focus', 'preview', 'calibration'];
   let lastActive = null;
   let lastTs = 0;
 

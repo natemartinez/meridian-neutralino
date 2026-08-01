@@ -724,6 +724,54 @@ ${programContext ? `\n${programContext}` : ''}
     } finally { setNovaLoading(false); }
   }, [novaChatInput, novaLoading, apiKey, novaState, buildNOVASystemPrompt, buildBlackboardUserMessage, addSyncEvent, extractNOVAInsights, novaRetry, inferKnowledgeFromMessage, novaSessionKey, blackboardRef]);
 
+  /**
+   * One-shot Organize analysis — NOT a chat turn.
+   *
+   * Builds the static Organize system prompt (ORGANIZE_DIRECTIVE) + the volatile
+   * Blackboard snapshot, calls NOVA once with the organize schema, and stores the
+   * result as a plain object in `novaState.organizeAnalysis` (never programChats).
+   * The proposal is rendered as a card with Confirm/Cancel by OrganizeOverviewView.
+   */
+  const runOrganizeAnalysis = useCallback(async () => {
+    if (!apiKey || novaLoading) return;
+    setNovaLoading(true);
+    try {
+      const systemPrompt = buildNOVASystemPrompt('organize', false, null);
+      const blackboardMsg = buildBlackboardUserMessage('organize', 'Analyze my goals, paths, and gaps — propose concrete actions I can approve.', blackboardRef?.current || {});
+      const schemaType = getSchemaForProgram('organize');
+      const reply = await novaRetry.executeWithRetry(
+        () => chatWithNOVA([
+          { role: 'system', content: systemPrompt },
+          ...(blackboardMsg ? [blackboardMsg] : []),
+        ], apiKey, { model, schemaType })
+      ).then(r => r.data);
+      let content = reply;
+      let action = null;
+      let options = null;
+      try {
+        const parsed = JSON.parse(reply);
+        content = parsed.content || reply;
+        action = extractOrganizeAction(parsed.action);
+        options = Array.isArray(parsed.options)
+          ? parsed.options.filter(o => typeof o === 'string' && o.trim()).map(o => o.trim()).slice(0, 5)
+          : null;
+      } catch {
+        // Fallback: treat as plain text
+        content = sanitizeLLMContent(reply);
+      }
+      setNovaState(prev => ({
+        ...prev,
+        organizeAnalysis: {
+          content,
+          ...(action ? { action } : {}),
+          ...(options && options.length ? { options } : {}),
+          ts: Date.now(),
+        },
+      }));
+      return { content, action, options };
+    } finally { setNovaLoading(false); }
+  }, [apiKey, novaLoading, buildNOVASystemPrompt, buildBlackboardUserMessage, novaRetry, model, blackboardRef, setNovaState, sanitizeLLMContent]);
+
   // Internal helpers for generateNovaPlan (same logic as App.jsx's calcStreak/getWeeklyData)
   const allCompletionDates = () => {
     const dates = [];
@@ -1039,6 +1087,7 @@ Generate a JSON object with a "tasks" array of 5-7 tasks for ${isPlanningForTomo
     updateCorrections,
     addInferredEntries,
     sendNOVAMessage,
+    runOrganizeAnalysis,
     generateNovaPlan,
     generateNovaPlanRef,
     buildNOVASystemPrompt,
