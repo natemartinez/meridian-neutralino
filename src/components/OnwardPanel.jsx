@@ -1,6 +1,14 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { T } from '../utils/theme.js';
 
+const QUADRANT_META = {
+  q1: { label: 'DO FIRST',   subtitle: 'Urgent + Important',          color: '#f77171' },
+  q2: { label: 'SCHEDULE',   subtitle: 'Not Urgent + Important',      color: '#53aaff' },
+  q3: { label: 'DELEGATE',   subtitle: 'Urgent + Not Important',      color: '#f0b429' },
+  q4: { label: 'ELIMINATE',  subtitle: 'Not Urgent + Not Important',  color: '#56687f' },
+};
+const QUADRANT_ORDER = ['q1', 'q2', 'q3', 'q4'];
+
 export default function OnwardPanel({
   onwardItems, onwardForm, setOnwardForm, projects, onAdd, onDelete, onToggleDone,
   selectedId, onSelectGoal, onToggleFocus, onConfirmDelete, availableTasks,
@@ -19,6 +27,7 @@ export default function OnwardPanel({
   const [showBacklog, setShowBacklog] = useState(false);
   const [resizing, setResizing] = useState(null); // { itemId, startY, startDuration }
   const [selectedTask, setSelectedTask] = useState(null); // clicked task detail panel
+  const [dragReadyTaskId, setDragReadyTaskId] = useState(null); // task armed for drag after click
   const gridRef = useRef(null);
 
   // ── Day navigation state ──
@@ -221,8 +230,22 @@ export default function OnwardPanel({
         const renderTask = (task, isTarget, customType) => (
           <div
             key={`${customType || task.type}-${task.id}`}
-            draggable={!customType}
-            onDragStart={() => !customType && onDragStart && onDragStart(task)}
+            draggable={!customType && dragReadyTaskId === task.id}
+            onMouseDown={() => { if (!customType) setDragReadyTaskId(task.id); }}
+            onDragStart={() => { if (!customType) onDragStart && onDragStart(task); }}
+            onDragEnd={() => { if (dragReadyTaskId === task.id) setDragReadyTaskId(null); }}
+            onMouseEnter={e => {
+              if (!customType) {
+                e.currentTarget.style.borderColor = task.goalColor || T.accent;
+                e.currentTarget.style.background = `${T.card}CC`;
+              }
+            }}
+            onMouseLeave={e => {
+              if (!customType) {
+                e.currentTarget.style.borderColor = isTarget ? `${T.green}30` : T.border;
+                e.currentTarget.style.background = isTarget ? `${T.green}06` : T.card;
+              }
+            }}
             style={{
               display:'flex',
               alignItems:'center',
@@ -309,6 +332,14 @@ export default function OnwardPanel({
         targetTasks.forEach(t => {
           if (!tasksByGoal[t.goalId]) tasksByGoal[t.goalId] = [];
           tasksByGoal[t.goalId].push(t);
+        });
+
+        // ── Group other tasks by Eisenhower quadrant ──
+        const tasksByQuadrant = {};
+        otherTasks.forEach(t => {
+          const q = t.goalQuadrant || 'q4';
+          if (!tasksByQuadrant[q]) tasksByQuadrant[q] = [];
+          tasksByQuadrant[q].push(t);
         });
 
         return (
@@ -399,8 +430,30 @@ export default function OnwardPanel({
             )}
             {otherTasks.length > 0 && (
               <>
-                <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:8, color:T.muted, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>Other Tasks</div>
-                {otherTasks.map(t => renderTask(t, false, null))}
+                {QUADRANT_ORDER.map(q => {
+                  const tasks = tasksByQuadrant[q] || [];
+                  if (tasks.length === 0) return null;
+                  const meta = QUADRANT_META[q];
+                  return (
+                    <div key={q} style={{ marginBottom:8 }}>
+                      <div style={{
+                        display:'flex', alignItems:'center', gap:6,
+                        fontFamily:"'IBM Plex Mono',monospace", fontSize:8,
+                        color:meta.color, textTransform:'uppercase',
+                        letterSpacing:'0.1em', marginBottom:4, fontWeight:700,
+                      }}>
+                        {meta.label}
+                        <span style={{ fontWeight:400, opacity:0.6, fontSize:7 }}>
+                          — {meta.subtitle}
+                        </span>
+                        <span style={{ marginLeft:'auto', opacity:0.5 }}>
+                          ({tasks.length})
+                        </span>
+                      </div>
+                      {tasks.map(t => renderTask(t, false, null))}
+                    </div>
+                  );
+                })}
               </>
             )}
             {!hasAny && (

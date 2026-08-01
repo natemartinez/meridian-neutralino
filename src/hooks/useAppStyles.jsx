@@ -19,9 +19,9 @@ export default function useAppStyles() {
       .app-shell{display:flex;height:100vh;overflow:hidden;background:${T.bg};color:${T.text};font-family:'Syne',sans-serif;}
 
       /* ── SIGNAL ── */
-      .sig{width:168px;flex-shrink:0;background:transparent;display:flex;flex-direction:column;transition:width .25s cubic-bezier(.4,0,.2,1);padding:12px 0;position:relative;}
+      .sig{width:168px;flex-shrink:0;background:transparent;display:flex;flex-direction:column;transition:width .25s cubic-bezier(.4,0,.2,1),padding .25s cubic-bezier(.4,0,.2,1),margin .25s cubic-bezier(.4,0,.2,1);padding:12px 0;position:relative;}
       .sig.sig-compass-open{width:400px;}
-      .sig-inner{overflow:hidden;display:flex;flex-direction:column;}
+      .sig-inner{overflow:hidden;display:flex;flex-direction:column;flex:1;}
       .sig.collapsed{width:48px;padding:12px 0;margin-left:18px;margin-right:12px;}
       .sig.collapsed .sec,
       .sig.collapsed .wp-ttl,
@@ -57,6 +57,12 @@ export default function useAppStyles() {
       .gr-pc{font-size:9.5px;color:${T.muted};}
       .sig-add{margin:5px 11px 7px;padding:7px;background:${T.accentLo};border:1px solid ${T.accent}30;border-radius:6px;color:${T.accent};font-size:10.5px;text-align:center;cursor:pointer;letter-spacing:.04em;font-family:'Syne',sans-serif;font-weight:700;transition:all .14s;}
       .sig-add:hover{background:${T.accent}22;border-color:${T.accent}60;}
+
+      /* ── Sidebar footer nav (Track / Settings) ── */
+      .sig-ftr{display:flex;flex-direction:column;gap:4px;padding:10px 11px 0;margin-top:auto;border-top:1px solid ${T.border};}
+      .sig-ftr-btn{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;border:1px solid transparent;background:transparent;color:${T.muted};font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.04em;cursor:pointer;transition:all .14s;white-space:nowrap;overflow:hidden;}
+      .sig-ftr-btn:hover{background:${T.accent}10;border-color:${T.border};color:${T.text};}
+      .sig.collapsed .sig-ftr{display:none;}
 
       /* ── COMMAND ── */
       .cmd{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;position:relative;}

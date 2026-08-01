@@ -19,15 +19,6 @@ export function SettingsIcon({ size = 14, color }) {
   );
 }
 
-export function MindIcon({ size = 14, color }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16">
-      <path d="M8 13C8 13 2.5 9.2 2.5 5.8a3.5 3.5 0 016.5-1.8 3.5 3.5 0 016.5 1.8C15.5 9.2 8 13 8 13z" fill="none" stroke={color} strokeWidth="1.6" />
-      <path d="M5.5 6.5l1.8 1.8L10 5.5" fill="none" stroke={color} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 export function ClockIcon({ size = 18, color }) {
   return (
     <svg width={size} height={size} viewBox="0 0 18 18">
