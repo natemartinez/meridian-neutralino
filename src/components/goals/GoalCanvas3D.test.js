@@ -58,7 +58,10 @@ function createGoal(goalData, existingProjectsCount) {
     inFocus: false,
     completedAt: null,
     subtasks: (goalData.subtasks || []).map(st => ({ id: uid(), title: st.title, done: false, skill: st.skill || null })),
-    checkpoints: (goalData.checkpoints || []).map(cp => ({ id: uid(), title: cp.title, done: false })),
+    checkpoints: (goalData.checkpoints || []).map(cp => ({
+      id: uid(), title: cp.title, done: false,
+      subtasks: (cp.subtasks || []).map(st => ({ id: uid(), title: st.title, done: false, skill: st.skill || null })),
+    })),
   };
 }
 
@@ -248,7 +251,7 @@ describe('GoalCanvas3D — goal creation → rendering pipeline', () => {
       const goal = createGoal({
         title: 'In Progress',
         subtasks: [{ title: 'Step 1' }, { title: 'Step 2' }],
-        checkpoints: [{ title: 'Milestone' }],
+        checkpoints: [{ title: 'Milestone', subtasks: [{ title: 'Launch' }] }],
       }, 0);
       // Mark one subtask as done
       goal.subtasks[0].done = true;

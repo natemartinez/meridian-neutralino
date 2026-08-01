@@ -93,7 +93,7 @@ export function createActionRegistry(hookFns) {
         const goal = (bb.activeGoals || []).find(g => g.id === goalId);
         return !!goal && goal.progress < 100;
       },
-      effect: ({ goalId, subtaskId }) => toggleSubtask(goalId, subtaskId),
+      effect: ({ goalId, subtaskId, checkpointId }) => toggleSubtask(goalId, subtaskId, checkpointId),
       cost: 1,
       category: 'goals',
     },
