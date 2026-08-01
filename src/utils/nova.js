@@ -273,7 +273,7 @@ export function determineAutoStartProgram({ apiKey, syncEvents, programChats, ho
  * @returns {{ progId: string, lastMessage: Object, messageCount: number } | null}
  */
 export function getLastActiveProgram(programChats) {
-  const progIds = ['briefing', 'focus', 'preview', 'calibration'];
+  const progIds = ['briefing', 'focus', 'preview', 'calibration', 'organize'];
   let lastActive = null;
   let lastTs = 0;
 

@@ -350,7 +350,7 @@ export default function StartupCanvas({
               const messages = Array.isArray(chat) ? chat : [];
               const lastMsg = messages.filter(m => m.role === 'assistant').pop();
               return lastMsg ? (
-                <NOVAMessageBlock content={lastMsg.content} color={autoMeta.color} />
+                <NOVAMessageBlock content={lastMsg.content} color={autoMeta.color} options={lastMsg.options} />
               ) : (
                 <div style={{
                   fontFamily: "'IBM Plex Mono',monospace",

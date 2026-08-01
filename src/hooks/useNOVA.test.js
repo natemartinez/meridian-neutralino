@@ -883,3 +883,208 @@ describe('suggestSubtasks response parsing', () => {
     expect(block).toBe('');
   });
 });
+
+// ============================================================
+// 9. sendNOVAMessage — options persistence (multiple-choice NOVA)
+// ============================================================
+
+describe('sendNOVAMessage options persistence', () => {
+  /**
+   * Pure-function replica of the parse block in sendNOVAMessage
+   * (useNOVA.js lines ~680-695). Extracts content, options, and the
+   * organize action proposal from a raw LLM response.
+   */
+  function parseSendReply(reply) {
+    let cleanReply = reply;
+    let isReady = false;
+    let options = null;
+    let action = null;
+    try {
+      const parsed = JSON.parse(reply);
+      cleanReply = parsed.content || reply;
+      isReady = parsed.ready === true;
+      options = Array.isArray(parsed.options)
+        ? parsed.options.filter(o => typeof o === 'string' && o.trim()).map(o => o.trim()).slice(0, 5)
+        : null;
+      action = parsed.action && typeof parsed.action === 'object' && parsed.action.type && parsed.action.type !== 'none'
+        ? parsed.action
+        : null;
+    } catch {
+      cleanReply = reply;
+    }
+    const historyEntry = {
+      role: 'assistant',
+      content: cleanReply,
+      ...(options && options.length ? { options } : {}),
+      ...(action ? { action } : {}),
+    };
+    return { cleanReply, isReady, options, action, historyEntry };
+  }
+
+  it('stores parsed.options on the assistant history entry', () => {
+    const reply = JSON.stringify({
+      content: 'Here are your options:',
+      options: ['Create goal', 'Link to path', 'Skip'],
+    });
+    const { historyEntry, options } = parseSendReply(reply);
+    expect(options).toEqual(['Create goal', 'Link to path', 'Skip']);
+    expect(historyEntry.options).toEqual(['Create goal', 'Link to path', 'Skip']);
+    expect(historyEntry.content).toBe('Here are your options:');
+  });
+
+  it('caps options at 5 and filters non-strings', () => {
+    const reply = JSON.stringify({
+      content: 'Many options',
+      options: ['a', 'b', 'c', 'd', 'e', 'f', 42, null, ' '],
+    });
+    const { options } = parseSendReply(reply);
+    expect(options).toEqual(['a', 'b', 'c', 'd', 'e']);
+  });
+
+  it('omits options field when none are present', () => {
+    const reply = JSON.stringify({ content: 'No choices' });
+    const { historyEntry, options } = parseSendReply(reply);
+    expect(options).toBeNull();
+    expect(historyEntry).not.toHaveProperty('options');
+  });
+
+  it('stores the organize action proposal on the history entry', () => {
+    const reply = JSON.stringify({
+      content: 'I propose creating a goal',
+      action: { type: 'create-goal', goalTitle: 'Learn React', category: 'long', reason: 'Unlinked milestones' },
+    });
+    const { historyEntry, action } = parseSendReply(reply);
+    expect(action.type).toBe('create-goal');
+    expect(historyEntry.action).toMatchObject({ type: 'create-goal', goalTitle: 'Learn React' });
+  });
+
+  it('ignores "none" actions so no phantom proposal renders', () => {
+    const reply = JSON.stringify({
+      content: 'Nothing to do',
+      action: { type: 'none', reason: 'All good' },
+    });
+    const { historyEntry, action } = parseSendReply(reply);
+    expect(action).toBeNull();
+    expect(historyEntry).not.toHaveProperty('action');
+  });
+
+  it('falls back to plain text on malformed JSON', () => {
+    const { cleanReply, options, historyEntry } = parseSendReply('just plain text');
+    expect(cleanReply).toBe('just plain text');
+    expect(options).toBeNull();
+    expect(historyEntry).toEqual({ role: 'assistant', content: 'just plain text' });
+  });
+});
+
+// ============================================================
+// 10. buildBlackboardUserMessage — consumes compiled blackboard
+// ============================================================
+
+describe('buildBlackboardUserMessage blackboard consumption', () => {
+  const QUADRANTS = { q1: { title: 'Do First' }, q2: { title: 'Schedule' }, q3: { title: 'Delegate' }, q4: { title: 'Eliminate' } };
+
+  /**
+   * Pure-function replica of buildBlackboardUserMessage (useNOVA.js
+   * lines 285-373). Renders the compiled Blackboard snapshot (goals,
+   * paths, gaps) into the volatile user-role message.
+   */
+  function buildBlackboardUserMessage(programId, userInput, blackboard) {
+    const b = blackboard || {};
+    const quadrantCounts = b.quadrantDistribution || { q1: 0, q2: 0, q3: 0, q4: 0 };
+    const quadrantSummary = Object.entries(quadrantCounts)
+      .filter(([, count]) => count > 0)
+      .map(([q, count]) => `${QUADRANTS[q]?.title || q.toUpperCase()} (${q.toUpperCase()}): ${count} goals`)
+      .join(', ');
+    const quadrantBlock = quadrantSummary ? `\nEisenhower Matrix distribution: ${quadrantSummary}.` : '';
+
+    const fmtGoal = (g) => {
+      const parts = [`"${g.title}"`, `${g.progress || 0}% done`];
+      if (g.category) parts.push(`category: ${g.category}`);
+      if (g.quadrant) parts.push(g.quadrant.toUpperCase());
+      if (g.daysUntilDeadline !== null && g.daysUntilDeadline !== undefined) {
+        parts.push(`deadline in ${g.daysUntilDeadline}d`);
+      }
+      if (g.pathIds && g.pathIds.length) parts.push(`paths: ${g.pathIds.join(', ')}`);
+      return `(${parts.join(', ')})`;
+    };
+    const goalsSummary = (b.activeGoals || []).map(fmtGoal).join(', ') || 'none';
+
+    const pathsSummary = (b.paths || [])
+      .map(p => `"${p.title}" (${p.status}, ${p.completedMilestones}/${p.milestoneCount} milestones done${p.linkedGoalIds && p.linkedGoalIds.length ? `, linked goals: ${p.linkedGoalIds.join(', ')}` : ''})`)
+      .join(', ') || 'none';
+
+    const gapsLines = (b.gaps || []).map(gap => {
+      if (gap.type === 'unlinked-path') {
+        const ms = (gap.unlinkedMilestones || []).map(m => `"${m.title}"`).join(', ');
+        return `Path "${gap.pathTitle}" has unlinked milestones${ms ? `: ${ms}` : ''} — focus: ${gap.suggestedFocus || 'create-goal'}`;
+      }
+      if (gap.type === 'orphan-goal') {
+        return `Goal "${gap.goalTitle}" (${gap.category || 'open'}) is not linked to any path — focus: ${gap.suggestedFocus || 'link-to-path'}`;
+      }
+      return null;
+    }).filter(Boolean);
+    const gapsBlock = gapsLines.length ? `\nGaps (goals/paths needing attention):\n${gapsLines.map(l => `  - ${l}`).join('\n')}` : '';
+
+    return `[Blackboard State]
+Active goals: ${goalsSummary}.${quadrantBlock}
+Paths (big picture): ${pathsSummary}.${gapsBlock}
+
+[User]: ${userInput}`;
+  }
+
+  const blackboard = {
+    activeGoals: [
+      { title: 'Learn React', progress: 50, category: 'long', quadrant: 'q2', daysUntilDeadline: 120, pathIds: ['path-a'] },
+      { title: 'Read More', progress: 10, category: 'open', quadrant: 'q2', daysUntilDeadline: null, pathIds: [] },
+    ],
+    quadrantDistribution: { q1: 0, q2: 2, q3: 0, q4: 0 },
+    paths: [
+      { title: 'Frontend Mastery', status: 'active', completedMilestones: 1, milestoneCount: 3, linkedGoalIds: ['g1'] },
+    ],
+    gaps: [
+      { type: 'unlinked-path', pathTitle: 'Frontend Mastery', unlinkedMilestones: [{ title: 'Hooks' }, { title: 'Routing' }], suggestedFocus: 'create-goal' },
+      { type: 'orphan-goal', goalTitle: 'Read More', category: 'open', suggestedFocus: 'link-to-path' },
+    ],
+  };
+
+  it('renders active goals with category, deadline, and pathIds', () => {
+    const msg = buildBlackboardUserMessage('organize', 'Suggest next steps', blackboard);
+    expect(msg).toContain('[Blackboard State]');
+    expect(msg).toContain('"Learn React"');
+    expect(msg).toContain('category: long');
+    expect(msg).toContain('deadline in 120d');
+    expect(msg).toContain('paths: path-a');
+    expect(msg).toContain('"Read More"');
+    expect(msg).toContain('category: open');
+  });
+
+  it('includes the quadrant distribution summary', () => {
+    const msg = buildBlackboardUserMessage('organize', 'Suggest next steps', blackboard);
+    expect(msg).toContain('Eisenhower Matrix distribution: Schedule (Q2): 2 goals.');
+  });
+
+  it('renders the paths section with linked goals', () => {
+    const msg = buildBlackboardUserMessage('organize', 'Suggest next steps', blackboard);
+    expect(msg).toContain('"Frontend Mastery"');
+    expect(msg).toContain('1/3 milestones done');
+    expect(msg).toContain('linked goals: g1');
+  });
+
+  it('renders gaps (unlinked milestones + orphan goals)', () => {
+    const msg = buildBlackboardUserMessage('organize', 'Suggest next steps', blackboard);
+    expect(msg).toContain('Path "Frontend Mastery" has unlinked milestones: "Hooks", "Routing"');
+    expect(msg).toContain('Goal "Read More" (open) is not linked to any path');
+  });
+
+  it('ends with the user input', () => {
+    const msg = buildBlackboardUserMessage('organize', 'Suggest next steps', blackboard);
+    expect(msg.trim().endsWith('[User]: Suggest next steps')).toBe(true);
+  });
+
+  it('handles an empty blackboard gracefully', () => {
+    const msg = buildBlackboardUserMessage('organize', 'Hi', {});
+    expect(msg).toContain('Active goals: none.');
+    expect(msg).toContain('Paths (big picture): none.');
+    expect(msg).toContain('[User]: Hi');
+  });
+});

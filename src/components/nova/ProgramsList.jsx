@@ -81,6 +81,21 @@ const PROGRAMS = [
       </svg>
     ),
   },
+  {
+    id: 'organize',
+    label: 'Organize',
+    desc: 'Strategic advisor',
+    color: '#ff6b35',
+    defaultPage: 'briefing-chat',
+    subNavs: [],
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 13 13">
+        <circle cx="6.5" cy="6.5" r="5" fill="none" stroke="#ff6b35" strokeWidth="1.3"/>
+        <path d="M6.5 3.5v3l2 1.5" fill="none" stroke="#ff6b35" strokeWidth="1.2" strokeLinecap="round"/>
+        <circle cx="6.5" cy="6.5" r="1.2" fill="#ff6b35"/>
+      </svg>
+    ),
+  },
 ];
 
 export default function ProgramsList({ mainPage, onOpenProgram, onBackToHQ, addSyncEvent, onSubNavNavigate, onOpenProgramWithPage, collapsed, onToggleHistory }) {

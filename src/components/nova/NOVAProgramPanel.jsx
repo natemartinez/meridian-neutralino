@@ -25,6 +25,12 @@ function NOVAProgramPanel({
   onNewGoal,
   // Sub-nav navigation prop
   onSubNav,
+  // Organize action execution (agency guard: only execute after user Confirm)
+  createGoalWithPaths,
+  linkGoalToPath,
+  mergePaths,
+  pathsStore,
+  setPathsStore,
 }) {
   const [showContext, setShowContext] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
@@ -35,6 +41,126 @@ function NOVAProgramPanel({
     setSelectedOption(optionText);
     sendNOVAMessage(progId, optionText);
   }, [novaLoading, sendNOVAMessage, progId]);
+
+  // ── Organize: Confirm/Cancel action proposal (agency guard) ──
+  const [dismissedActionMsgIdx, setDismissedActionMsgIdx] = useState(null);
+  const [executedActionMsgIdx, setExecutedActionMsgIdx] = useState(null);
+
+  const pathTitleById = useMemo(() => {
+    const map = {};
+    (pathsStore || []).forEach(p => { map[p.id] = p.title; });
+    return map;
+  }, [pathsStore]);
+
+  const findGoalIdByTitle = useCallback((title) => {
+    if (!title) return null;
+    const norm = title.trim().toLowerCase();
+    return (projects || []).find(p => p.title?.trim().toLowerCase() === norm)?.id || null;
+  }, [projects]);
+
+  const describeAction = useCallback((action) => {
+    switch (action?.type) {
+      case 'create-goal': {
+        const cat = action.category ? ` (${action.category})` : '';
+        const link = action.pathId ? ` — linked to path "${pathTitleById[action.pathId] || action.pathId}"` : '';
+        return `Create goal "${action.goalTitle}"${cat}${link}`;
+      }
+      case 'link-goal': {
+        const pathName = action.pathId ? (pathTitleById[action.pathId] || action.pathId) : 'a path';
+        return `Link "${action.goalTitle}" to path "${pathName}"`;
+      }
+      case 'merge-paths': {
+        const names = (action.pathIds || []).map(id => pathTitleById[id] || id);
+        return `Merge paths: ${names.join(' + ')}`;
+      }
+      case 'create-path':
+        return `Create new path "${action.goalTitle}"`;
+      default:
+        return null;
+    }
+  }, [pathTitleById]);
+
+  const confirmAction = useCallback((action, msgIdx) => {
+    if (!action || executedActionMsgIdx !== null) return;
+    setExecutedActionMsgIdx(msgIdx);
+    try {
+      switch (action.type) {
+        case 'create-goal': {
+          const pathIds = action.pathId ? [action.pathId] : [];
+          const goalData = {
+            title: action.goalTitle,
+            category: action.category || 'short',
+            deadline: action.category === 'open' ? null : '',
+          };
+          if (createGoalWithPaths) {
+            createGoalWithPaths(goalData, pathIds);
+          } else if (onNewGoal) {
+            // Fallback: surface the proposal through the goal modal
+            onNewGoal();
+          }
+          addSyncEvent('organize_action', `create-goal: ${action.goalTitle}`);
+          break;
+        }
+        case 'link-goal': {
+          const goalId = findGoalIdByTitle(action.goalTitle);
+          if (goalId && action.pathId && linkGoalToPath) {
+            linkGoalToPath(goalId, action.pathId);
+            addSyncEvent('organize_action', `link-goal: ${action.goalTitle} → ${action.pathId}`);
+          } else {
+            setExecutedActionMsgIdx(null);
+            return;
+          }
+          break;
+        }
+        case 'merge-paths': {
+          if (action.pathIds && action.pathIds.length >= 2 && mergePaths) {
+            mergePaths(action.pathIds[0], action.pathIds[1]);
+            addSyncEvent('organize_action', `merge-paths: ${action.pathIds[0]} + ${action.pathIds[1]}`);
+          } else {
+            setExecutedActionMsgIdx(null);
+            return;
+          }
+          break;
+        }
+        case 'create-path': {
+          if (setPathsStore) {
+            setPathsStore(prev => [{
+              id: Date.now(),
+              title: action.goalTitle,
+              description: '',
+              color: '#53aaff',
+              status: 'active',
+              createdAt: new Date().toISOString(),
+              milestones: [],
+            }, ...prev]);
+            addSyncEvent('organize_action', `create-path: ${action.goalTitle}`);
+          } else {
+            setExecutedActionMsgIdx(null);
+            return;
+          }
+          break;
+        }
+        default:
+          setExecutedActionMsgIdx(null);
+          return;
+      }
+      // Append confirmation to history
+      setNovaState(prev => ({
+        ...prev,
+        programChats: {
+          ...prev.programChats,
+          [progId]: [
+            ...(prev.programChats[progId] || []),
+            { role: 'assistant', content: `✓ Applied: ${describeAction(action)}` },
+          ],
+        },
+      }));
+    } catch (e) {
+      console.error('[Organize] Action execution failed:', e);
+      setExecutedActionMsgIdx(null);
+    }
+  }, [executedActionMsgIdx, createGoalWithPaths, onNewGoal, addSyncEvent, findGoalIdByTitle, linkGoalToPath, mergePaths, setPathsStore, setNovaState, progId, describeAction]);
+
   const [briefingPhase, setBriefingPhase] = useState('chat'); // 'chat' | 'pick3' | 'breakdown' | 'done'
   const [previewPhase, setPreviewPhase] = useState('regroup_journal'); // 'regroup_journal' | 'planning' | 'confirming' | 'done'
   const [breakdownTask, setBreakdownTask] = useState(null);
@@ -107,7 +233,8 @@ function NOVAProgramPanel({
     briefing:    { label:'Goals',       color:'#F59E0B', desc:'Morning debrief' },
     focus:       { label:'Focus',       color: T.blue,   desc:'Deep focus' },
     preview:     { label:'Preview',     color: T.cyan,   desc:'Plan ahead' },
-    calibration: { label:'Paths', color: T.accent, desc:'Roadmaps & projects' },
+    calibration: { label:'Paths',       color: T.accent, desc:'Roadmaps & projects' },
+    organize:    { label:'Organize',    color:'#ff6b35', desc:'Strategic advisor' },
   };
   const meta     = PROG_META[progId] || PROG_META.briefing;
   const history  = novaState.programChats[progId] || [];
@@ -115,6 +242,21 @@ function NOVAProgramPanel({
   const isBriefing = progId === 'briefing';
   const isPreview = progId === 'preview';
   const isCalibration = progId === 'calibration';
+  const isOrganize = progId === 'organize';
+
+  // Latest actionable proposal from NOVA (organize program only).
+  // The user must explicitly Confirm before any mutation executes.
+  const latestAction = useMemo(() => {
+    if (!isOrganize) return null;
+    for (let i = history.length - 1; i >= 0; i--) {
+      const msg = history[i];
+      if (msg.action && msg.action.type && msg.action.type !== 'none') {
+        if (executedActionMsgIdx === i || dismissedActionMsgIdx === i) return null;
+        return { msg, msgIdx: i };
+      }
+    }
+    return null;
+  }, [isOrganize, history, executedActionMsgIdx, dismissedActionMsgIdx]);
 
   // ── Sub-nav items per program (moved from Compass bar) ──
   const SUB_NAVS = {
@@ -165,12 +307,15 @@ function NOVAProgramPanel({
   const today = new Date().toDateString();
   const availableItems = [
     ...onwardItems.filter(it => (!it.date || it.date === today) && !it.done),
-    ...(projects || []).flatMap(p =>
-      (p.subtasks || []).filter(st => !st.done).map(st => ({
-        id: st.id, title: st.title, goalId: p.id, goalTitle: p.title, goalColor: p.color,
-        source: 'subtask', priority: p.priority || 'low',
-      }))
-    ),
+    ...(projects || []).flatMap(p => [
+      ...(p.checkpoints || []).flatMap(cp =>
+        (cp.subtasks || []).filter(st => !st.done).map(st => ({
+          id: st.id, title: st.title, goalId: p.id, goalTitle: p.title, goalColor: p.color,
+          source: 'subtask', priority: p.priority || 'low',
+          checkpointId: cp.id, checkpointTitle: cp.title,
+        }))
+      ),
+    ]),
   ].filter(item => !selectedForToday.includes(item.id));
 
   const selectedItems = selectedForToday.map(id =>
@@ -630,12 +775,12 @@ function NOVAProgramPanel({
             />
           )}
         </div>
-      ) : (isBriefing || isPreview || isCalibration) && (
-        /* ── Briefing / Preview / Calibration Chat ── */
+      ) : (isBriefing || isPreview || isCalibration || isOrganize) && (
+        /* ── Briefing / Preview / Calibration / Organize Chat ── */
         <div style={{ flex:1, overflowY:'auto', padding:'0 12px', display:'flex', flexDirection:'column', gap:8 }}>
           {history.length === 0 && (
             <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:13, color:T.muted, textAlign:'center', padding:'20px 0', lineHeight:1.8 }}>
-              {isPreview ? 'Plan your next day with NOVA.' : isCalibration ? 'Manage your personal projects and roadmaps.' : 'Start your morning debrief with NOVA.'}
+              {isPreview ? 'Plan your next day with NOVA.' : isCalibration ? 'Manage your personal projects and roadmaps.' : isOrganize ? 'NOVA will analyze your goals, paths, and gaps — then propose actions for you to approve.' : 'Start your morning debrief with NOVA.'}
             </div>
           )}
           {history.map((msg, i) => (
@@ -654,6 +799,7 @@ function NOVAProgramPanel({
                     content={msg.content}
                     color={meta.color}
                     onOptionSelect={handleOptionSelect}
+                    options={msg.options}
                     isLatest={i === history.length - 1}
                     typewriterDelay={8}
                   />
@@ -661,6 +807,54 @@ function NOVAProgramPanel({
               </div>
             </div>
           ))}
+
+          {/* ── Organize: Action proposal summary + Confirm/Cancel (agency guard) ── */}
+          {latestAction && (() => {
+            const { msg, msgIdx } = latestAction;
+            const summary = describeAction(msg.action);
+            return (
+              <div style={{
+                alignSelf:'flex-start', maxWidth:'92%',
+                padding:'10px 12px', borderRadius:8,
+                background:`${meta.color}0d`,
+                border:`1px solid ${meta.color}55`,
+                display:'flex', flexDirection:'column', gap:8,
+              }}>
+                <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:meta.color, letterSpacing:'.08em' }}>NOVA PROPOSES</div>
+                <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:12, color:T.text, lineHeight:1.5 }}>
+                  {summary || 'Unrecognized action proposal'}
+                </div>
+                {msg.action.reason && (
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:T.muted, lineHeight:1.5 }}>
+                    Why: {msg.action.reason}
+                  </div>
+                )}
+                <div style={{ display:'flex', gap:6, marginTop:2 }}>
+                  <button
+                    onClick={() => confirmAction(msg.action, msgIdx)}
+                    disabled={novaLoading}
+                    style={{
+                      flex:1, padding:'5px 0', borderRadius:4,
+                      background: meta.color, border:'none', color:'#000',
+                      fontFamily:"'Syne',sans-serif", fontSize:10, fontWeight:700,
+                      cursor: novaLoading ? 'default' : 'pointer',
+                    }}
+                  >✓ Confirm</button>
+                  <button
+                    onClick={() => setDismissedActionMsgIdx(msgIdx)}
+                    disabled={novaLoading}
+                    style={{
+                      flex:1, padding:'5px 0', borderRadius:4,
+                      background:'none', border:`1px solid ${T.border}`, color:T.muted,
+                      fontFamily:"'Syne',sans-serif", fontSize:10, fontWeight:700,
+                      cursor: novaLoading ? 'default' : 'pointer',
+                    }}
+                  >✕ Cancel</button>
+                </div>
+              </div>
+            );
+          })()}
+
           {novaLoading && (
             <div style={{ display:'flex', alignItems:'flex-start' }}>
               <div style={{ padding:'7px 12px', borderRadius:'8px 8px 8px 2px', background:T.card, border:`1px solid ${T.border}`, fontFamily:"'IBM Plex Mono',monospace", fontSize:14, color:T.muted }}>
@@ -794,7 +988,7 @@ function NOVAProgramPanel({
       )}
 
       {/* ── Chat Input (for Briefing chat phase, Preview, Calibration, and Focus) ── */}
-      {((isBriefing && briefingPhase === 'chat') || isPreview || isCalibration || (isFocus && !focusPlan)) && (
+      {((isBriefing && briefingPhase === 'chat') || isPreview || isCalibration || isOrganize || (isFocus && !focusPlan)) && (
         <div style={{ padding:'8px 12px 12px', borderTop:`1px solid ${T.border}`, display:'flex', gap:6 }}>
           <textarea
             value={novaChatInput}

@@ -45,27 +45,52 @@ export function calculateQuadrant(pos, axisX, axisY) {
 }
 
 /**
+ * Resolve a goal's taxonomy category with a defensive fallback read.
+ * Reads the new `category` field first, falling back to the legacy `scale`
+ * during the transition window.
+ *
+ * @param {{ category?: string, scale?: string, deadline?: string|null }} goal
+ * @returns {'short'|'long'|'open'}
+ */
+export function getCategory(goal) {
+  if (goal?.category && ['short', 'long', 'open'].includes(goal.category)) {
+    return goal.category;
+  }
+  switch (goal?.scale) {
+    case 'short': return 'short';
+    case 'medium':
+    case 'long':  return 'long';
+    default:      return goal?.deadline ? 'long' : 'open';
+  }
+}
+
+/**
  * Infer the initial Eisenhower quadrant for a newly created goal
- * based on its deadline proximity and priority/scale.
+ * based on its deadline proximity, priority, and category/scale.
  *
  * Heuristic:
- *   - Urgent (deadline ≤ 7 days) + Important (high priority or long scale) → Q1
+ *   - Urgent (deadline ≤ 7 days) + Important (high priority or long category) → Q1
  *   - Not urgent + Important → Q2
  *   - Urgent + Not important → Q3
  *   - Neither → Q4
+ *   - 'open' goals are NEVER urgent by deadline (deadline is null by invariant)
+ *     and default to Q2 (Schedule).
  *
- * @param {{ deadline?: string, priority?: string, scale?: string }} goalData
+ * @param {{ deadline?: string, priority?: string, category?: string, scale?: string }} goalData
  * @returns {'q1'|'q2'|'q3'|'q4'}
  */
 export function inferInitialQuadrant(goalData) {
+  const category = getCategory(goalData);
   let isUrgent = false;
-  if (goalData.deadline) {
+  if (goalData.deadline && category !== 'open') {
     const deadlineDate = new Date(goalData.deadline);
     if (!isNaN(deadlineDate.getTime())) {
       isUrgent = (deadlineDate - new Date()) / 86400000 <= 7;
     }
   }
-  const isImportant = goalData.priority === 'high' || goalData.scale === 'long';
+  // Open goals are ongoing life areas — never urgent, but important by
+  // default so they land in Q2 (Schedule) when created (plan §7.1).
+  const isImportant = category === 'open' || goalData.priority === 'high' || category === 'long';
 
   if (isUrgent && isImportant) return 'q1';
   if (!isUrgent && isImportant) return 'q2';
@@ -95,9 +120,13 @@ export function quadrantCenter(quadrant, axisX, axisY) {
 }
 
 export const progress = (p) => {
-  const total = p.subtasks.length + p.checkpoints.length;
+  // Count subtasks: top-level + within checkpoints
+  const topLevelSubs = p.subtasks || [];
+  const cpSubs = (p.checkpoints || []).reduce((sum, cp) => sum + (cp.subtasks || []).length, 0);
+  const total = topLevelSubs.length + cpSubs;
   if (!total) return 0;
-  const done = p.subtasks.filter(s => s.done).length + p.checkpoints.filter(c => c.done).length;
+  const done = topLevelSubs.filter(s => s.done).length
+    + (p.checkpoints || []).reduce((sum, cp) => sum + (cp.subtasks || []).filter(s => s.done).length, 0);
   return Math.round((done / total) * 100);
 };
 

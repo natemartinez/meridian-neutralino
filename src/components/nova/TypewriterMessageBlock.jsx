@@ -23,6 +23,7 @@ export default function TypewriterMessageBlock({
   content,
   color,
   onOptionSelect,
+  options,
   isLatest = false,
   typewriterDelay = 20,
 }) {
@@ -62,6 +63,7 @@ export default function TypewriterMessageBlock({
         content={content}
         color={color}
         onOptionSelect={onOptionSelect}
+        options={options}
       />
     );
   }
@@ -73,6 +75,7 @@ export default function TypewriterMessageBlock({
         content={content}
         color={color}
         onOptionSelect={onOptionSelect}
+        options={options}
       />
     );
   }
@@ -89,6 +92,7 @@ export default function TypewriterMessageBlock({
         content={displayedText}
         color={color}
         onOptionSelect={onOptionSelect}
+        options={options}
       />
 
       {/* Blinking cursor indicator while typing */}

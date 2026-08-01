@@ -73,6 +73,29 @@ export const WEEKLY_SCAN_SCHEMA = {
   assessment: { type: 'string', required: true },
 };
 
+export const ORGANIZE_SCHEMA = {
+  content: { type: 'string', required: true },
+  options: { type: 'array', items: { type: 'string' }, required: false, nullable: true },
+  action: {
+    type: 'object',
+    required: false,
+    nullable: true,
+    props: {
+      type: {
+        type: 'string',
+        required: true,
+        enum: ['none', 'create-goal', 'link-goal', 'merge-paths', 'create-path'],
+      },
+      goalTitle: { type: 'string', required: false, nullable: true },
+      pathId: { type: 'string', required: false, nullable: true },
+      pathIds: { type: 'array', items: { type: 'string' }, required: false, nullable: true },
+      category: { type: 'string', required: false, nullable: true, enum: ['short', 'long', 'open'] },
+      reason: { type: 'string', required: false, nullable: true },
+    },
+  },
+  ready: { type: 'boolean', required: true },
+};
+
 // ── Format B: OpenRouter json_schema wrappers (for response_format) ──
 // These match the OpenRouter API spec:
 //   response_format: { type: "json_schema", json_schema: { name, strict, schema } }
@@ -185,6 +208,34 @@ export const WEEKLY_SCAN_SCHEMA_OPENROUTER = {
   },
 };
 
+export const ORGANIZE_SCHEMA_OPENROUTER = {
+  name: 'NovaOrganizeResponse',
+  strict: true,
+  schema: {
+    type: 'object',
+    properties: {
+      content: { type: 'string' },
+      options: { type: ['array', 'null'], items: { type: 'string' } },
+      action: {
+        type: ['object', 'null'],
+        properties: {
+          type: { type: 'string', enum: ['none', 'create-goal', 'link-goal', 'merge-paths', 'create-path'] },
+          goalTitle: { type: ['string', 'null'] },
+          pathId: { type: ['string', 'null'] },
+          pathIds: { type: ['array', 'null'], items: { type: 'string' } },
+          category: { type: ['string', 'null'], enum: ['short', 'long', 'open'] },
+          reason: { type: ['string', 'null'] },
+        },
+        required: ['type'],
+        additionalProperties: false,
+      },
+      ready: { type: 'boolean' },
+    },
+    required: ['content', 'ready'],
+    additionalProperties: false,
+  },
+};
+
 // ── Schema Registry ──
 // Maps program IDs to their corresponding schemas for easy lookup.
 
@@ -194,6 +245,7 @@ export const PROGRAM_SCHEMA_MAP = {
   calibration: CHAT_SCHEMA_OPENROUTER,
   focus: CHAT_SCHEMA_OPENROUTER,
   general: CHAT_SCHEMA_OPENROUTER,
+  organize: ORGANIZE_SCHEMA_OPENROUTER,
 };
 
 export const PROGRAM_SCHEMA_PLAIN_MAP = {
@@ -202,6 +254,7 @@ export const PROGRAM_SCHEMA_PLAIN_MAP = {
   calibration: CHAT_SCHEMA,
   focus: CHAT_SCHEMA,
   general: CHAT_SCHEMA,
+  organize: ORGANIZE_SCHEMA,
 };
 
 // ── Validation Utility ──

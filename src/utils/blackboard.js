@@ -44,6 +44,7 @@ import { isProgram, extractProgId } from '../constants/programs.js';
 export function compileBlackboard(state) {
   const {
     projects,
+    pathsStore,
     onwardItems,
     selectedForToday,
     streakDays,
@@ -58,22 +59,80 @@ export function compileBlackboard(state) {
 
   const clock = now instanceof Date ? now : new Date();
   const todayStats = typeof getTodayStats === 'function' ? getTodayStats() : { totalMin: 0, focusedMin: 0 };
+  const paths = (pathsStore || []);
+
+  // Defensive category read (prefer new field, fall back to legacy scale)
+  const cat = (p) => p.category || (p.scale === 'medium' ? 'long' : p.scale) || 'open';
+  const daysUntil = (deadline) => {
+    if (!deadline) return null;
+    const d = new Date(deadline);
+    if (isNaN(d.getTime())) return null;
+    return Math.ceil((d - clock) / 86400000);
+  };
+
+  // Linked goals per path, derived from goal `pathIds`
+  const linkedByPath = (pathId) =>
+    (projects || []).filter(p => !p.completedAt && (p.pathIds || []).includes(pathId)).map(p => p.id);
 
   return {
     // ── Goals ──
     activeGoals: (projects || [])
       .filter(p => !p.completedAt)
-      .map(p => ({
-        id: p.id,
-        title: p.title,
-        progress: progress(p),
-        quadrant: p.quadrant || 'q2',
-        subtaskCount: (p.subtasks || []).length,
-        completedSubtasks: (p.subtasks || []).filter(s => s.done).length,
-        deadline: p.deadline || null,
-        priority: p.priority || 'medium',
-      })),
+      .map(p => {
+        const topLevelSubs = p.subtasks || [];
+        const cpSubs = (p.checkpoints || []).reduce((sum, cp) => sum + (cp.subtasks || []).length, 0);
+        const doneTopLevel = topLevelSubs.filter(s => s.done).length;
+        const doneCpSubs = (p.checkpoints || []).reduce((sum, cp) => sum + (cp.subtasks || []).filter(s => s.done).length, 0);
+        return {
+          id: p.id,
+          title: p.title,
+          progress: progress(p),
+          quadrant: p.quadrant || 'q2',
+          subtaskCount: topLevelSubs.length + cpSubs,
+          completedSubtasks: doneTopLevel + doneCpSubs,
+          checkpointCount: (p.checkpoints || []).length,
+          deadline: p.deadline || null,
+          priority: p.priority || 'medium',
+          category: cat(p),
+          pathIds: p.pathIds || [],
+          daysUntilDeadline: daysUntil(p.deadline),
+        };
+      }),
     quadrantDistribution: computeQuadrantDistribution(projects),
+
+    // ── Paths (big picture) ──
+    paths: paths.map(p => ({
+      id: p.id,
+      title: p.title,
+      status: p.status || 'active',
+      milestoneCount: (p.milestones || []).length,
+      completedMilestones: (p.milestones || []).filter(m => m.completed).length,
+      linkedGoalIds: linkedByPath(p.id),
+    })),
+
+    // ── Gaps (derived — "goals not yet set" signal) ──
+    // Paths whose milestones are NOT covered by any linked goal, plus
+    // orphan goals (active goals with no pathIds).
+    gaps: [
+      ...paths
+        .filter(p => (p.milestones || []).some(m => !m.completed))
+        .map(p => ({
+          type: 'unlinked-path',
+          pathId: p.id,
+          pathTitle: p.title,
+          unlinkedMilestones: (p.milestones || []).filter(m => !m.completed).map(m => ({ title: m.title, completed: m.completed })),
+          suggestedFocus: 'create-goal',
+        })),
+      ...(projects || [])
+        .filter(p => !p.completedAt && !(p.pathIds || []).length)
+        .map(p => ({
+          type: 'orphan-goal',
+          goalId: p.id,
+          goalTitle: p.title,
+          category: cat(p),
+          suggestedFocus: 'link-to-path',
+        })),
+    ],
 
     // ── Today ──
     todayCompletedCount: (onwardItems || [])
@@ -186,6 +245,7 @@ export function buildInteractionSyncPayload(blackboard, { projects, activePage, 
 export function getBlackboardDeps(deps) {
   const {
     projects,
+    pathsStore,
     onwardItems,
     selectedForToday,
     streakDays,
@@ -199,6 +259,7 @@ export function getBlackboardDeps(deps) {
 
   return [
     projects,
+    pathsStore,
     onwardItems,
     selectedForToday,
     streakDays,

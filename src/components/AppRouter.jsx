@@ -3,14 +3,12 @@ import { T, NODE_PALETTE } from '../utils/theme.js';
 import { uid } from '../utils/helpers.js';
 import { getLastActiveProgram } from '../utils/nova.js';
 import { PROGRAMS_WITH_CANVAS, PROGRAM_DEFAULT_PAGES, isCanvasPage, isProgram, extractProgId } from '../constants/programs.js';
-import { TrackIcon, SettingsIcon, MindIcon, ClockIcon } from './icons.jsx';
+import { TrackIcon, SettingsIcon, ClockIcon } from './icons.jsx';
 import useAppStyles from '../hooks/useAppStyles.jsx';
 
 import TrackingPage from './TrackingPage.jsx';
 import SettingsPage from './SettingsPage.jsx';
-import MindCheckPage from './MindCheckPage.jsx';
 import KnowledgePoolPage from './KnowledgePoolPage.jsx';
-import MindCheckCard from './MindCheckCard.jsx';
 import SkillsView from './views/SkillsView.jsx';
 import PathsView from './views/PathsView.jsx';
 import WorkLogsView from './views/WorkLogsView.jsx';
@@ -39,6 +37,7 @@ import NovaCompassChat from './nova/NovaCompassChat.jsx';
 export default function AppRouter({
   // ── State values & setters ──
   projects, setProjects,
+  pathsStore, setPathsStore,
   selectedId, setSelectedId,
   focus, setFocus,
   modal, setModal,
@@ -67,7 +66,6 @@ export default function AppRouter({
   pendingAutoStart, setPendingAutoStart,
   intensity, setIntensity,
   showApiKey, setShowApiKey,
-  showMindCheckCard, setShowMindCheckCard,
   sessions, setSessions,
   activeSession, setActiveSession,
   prioritizeInput, setPrioritizeInput,
@@ -76,7 +74,6 @@ export default function AppRouter({
   geminiResponse, setGeminiResponse,
   geminiLoading, setGeminiLoading,
   pomodoroPreselect, setPomodoroPreselect,
-  routines, setRoutines,
   focusMode, setFocusMode,
   selectedForToday, setSelectedForToday,
   deferredItems, setDeferredItems,
@@ -146,6 +143,9 @@ export default function AppRouter({
 
   // ── Event handlers ──
   createGoalFromModal,
+  createGoalWithPaths,
+  linkGoalToPath,
+  mergePaths,
   addOnwardItem,
   deleteOnwardItem,
   deleteAvailableTask,
@@ -310,116 +310,38 @@ export default function AppRouter({
               🧭
             </button>
           )}
+
+          {/* ── Sidebar footer nav — Track / Settings ── */}
+          <div className="sig-ftr">
+            {[
+              { page:'tracking',  label:'Track',    color:T.blue,   icon: () => <TrackIcon color={T.blue} /> },
+              { page:'settings',  label:'Settings', color:T.purple, icon: () => <SettingsIcon color={T.purple} /> },
+            ].map(({ page, label, color, icon }) => {
+              const isActive = mainPage === page;
+              return (
+                <button
+                  key={page}
+                  className="sig-ftr-btn"
+                  onClick={() => { setMainPage(page); }}
+                  style={{
+                    background: isActive ? `${color}18` : 'transparent',
+                    borderColor: isActive ? `${color}50` : undefined,
+                    color: isActive ? color : undefined,
+                  }}
+                >
+                  {icon()}
+                  <span>{label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* ═══ COMMAND ═══ */}
         <div className={`cmd${waypointOpen ? ' wp-open' : ''}`}>
-          {/* Top bar — nav buttons */}
-          <div className="ctb" style={{ justifyContent: isProgram(mainPage) ? 'space-between' : 'flex-end' }}>
-            {isProgram(mainPage) && (
-              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                {(() => {
-                  const progId = extractProgId(mainPage);
-                  const labelMap = { briefing:'Goals', focus:'Focus', preview:'Preview', calibration:'Paths' };
-                  const label = labelMap[progId];
-                  if (!label) return null;
-                  const isBriefing = progId === 'briefing';
-                  return isBriefing ? (
-                    <>
-                      <button
-                        onClick={() => setModal(true)}
-                        className={projects.filter(p => !p.completedAt).length === 0 ? 'breathe-glow' : ''}
-                        style={{
-                          fontFamily:"'IBM Plex Mono',monospace",
-                          fontSize:11,
-                          fontWeight:600,
-                          color:T.text,
-                          background:`${T.accent}18`,
-                          border:`1px solid ${T.accent}40`,
-                          borderRadius:8,
-                          padding:'5px 12px',
-                          cursor:'pointer',
-                          letterSpacing:'0.04em',
-                          transition:'all .14s',
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background = `${T.accent}28`;
-                          e.currentTarget.style.borderColor = `${T.accent}70`;
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = `${T.accent}18`;
-                          e.currentTarget.style.borderColor = `${T.accent}40`;
-                        }}
-                      >
-                        + Create Goal
-                      </button>
-                      <button
-                        onClick={() => setGoalsView(v => v === 'matrix' ? 'priority-list' : 'matrix')}
-                        style={{
-                          fontFamily:"'IBM Plex Mono',monospace",
-                          fontSize:11,
-                          fontWeight:600,
-                          color:T.text,
-                          background:`${T.green}18`,
-                          border:`1px solid ${T.green}40`,
-                          borderRadius:8,
-                          padding:'5px 12px',
-                          cursor:'pointer',
-                          letterSpacing:'0.04em',
-                          transition:'all .14s',
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background = `${T.green}28`;
-                          e.currentTarget.style.borderColor = `${T.green}70`;
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = `${T.green}18`;
-                          e.currentTarget.style.borderColor = `${T.green}40`;
-                        }}
-                      >
-                        {goalsView === 'matrix' ? '☰ List View' : '⊞ Matrix View'}
-                      </button>
-                    </>
-                  ) : (
-                    <span style={{
-                      fontFamily:"'Syne',sans-serif",
-                      fontSize:16,
-                      fontWeight:700,
-                      color:T.accent,
-                    }}>{label}</span>
-                  );
-                })()}
-              </div>
-            )}
-            <div style={{ display:'flex', gap:4 }}>
-              {[
-                { page:'tracking',  label:'Track',    color:T.blue,   icon: () => <TrackIcon color={T.blue} /> },
-                { page:'settings',  label:'Settings', color:T.purple, icon: () => <SettingsIcon color={T.purple} /> },
-                { page:'mindcheck', label:'Mind',     color:T.green,  icon: () => <MindIcon color={T.green} /> },
-              ].map(({ page, label, color, icon }) => {
-                const isActive = mainPage === page;
-                return (
-                  <button
-                    key={page}
-                    className="cbtn"
-                    onClick={() => { setMainPage(page); }}
-                    style={{
-                      background: isActive ? `${color}18` : 'transparent',
-                      borderColor: isActive ? `${color}50` : undefined,
-                      color: isActive ? color : undefined,
-                    }}
-                  >
-                    {icon()}
-                    <span style={{ marginLeft:4 }}>{label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Body */}
           <div className="cbody">
-            {isCanvasPage(mainPage) && showStartupCanvas ? (
+            {mainPage === 'hq' && showStartupCanvas ? (
               <StartupCanvas
                 lastProgram={getLastActiveProgram(novaState?.programChats)}
                 focusMode={focusMode}
@@ -446,6 +368,10 @@ export default function AppRouter({
                     setActivePage('paths');
                     activePageRef.current = 'paths';
                     closeWaypoint();
+                  } else if (page === 'program-organize') {
+                    setActivePage('briefing-chat');
+                    activePageRef.current = 'briefing-chat';
+                    closeWaypoint();
                   }
                 }}
                 onResumeFocus={() => {
@@ -471,6 +397,10 @@ export default function AppRouter({
                     setActivePage('paths');
                     activePageRef.current = 'paths';
                     closeWaypoint();
+                  } else if (programId === 'organize') {
+                    setActivePage('briefing-chat');
+                    activePageRef.current = 'briefing-chat';
+                    closeWaypoint();
                   }
                   // 2. Brief delay to ensure the program panel is mounted, then send the prompt
                   setTimeout(() => {
@@ -494,7 +424,24 @@ export default function AppRouter({
                 T={T}
               />
             ) : isCanvasPage(mainPage) && (
-              <div className="cv" style={{ cursor: activePage === 'goals' ? (dragging ? 'grabbing' : 'grab') : activePage === 'onward' ? 'default' : 'pointer', position: 'relative', overflow: activePage === 'onward' ? 'auto' : 'hidden', scrollbarWidth: 'thin', scrollbarColor: `${T.border} ${T.bg}` }}>
+              <>
+              {activePage === 'goals' && goalsView !== 'priority-list' && (
+                <div style={{
+                  position:'absolute', top:0, left:0, right:0, zIndex:5,
+                  padding:'10px 18px',
+                  fontFamily:"'Syne',sans-serif",
+                  fontSize:13,
+                  fontWeight:700,
+                  color:T.accent,
+                  letterSpacing:'0.04em',
+                  textAlign:'center',
+                  background:'linear-gradient(180deg, rgba(12,17,26,1) 60%, rgba(12,17,26,0) 100%)',
+                  pointerEvents:'none',
+                }}>
+                  Select Your Top Goals
+                </div>
+              )}
+              <div className="cv" style={{ cursor: activePage === 'goals' ? (dragging ? 'grabbing' : 'grab') : activePage === 'onward' ? 'default' : 'pointer', position: 'relative', overflow: activePage === 'onward' ? 'auto' : 'hidden', scrollbarWidth: 'thin', scrollbarColor: `${T.border} ${T.bg}`, marginTop: activePage === 'goals' && goalsView !== 'priority-list' ? 40 : 0, height: activePage === 'goals' && goalsView !== 'priority-list' ? 'calc(100% - 40px)' : undefined }}>
                 <canvas
                   ref={canvasRef}
                   style={{ position:'absolute', top:0, left:20 }}
@@ -514,6 +461,8 @@ export default function AppRouter({
                 {activePage === 'paths' && (
                   <div style={{ position: 'absolute', inset: 0, background: '#0c111a', overflowY: 'auto', zIndex: 10 }}>
                     <PathsView
+                      pathsStore={pathsStore}
+                      setPathsStore={setPathsStore}
                       setGoalsProjects={setProjects}
                       goalsProjects={projects}
                       onNavigateToGoals={(goalId) => {
@@ -586,11 +535,24 @@ export default function AppRouter({
                         confirmInsight={confirmInsight}
                         dismissInsight={dismissInsight}
                         onSubNav={onSubNav}
+                        onOrganize={() => {
+                          setMainPage('program-organize');
+                          setActivePage('briefing-chat');
+                          activePageRef.current = 'briefing-chat';
+                          closeWaypoint();
+                        }}
+                        onNewGoal={() => setModal(true)}
+                        createGoalWithPaths={createGoalWithPaths}
+                        linkGoalToPath={linkGoalToPath}
+                        mergePaths={mergePaths}
+                        pathsStore={pathsStore}
+                        setPathsStore={setPathsStore}
                       />
                     </div>
                   );
                 })()}
               </div>
+              </>
             )}
             {mainPage === 'tracking' && (
               <TrackingPage
@@ -648,9 +610,6 @@ export default function AppRouter({
                 setMainPage={setMainPage}
               />
             )}
-            {mainPage === 'mindcheck' && (
-              <MindCheckPage routines={routines} setRoutines={setRoutines} setMainPage={setMainPage} />
-            )}
             {mainPage === 'nova-insights' && (
               <NovaInsightsPanel
                 novaState={novaState}
@@ -663,6 +622,117 @@ export default function AppRouter({
               />
             )}
           </div>
+
+          {/* Bottom bar — program actions (only on program pages) */}
+          {isProgram(mainPage) && (
+            <div className="ctb" style={{ justifyContent: 'space-between' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                {(() => {
+                  const progId = extractProgId(mainPage);
+                  const labelMap = { briefing:'Goals', focus:'Focus', preview:'Preview', calibration:'Paths', organize:'Organize' };
+                  const label = labelMap[progId];
+                  if (!label) return null;
+                  const isBriefing = progId === 'briefing';
+                  return isBriefing ? (
+                    <>
+                      <button
+                        onClick={() => setModal(true)}
+                        className={projects.filter(p => !p.completedAt).length === 0 ? 'breathe-glow' : ''}
+                        style={{
+                          fontFamily:"'IBM Plex Mono',monospace",
+                          fontSize:11,
+                          fontWeight:600,
+                          color:T.text,
+                          background:`${T.accent}22`,
+                          border:`1px solid ${T.accent}50`,
+                          borderRadius:8,
+                          padding:'5px 12px',
+                          cursor:'pointer',
+                          letterSpacing:'0.04em',
+                          transition:'all .14s',
+                          boxShadow:'0 0 8px rgba(240,180,41,0.20)',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = `${T.accent}32`;
+                          e.currentTarget.style.borderColor = `${T.accent}80`;
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = `${T.accent}22`;
+                          e.currentTarget.style.borderColor = `${T.accent}50`;
+                        }}
+                      >
+                        + Create Goal
+                      </button>
+                      <button
+                        onClick={() => setGoalsView(v => v === 'matrix' ? 'priority-list' : 'matrix')}
+                        style={{
+                          fontFamily:"'IBM Plex Mono',monospace",
+                          fontSize:11,
+                          fontWeight:600,
+                          color:T.text,
+                          background:`${T.green}18`,
+                          border:`1px solid ${T.green}40`,
+                          borderRadius:8,
+                          padding:'5px 12px',
+                          cursor:'pointer',
+                          letterSpacing:'0.04em',
+                          transition:'all .14s',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = `${T.green}28`;
+                          e.currentTarget.style.borderColor = `${T.green}70`;
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = `${T.green}18`;
+                          e.currentTarget.style.borderColor = `${T.green}40`;
+                        }}
+                      >
+                        {goalsView === 'matrix' ? '☰ List View' : '⊞ Matrix View'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMainPage('program-organize');
+                          setActivePage('briefing-chat');
+                          activePageRef.current = 'briefing-chat';
+                          closeWaypoint();
+                        }}
+                        style={{
+                          fontFamily:"'IBM Plex Mono',monospace",
+                          fontSize:11,
+                          fontWeight:600,
+                          color:'#ff6b35',
+                          background:'rgba(255,107,53,0.10)',
+                          border:'1px solid rgba(255,107,53,0.40)',
+                          borderRadius:8,
+                          padding:'5px 12px',
+                          cursor:'pointer',
+                          letterSpacing:'0.04em',
+                          transition:'all .14s',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = 'rgba(255,107,53,0.20)';
+                          e.currentTarget.style.borderColor = 'rgba(255,107,53,0.70)';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'rgba(255,107,53,0.10)';
+                          e.currentTarget.style.borderColor = 'rgba(255,107,53,0.40)';
+                        }}
+                      >
+                        ⟐ Organize Tasks
+                      </button>
+                    </>
+                  ) : (
+                    <span style={{
+                      fontFamily:"'Syne',sans-serif",
+                      fontSize:16,
+                      fontWeight:700,
+                      color:T.accent,
+                    }}>{label}</span>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ═══ WAYPOINT ═══ */}
@@ -699,10 +769,10 @@ export default function AppRouter({
                   topGoals={topGoals}
                   onToggleTopGoal={toggleTopGoal}
                   onOrganize={() => {
-                    setMainPage('program-focus');
-                    setActivePage('onward');
-                    activePageRef.current = 'onward';
-                    openWaypoint({ type: 'canvas-panel', id: 'onward' });
+                    setMainPage('program-organize');
+                    setActivePage('briefing-chat');
+                    activePageRef.current = 'briefing-chat';
+                    closeWaypoint();
                   }}
                 />
               );
@@ -802,13 +872,6 @@ export default function AppRouter({
           </div>
         );
       })()}
-
-      {showMindCheckCard && (
-        <MindCheckCard
-          onMoveOn={() => setShowMindCheckCard(false)}
-          onMindCheck={() => { setMainPage('mindcheck'); setShowMindCheckCard(false); }}
-        />
-      )}
 
       {/* ── Deadline Notifier ── */}
       {showDeadlineNotifier && deadlineAlerts.length > 0 && (

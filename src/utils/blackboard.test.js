@@ -145,18 +145,23 @@ describe('compileBlackboard', () => {
       }),
     ];
 
-    const bb = compileBlackboard(defaultState({ projects }));
+    // Fixed clock so daysUntilDeadline is deterministic (2026-07-15 − 2026-06-30 = 15d)
+    const bb = compileBlackboard(defaultState({ projects, now: new Date('2026-06-30T12:00:00Z') }));
 
     expect(bb.activeGoals).toHaveLength(2);
     expect(bb.activeGoals[0]).toEqual({
       id: 'g1',
       title: 'Build App',
-      progress: 33, // 1 done / 3 total ≈ 33%
+      progress: 50, // 1 done / 2 subtasks = 50%
       quadrant: 'q1',
       subtaskCount: 2,
       completedSubtasks: 1,
+      checkpointCount: 1,
       deadline: '2026-07-15',
       priority: 'high',
+      category: 'open',
+      pathIds: [],
+      daysUntilDeadline: 15,
     });
     expect(bb.activeGoals[1]).toEqual({
       id: 'g3',
@@ -165,8 +170,12 @@ describe('compileBlackboard', () => {
       quadrant: 'q3',
       subtaskCount: 1,
       completedSubtasks: 1,
+      checkpointCount: 0,
       deadline: null,
       priority: 'low',
+      category: 'open',
+      pathIds: [],
+      daysUntilDeadline: null,
     });
   });
 
@@ -455,6 +464,7 @@ describe('getBlackboardDeps', () => {
   it('returns a stable array of dependencies', () => {
     const deps = {
       projects: [{ id: 'p1' }],
+      pathsStore: [{ id: 'path1' }],
       onwardItems: [{ id: 'o1' }],
       selectedForToday: ['p1'],
       streakDays: 3,
@@ -467,18 +477,19 @@ describe('getBlackboardDeps', () => {
     };
 
     const result = getBlackboardDeps(deps);
-    expect(result).toHaveLength(11);
+    expect(result).toHaveLength(12);
     expect(result[0]).toBe(deps.projects);
-    expect(result[1]).toBe(deps.onwardItems);
-    expect(result[2]).toBe(deps.selectedForToday);
-    expect(result[3]).toBe(deps.streakDays);
-    expect(result[4]).toBe(deps.lastActiveDate);
-    expect(result[5]).toBe(deps.syncEvents);
-    expect(result[6]).toBe(deps.knowledgePool.entries);
-    expect(result[7]).toBe(deps.knowledgePool.corrections);
-    expect(result[8]).toBe(deps.activeSession);
-    expect(result[9]).toBe(deps.mainPage);
-    expect(result[10]).toBe(deps.getTodayStats);
+    expect(result[1]).toBe(deps.pathsStore);
+    expect(result[2]).toBe(deps.onwardItems);
+    expect(result[3]).toBe(deps.selectedForToday);
+    expect(result[4]).toBe(deps.streakDays);
+    expect(result[5]).toBe(deps.lastActiveDate);
+    expect(result[6]).toBe(deps.syncEvents);
+    expect(result[7]).toBe(deps.knowledgePool.entries);
+    expect(result[8]).toBe(deps.knowledgePool.corrections);
+    expect(result[9]).toBe(deps.activeSession);
+    expect(result[10]).toBe(deps.mainPage);
+    expect(result[11]).toBe(deps.getTodayStats);
   });
 
   it('includes getTodayStats as a dependency (useCallback may change)', () => {
@@ -499,5 +510,62 @@ describe('getBlackboardDeps', () => {
     // getTodayStats is a useCallback — its reference is stable, but it's still
     // a dependency because useCallback can recreate if its own deps change.
     expect(result).toContain(deps.getTodayStats);
+  });
+});
+
+// ============================================================
+// Goals → Paths: category, pathIds, paths, gaps
+// ============================================================
+describe('Goals → Paths blackboard sections', () => {
+  it('exposes category, pathIds, and daysUntilDeadline on active goals', () => {
+    const projects = [
+      makeProject({ id: 'g1', title: 'Launch MVP', category: 'long', pathIds: ['path-1'], deadline: '2026-08-15' }),
+      makeProject({ id: 'g2', title: 'Read More', category: 'open', deadline: null }),
+    ];
+    const bb = compileBlackboard(defaultState({ projects, now: new Date('2026-07-31T12:00:00Z') }));
+
+    expect(bb.activeGoals[0]).toMatchObject({ category: 'long', pathIds: ['path-1'] });
+    expect(bb.activeGoals[0].daysUntilDeadline).toBe(15);
+    expect(bb.activeGoals[1]).toMatchObject({ category: 'open', pathIds: [], deadline: null });
+    expect(bb.activeGoals[1].daysUntilDeadline).toBeNull();
+  });
+
+  it('builds the paths section with linked goal ids', () => {
+    const projects = [
+      makeProject({ id: 'g1', title: 'Learn React', pathIds: ['path-a'], deadline: null }),
+    ];
+    const pathsStore = [
+      { id: 'path-a', title: 'Frontend Mastery', status: 'active', milestones: [{ title: 'Hooks', completed: false }] },
+      { id: 'path-b', title: 'Health', status: 'active', milestones: [] },
+    ];
+    const bb = compileBlackboard(defaultState({ projects, pathsStore }));
+
+    expect(bb.paths).toEqual([
+      { id: 'path-a', title: 'Frontend Mastery', status: 'active', milestoneCount: 1, completedMilestones: 0, linkedGoalIds: ['g1'] },
+      { id: 'path-b', title: 'Health', status: 'active', milestoneCount: 0, completedMilestones: 0, linkedGoalIds: [] },
+    ]);
+  });
+
+  it('identifies gaps: unlinked milestones and orphan goals', () => {
+    const projects = [
+      makeProject({ id: 'g1', title: 'Learn React', pathIds: ['path-a'], deadline: null }),
+      makeProject({ id: 'g2', title: 'Orphan Goal', pathIds: [], deadline: null }),
+    ];
+    const pathsStore = [
+      { id: 'path-a', title: 'Frontend Mastery', status: 'active', milestones: [{ title: 'Hooks', completed: false }, { title: 'Routing', completed: true }] },
+    ];
+    const bb = compileBlackboard(defaultState({ projects, pathsStore }));
+
+    const unlinked = bb.gaps.find(g => g.type === 'unlinked-path');
+    expect(unlinked).toBeTruthy();
+    expect(unlinked.pathTitle).toBe('Frontend Mastery');
+    expect(unlinked.unlinkedMilestones).toEqual([{ title: 'Hooks', completed: false }]);
+    expect(unlinked.suggestedFocus).toBe('create-goal');
+
+    const orphan = bb.gaps.find(g => g.type === 'orphan-goal');
+    expect(orphan).toBeTruthy();
+    expect(orphan.goalTitle).toBe('Orphan Goal');
+    expect(orphan.category).toBe('open');
+    expect(orphan.suggestedFocus).toBe('link-to-path');
   });
 });

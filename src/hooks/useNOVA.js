@@ -5,6 +5,7 @@ import { buildFullKnowledgeBlock, buildLightKnowledgeContext, buildStructuredKno
 import { computePlanningConfidence, NOVA_DEFAULT, updatePlanAccuracyHistory } from '../utils/nova.js';
 import { useNovaRetry } from './useNovaRetry.js';
 import { getInitialPhase } from '../engine/programFSM.js';
+import { ORGANIZE_DIRECTIVE } from '../constants/programs.js';
 import {
   CHAT_SCHEMA_OPENROUTER,
   INSIGHT_SCHEMA_OPENROUTER,
@@ -14,7 +15,40 @@ import {
   getSchemaForProgram,
 } from '../schemas/nova-schemas.js';
 
-export function useNOVA({ apiKey, model, projects, focus, waypointContext, loaded, pendingAutoStart, setPendingAutoStart }) {
+const ORGANIZE_ACTION_TYPES = new Set(['none', 'create-goal', 'link-goal', 'merge-paths', 'create-path']);
+const ORGANIZE_CATEGORIES = new Set(['short', 'long', 'open']);
+
+/**
+ * Validate + normalize a NOVA `action` proposal object (from ORGANIZE_SCHEMA).
+ * Returns `null` for anything that isn't a well-formed action, so only
+ * trustworthy proposals ever reach the Confirm/Cancel UI.
+ */
+function extractOrganizeAction(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const type = raw.type;
+  if (!ORGANIZE_ACTION_TYPES.has(type) || type === 'none') return null;
+  const action = { type, reason: typeof raw.reason === 'string' && raw.reason.trim() ? raw.reason.trim() : null };
+  if (type === 'create-goal') {
+    if (typeof raw.goalTitle !== 'string' || !raw.goalTitle.trim()) return null;
+    action.goalTitle = raw.goalTitle.trim();
+    if (raw.category && ORGANIZE_CATEGORIES.has(raw.category)) action.category = raw.category;
+    if (typeof raw.pathId === 'string' && raw.pathId.trim()) action.pathId = raw.pathId.trim();
+  } else if (type === 'link-goal') {
+    if (typeof raw.goalTitle !== 'string' || !raw.goalTitle.trim()) return null;
+    action.goalTitle = raw.goalTitle.trim();
+    if (typeof raw.pathId === 'string' && raw.pathId.trim()) action.pathId = raw.pathId.trim();
+  } else if (type === 'merge-paths') {
+    if (!Array.isArray(raw.pathIds) || raw.pathIds.length < 2) return null;
+    action.pathIds = raw.pathIds.filter(p => typeof p === 'string' && p.trim()).slice(0, 2);
+    if (action.pathIds.length < 2) return null;
+  } else if (type === 'create-path') {
+    if (typeof raw.goalTitle !== 'string' || !raw.goalTitle.trim()) return null;
+    action.goalTitle = raw.goalTitle.trim();
+  }
+  return action;
+}
+
+export function useNOVA({ apiKey, model, projects, focus, waypointContext, loaded, pendingAutoStart, setPendingAutoStart, blackboardRef }) {
   const [novaState, setNovaState] = useState(() => {
     try {
       const s = localStorage.getItem('meridian_nova_v1');
@@ -236,6 +270,10 @@ Respond with a valid JSON object matching this schema:
       return `${base}\n\nThis is a Paths session. ${directive}\n\nRules:\n- Ask ONE question at a time\n- Never repeat a question already answered\n- Reference what you already know to show understanding\n- Set "ready" to true when the user confirms understanding is accurate`;
     }
 
+    if (programId === 'organize') {
+      return `${base}\n\n${ORGANIZE_DIRECTIVE}`;
+    }
+
     return base;
   }, [novaState.syncEvents, novaState.routine]);
 
@@ -245,21 +283,50 @@ Respond with a valid JSON object matching this schema:
    * message separate from the static system prompt.
    */
   const buildBlackboardUserMessage = useCallback((programId, userInput, blackboard) => {
-    const activeGoals = projects.filter(p => !p.completedAt);
-    const quadrantCounts = { q1: 0, q2: 0, q3: 0, q4: 0 };
-    activeGoals.forEach(p => {
-      if (p.quadrant && quadrantCounts[p.quadrant] !== undefined) {
-        quadrantCounts[p.quadrant]++;
-      }
-    });
+    const b = blackboard || {};
+
+    // ── Goals (consumed from the compiled Blackboard — never re-derived from raw projects) ──
+    const quadrantCounts = b.quadrantDistribution || { q1: 0, q2: 0, q3: 0, q4: 0 };
     const quadrantSummary = Object.entries(quadrantCounts)
       .filter(([, count]) => count > 0)
-      .map(([q, count]) => `${QUADRANTS[q].title} (${q.toUpperCase()}): ${count} goals`)
+      .map(([q, count]) => `${QUADRANTS[q]?.title || q.toUpperCase()} (${q.toUpperCase()}): ${count} goals`)
       .join(', ');
-
-    const goalsSummary = activeGoals
-      .map(p => `"${p.title}" (${progress(p)}% done${p.quadrant ? `, ${p.quadrant.toUpperCase()}` : ''})`).join(', ') || 'none';
     const quadrantBlock = quadrantSummary ? `\nEisenhower Matrix distribution: ${quadrantSummary}.` : '';
+
+    const fmtGoal = (g) => {
+      const parts = [`"${g.title}"`, `${g.progress || 0}% done`];
+      if (g.category) parts.push(`category: ${g.category}`);
+      if (g.quadrant) parts.push(g.quadrant.toUpperCase());
+      if (g.daysUntilDeadline !== null && g.daysUntilDeadline !== undefined) {
+        parts.push(`deadline in ${g.daysUntilDeadline}d`);
+      } else if (g.deadline) {
+        parts.push(`deadline: ${g.deadline}`);
+      }
+      if (g.pathIds && g.pathIds.length) parts.push(`paths: ${g.pathIds.join(', ')}`);
+      return `(${parts.join(', ')})`;
+    };
+    const goalsSummary = (b.activeGoals || []).map(fmtGoal).join(', ') || 'none';
+
+    // ── Paths (big picture, from Blackboard) ──
+    const pathsSummary = (b.paths || [])
+      .map(p => `"${p.title}" (${p.status}, ${p.completedMilestones}/${p.milestoneCount} milestones done${p.linkedGoalIds && p.linkedGoalIds.length ? `, linked goals: ${p.linkedGoalIds.join(', ')}` : ''})`)
+      .join(', ') || 'none';
+
+    // ── Gaps (goals not yet set / paths not yet covered, from Blackboard) ──
+    const gapsLines = (b.gaps || []).map(gap => {
+      if (gap.type === 'unlinked-path') {
+        const ms = (gap.unlinkedMilestones || []).map(m => `"${m.title}"`).join(', ');
+        return `Path "${gap.pathTitle}" has unlinked milestones${ms ? `: ${ms}` : ''} — focus: ${gap.suggestedFocus || 'create-goal'}`;
+      }
+      if (gap.type === 'orphan-goal') {
+        return `Goal "${gap.goalTitle}" (${gap.category || 'open'}) is not linked to any path — focus: ${gap.suggestedFocus || 'link-to-path'}`;
+      }
+      return null;
+    }).filter(Boolean);
+    const gapsBlock = gapsLines.length ? `\nGaps (goals/paths needing attention):\n${gapsLines.map(l => `  - ${l}`).join('\n')}` : '';
+
+    // ── Today ──
+    const onwardSummary = (b.onwardItems || []).filter(i => !i.done).map(i => `"${i.title}"`).join(', ') || 'none';
     const focusSummary = focus.filter(Boolean).join(', ') || 'none';
 
     // Knowledge pool context (volatile — changes as entries are added/decayed)
@@ -296,12 +363,14 @@ Respond with a valid JSON object matching this schema:
 
     return `[Blackboard State]
 Active goals: ${goalsSummary}.${quadrantBlock}
+Paths (big picture): ${pathsSummary}.${gapsBlock}
 Today's focus: ${focusSummary}.
+Today's onward items (not done): ${onwardSummary}.
 ${knowledgeBlock ? `Knowledge context:\n${knowledgeBlock}` : ''}
 ${programContext ? `\n${programContext}` : ''}
 
 [User]: ${userInput}`;
-  }, [projects, focus, knowledgePool, novaState.dailyPlan]);
+  }, [focus, knowledgePool, novaState.dailyPlan, blackboardRef, projects]);
 
   // Auto-start NOVA programs when waypoint opens OR pendingAutoStart is set
   useEffect(() => {
@@ -342,10 +411,11 @@ ${programContext ? `\n${programContext}` : ''}
     // Clear pendingAutoStart once we begin
     if (pendingAutoStart) setPendingAutoStart?.(null);
 
+    const blackboardMsg = buildBlackboardUserMessage(progId, 'Hello', blackboardRef?.current || {});
     novaRetry.executeWithRetry(() =>
       chatWithNOVA([
         { role: 'system', content: systemPrompt },
-        { role: 'user',   content: 'Hello' },
+        ...(blackboardMsg ? [blackboardMsg] : []),
       ], apiKey, { model, schemaType })
     ).then(reply => {
       const data = typeof reply === 'object' && reply.data ? reply.data : reply;
@@ -354,9 +424,21 @@ ${programContext ? `\n${programContext}` : ''}
         const parsed = JSON.parse(data);
         const cleanReply = parsed.content || data;
         const isReady = parsed.ready === true;
+        const options = Array.isArray(parsed.options)
+          ? parsed.options.filter(o => typeof o === 'string' && o.trim()).map(o => o.trim()).slice(0, 5)
+          : null;
+        const action = extractOrganizeAction(parsed.action);
         setNovaState(prev => ({
           ...prev,
-          programChats: { ...prev.programChats, [progId]: [{ role: 'assistant', content: cleanReply }] },
+          programChats: {
+            ...prev.programChats,
+            [progId]: [{
+              role: 'assistant',
+              content: cleanReply,
+              ...(options && options.length ? { options } : {}),
+              ...(action ? { action } : {}),
+            }],
+          },
         }));
       } catch {
         // Fallback: treat as plain text with sanitization
@@ -368,7 +450,7 @@ ${programContext ? `\n${programContext}` : ''}
         }));
       }
     }).finally(() => setNovaLoading(false));
-  }, [waypointContext?.type, waypointContext?.id, pendingAutoStart, apiKey, buildNOVASystemPrompt, loaded, novaSessionKey, novaRetry, novaLoading, novaState.programChats, setPendingAutoStart]);
+  }, [waypointContext?.type, waypointContext?.id, pendingAutoStart, apiKey, buildNOVASystemPrompt, buildBlackboardUserMessage, loaded, novaSessionKey, novaRetry, novaLoading, novaState.programChats, setPendingAutoStart]);
 
   const extractNOVAInsights = useCallback(async (programId, messages) => {
     if (!apiKey || messages.length < 3) return;
@@ -586,25 +668,46 @@ ${programContext ? `\n${programContext}` : ''}
       inferKnowledgeFromMessage(text, programId);
     }
     try {
-      const apiHistory = updatedHistory[0]?.role === 'assistant'
+      const blackboardMsg = buildBlackboardUserMessage(programId, text, blackboardRef?.current || {});
+      let apiHistory = updatedHistory[0]?.role === 'assistant'
         ? [{ role: 'user', content: 'Hello' }, ...updatedHistory]
         : updatedHistory;
-      const messages = [{ role: 'system', content: systemPrompt }, ...apiHistory];
+      // The blackboard user message already embeds the current input as
+      // `[User]: ${text}` — drop the trailing user turn so the input is
+      // never sent twice to the model.
+      if (blackboardMsg && apiHistory.length && apiHistory[apiHistory.length - 1]?.role === 'user') {
+        apiHistory = apiHistory.slice(0, -1);
+      }
+      const messages = [{ role: 'system', content: systemPrompt }, ...(blackboardMsg ? [blackboardMsg] : []), ...apiHistory];
       const reply    = await novaRetry.executeWithRetry(
         () => chatWithNOVA(messages, apiKey, { model, schemaType })
       ).then(r => r.data);
-      // Parse JSON response — extract content and ready flag
+      // Parse JSON response — extract content, ready flag, options, and organize action proposal
       let cleanReply = reply;
       let isReady = false;
+      let options = null;
+      let action = null;
       try {
         const parsed = JSON.parse(reply);
         cleanReply = parsed.content || reply;
         isReady = parsed.ready === true;
+        options = Array.isArray(parsed.options)
+          ? parsed.options.filter(o => typeof o === 'string' && o.trim()).map(o => o.trim()).slice(0, 5)
+          : null;
+        action = extractOrganizeAction(parsed.action);
       } catch {
         // Fallback: treat as plain text (backward compatibility)
         cleanReply = reply;
       }
-      const finalHistory = [...updatedHistory, { role: 'assistant', content: cleanReply }];
+      const finalHistory = [
+        ...updatedHistory,
+        {
+          role: 'assistant',
+          content: cleanReply,
+          ...(options && options.length ? { options } : {}),
+          ...(action ? { action } : {}),
+        },
+      ];
       setNovaState(prev => ({
         ...prev,
         programChats: { ...prev.programChats, [programId]: finalHistory },
@@ -619,14 +722,16 @@ ${programContext ? `\n${programContext}` : ''}
         }
       }
     } finally { setNovaLoading(false); }
-  }, [novaChatInput, novaLoading, apiKey, novaState, buildNOVASystemPrompt, addSyncEvent, extractNOVAInsights, novaRetry, inferKnowledgeFromMessage, novaSessionKey]);
+  }, [novaChatInput, novaLoading, apiKey, novaState, buildNOVASystemPrompt, buildBlackboardUserMessage, addSyncEvent, extractNOVAInsights, novaRetry, inferKnowledgeFromMessage, novaSessionKey, blackboardRef]);
 
   // Internal helpers for generateNovaPlan (same logic as App.jsx's calcStreak/getWeeklyData)
   const allCompletionDates = () => {
     const dates = [];
     projects.forEach(p => {
-      p.subtasks.forEach(s    => { if (s.completedAt) dates.push(new Date(s.completedAt)); });
-      p.checkpoints.forEach(c => { if (c.completedAt) dates.push(new Date(c.completedAt)); });
+      (p.checkpoints || []).forEach(c => {
+        if (c.completedAt) dates.push(new Date(c.completedAt));
+        (c.subtasks || []).forEach(s => { if (s.completedAt) dates.push(new Date(s.completedAt)); });
+      });
     });
     return dates;
   };
@@ -684,12 +789,15 @@ ${programContext ? `\n${programContext}` : ''}
     const activeGoals = projects.filter(p => !p.completedAt);
     const goalContext = activeGoals.length
       ? activeGoals.map(p => {
-          const subs = p.subtasks.filter(s => !s.done).map(s => `  - [subtask] ${s.title}`).join('\n');
-          const cps  = p.checkpoints.filter(c => !c.done).map(c => `  - [milestone] ${c.title}`).join('\n');
+          const cps  = (p.checkpoints || []).filter(c => !c.done).map(c => {
+            const cpSubs = (c.subtasks || []).filter(s => !s.done)
+              .map(s => `    - [subtask] ${s.title}`).join('\n');
+            return cpSubs ? `  - [milestone] ${c.title}\n${cpSubs}` : `  - [milestone] ${c.title}`;
+          }).join('\n');
           const pct  = progress(p);
           const dl   = p.deadline ? ` | deadline: ${p.deadline}` : '';
           const pri  = p.priority === 'high' ? ' | HIGH PRIORITY' : '';
-          return `Goal: "${p.title}" (${pct}% complete${dl}${pri})\n${subs}\n${cps}`;
+          return `Goal: "${p.title}" (${pct}% complete${dl}${pri})\n${cps}`;
         }).join('\n\n')
       : 'No active goals. Generate general productivity tasks.';
 

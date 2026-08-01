@@ -1,6 +1,14 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { getCategory } from '../../utils/helpers.js';
 
 const QUADRANT_ORDER = ['q1', 'q2', 'q3', 'q4'];
+
+const CATEGORY_META = {
+  short: { label: 'Short', color: '#f0b429' },
+  long:  { label: 'Long',  color: '#53aaff' },
+  open:  { label: 'Open',  color: '#53d769' },
+};
+const CATEGORY_ORDER = ['all', 'short', 'long', 'open'];
 
 const QUADRANT_META = {
   q1: { label: 'DO FIRST',   subtitle: 'Urgent + Important',          color: '#f77171', icon: '⬆' },
@@ -10,12 +18,12 @@ const QUADRANT_META = {
 };
 
 function getProgress(goal) {
-  const total = (goal.subtasks || []).length + (goal.checkpoints || []).length;
+  const topLevelSubs = goal.subtasks || [];
+  const cpSubs = (goal.checkpoints || []).reduce((sum, cp) => sum + (cp.subtasks || []).length, 0);
+  const total = topLevelSubs.length + cpSubs;
   if (total === 0) return 0;
-  const done = [
-    ...(goal.subtasks || []).filter(s => s.done),
-    ...(goal.checkpoints || []).filter(c => c.done),
-  ].length;
+  const done = topLevelSubs.filter(s => s.done).length
+    + (goal.checkpoints || []).reduce((sum, cp) => sum + (cp.subtasks || []).filter(s => s.done).length, 0);
   return Math.round((done / total) * 100);
 }
 
@@ -31,10 +39,14 @@ function fmtDate(iso) {
 
 export default function GoalPriorityList({ projects, setProjects, T, selectedId, onSelectGoal }) {
   const [dragOverId, setDragOverId] = useState(null);
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const dragNode = useRef(null);
   const cardRefs = useRef({});
 
-  const activeGoals = (projects || []).filter(g => !g.completedAt);
+  const allActiveGoals = (projects || []).filter(g => !g.completedAt);
+  const activeGoals = categoryFilter === 'all'
+    ? allActiveGoals
+    : allActiveGoals.filter(g => getCategory(g) === categoryFilter);
 
   // Auto-scroll to the selected goal card when selectedId changes
   useEffect(() => {
@@ -115,6 +127,36 @@ export default function GoalPriorityList({ projects, setProjects, T, selectedId,
       margin: '0 auto',
       fontFamily: "'IBM Plex Mono',monospace",
     }}>
+      {/* ── Category filter chips ── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        {CATEGORY_ORDER.map(cat => {
+          const active = categoryFilter === cat;
+          const meta = cat === 'all' ? null : CATEGORY_META[cat];
+          return (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(cat)}
+              style={{
+                background: active ? (meta?.color || '#334155') : 'transparent',
+                border: `1px solid ${active ? (meta?.color || '#334155') : '#1e293b'}`,
+                borderRadius: 999,
+                padding: '4px 12px',
+                color: active ? '#0d1017' : (T?.muted || '#94a3b8'),
+                fontFamily: "'IBM Plex Mono',monospace",
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                transition: 'all .14s',
+              }}
+            >
+              {cat === 'all' ? `All (${allActiveGoals.length})` : `${meta.label} (${allActiveGoals.filter(g => getCategory(g) === cat).length})`}
+            </button>
+          );
+        })}
+      </div>
+
       {QUADRANT_ORDER.map(quadrant => {
         const goals = grouped[quadrant] || [];
         if (goals.length === 0) return null;
@@ -225,16 +267,33 @@ export default function GoalPriorityList({ projects, setProjects, T, selectedId,
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {/* Title */}
-                      <div style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: T?.text || '#e2e8f0',
-                        marginBottom: 4,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}>
-                        {goal.title || 'Untitled Goal'}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        {/* Category badge */}
+                        <span style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          letterSpacing: '0.06em',
+                          textTransform: 'uppercase',
+                          color: CATEGORY_META[getCategory(goal)]?.color || '#94a3b8',
+                          border: `1px solid ${CATEGORY_META[getCategory(goal)]?.color || '#334155'}50`,
+                          borderRadius: 4,
+                          padding: '1px 6px',
+                          flexShrink: 0,
+                          lineHeight: '14px',
+                        }}>
+                          {CATEGORY_META[getCategory(goal)]?.label || '—'}
+                        </span>
+                        <div style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: T?.text || '#e2e8f0',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          minWidth: 0,
+                        }}>
+                          {goal.title || 'Untitled Goal'}
+                        </div>
                       </div>
 
                       {/* Description */}

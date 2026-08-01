@@ -4,6 +4,7 @@ import { uid, projectPos, DEFAULT_SKILLS } from '../utils/helpers.js';
 import { INITIAL_SKILLS, addSkillEvidence, updateSkillMeta } from '../constants/skills.js';
 import { determineAutoStartProgram } from '../utils/nova.js';
 import { compileBlackboard, buildInteractionSyncPayload, getBlackboardDeps } from '../utils/blackboard.js';
+import { migrateGoalCategories } from '../utils/migration.js';
 import { useNOVA } from './useNOVA.js';
 import useTracking from './useTracking.js';
 import useLocalStorageSync from './useLocalStorageSync.js';
@@ -56,6 +57,18 @@ export default function useAppState() {
   const [addInput, setAddInput]     = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
 
+  // ── Paths store (big-picture projects, separate localStorage key) ──
+  const [pathsStore, setPathsStore] = useLocalStorageState('meridian_projects', []);
+
+  // One-time idempotent taxonomy migration on load:
+  // assigns `category`, backfills `pathIds`, removes legacy `scale`.
+  // Runs once `loaded` flips true; safe to re-run (no-op on migrated data).
+  useEffect(() => {
+    if (!loaded) return;
+    setProjects(prev => migrateGoalCategories(prev, pathsStore));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
+
   // Compass/page state
   const [activePage, setActivePage]           = useState('goals');
   const [onwardItems, setOnwardItems]         = useLocalStorageState('meridian_onward_v2', []);
@@ -80,24 +93,32 @@ export default function useAppState() {
     );
     const tasks = [];
     projects.forEach(proj => {
-      proj.subtasks?.filter(st => !st.done && !scheduledIds.has(`subtask:${st.id}`)).forEach(st => {
-        tasks.push({
-          type: 'subtask',
-          id: st.id,
-          title: st.title,
-          goalId: proj.id,
-          goalTitle: proj.title,
-          goalColor: proj.color
+      // Checkpoint-nested subtasks
+      (proj.checkpoints || []).forEach(cp => {
+        (cp.subtasks || []).filter(st => !st.done && !scheduledIds.has(`subtask:${st.id}`)).forEach(st => {
+          tasks.push({
+            type: 'subtask',
+            id: st.id,
+            title: st.title,
+            goalId: proj.id,
+            goalTitle: proj.title,
+            goalColor: proj.color,
+            goalQuadrant: proj.quadrant || 'q4',
+            checkpointId: cp.id,
+            checkpointTitle: cp.title,
+          });
         });
       });
-      proj.checkpoints?.filter(cp => !cp.done && !scheduledIds.has(`checkpoint:${cp.id}`)).forEach(cp => {
+      // Checkpoints (only those with no subtasks or all subtasks done still show as items)
+      proj.checkpoints?.filter(cp => !scheduledIds.has(`checkpoint:${cp.id}`)).forEach(cp => {
         tasks.push({
           type: 'checkpoint',
           id: cp.id,
           title: cp.title,
           goalId: proj.id,
           goalTitle: proj.title,
-          goalColor: proj.color
+          goalColor: proj.color,
+          goalQuadrant: proj.quadrant || 'q4'
         });
       });
     });
@@ -109,7 +130,8 @@ export default function useAppState() {
         title: ft.title,
         goalId: ft.goalId,
         goalTitle: proj?.title || '',
-        goalColor: proj?.color || '#888'
+        goalColor: proj?.color || '#888',
+        goalQuadrant: proj?.quadrant || 'q4'
       });
     });
     return tasks;
@@ -124,7 +146,6 @@ export default function useAppState() {
   const [pendingAutoStart, setPendingAutoStart]   = useState(null);
   const [intensity, setIntensity]         = useState({ low:35, medium:55, high:75 });
   const [showApiKey, setShowApiKey]       = useState(false);
-  const [showMindCheckCard, setShowMindCheckCard] = useState(false);
   const [sessions, setSessions]                   = useState(() => {
     try {
       const raw = localStorage.getItem('meridian_sessions');
@@ -141,14 +162,6 @@ export default function useAppState() {
   const [geminiResponse, setGeminiResponse]       = useState('');
   const [geminiLoading, setGeminiLoading]         = useState(false);
   const [pomodoroPreselect, setPomodoroPreselect] = useState(null);
-  const [routines, setRoutines] = useState([
-    { id:'r1', phase:'before', text:'Review the goal tied to this task' },
-    { id:'r2', phase:'before', text:'Clear distractions' },
-    { id:'r3', phase:'during', text:'Stay focused on one thing' },
-    { id:'r4', phase:'during', text:'Take short breaks if needed' },
-    { id:'r5', phase:'after',  text:'Reflect on what was accomplished' },
-    { id:'r6', phase:'after',  text:'Note what to pick up next' },
-  ]);
 
   // ── Ingestion & Smart Sorting state ──
   const [focusMode, setFocusMode] = useState(null);
@@ -166,6 +179,11 @@ export default function useAppState() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarView, setSidebarView] = useState('programs'); // 'session-history' | 'programs'
   const [sunId, setSunId] = useLocalStorageState('meridian_sun_id', null);
+
+  // Ref handoff of the compiled Blackboard into useNOVA.
+  // The blackboard is computed AFTER useNOVA (it depends on novaState),
+  // so we forward the latest snapshot through a stable ref instead.
+  const blackboardRef = useRef(null);
 
   // ── NOVA ──
   const {
@@ -189,7 +207,7 @@ export default function useAppState() {
     dismissInsight,
     recordPlanAccuracy,
     setNovaLoading,
-  } = useNOVA({ apiKey, model, projects, focus, waypointContext, loaded, pendingAutoStart, setPendingAutoStart });
+  } = useNOVA({ apiKey, model, projects, focus, waypointContext, loaded, pendingAutoStart, setPendingAutoStart, blackboardRef });
 
   // ── NOVA Active Interactions ──
   const novaInteractions = useNovaInteractions();
@@ -286,7 +304,12 @@ export default function useAppState() {
   const openWaypoint = (context) => {
     setWaypointContext(context);
     setWaypointOpen(true);
-    if (context.type === 'goal') setSelectedId(context.id);
+    if (context.type === 'goal') {
+      setSelectedId(context.id);
+      // Selecting a goal auto-collapses the program sidebar so the goals
+      // matrix gets full focus; the .sig width transition animates the close.
+      setSidebarCollapsed(true);
+    }
   };
 
   const closeWaypoint = () => {
@@ -430,7 +453,6 @@ export default function useAppState() {
           if (saved.skills)       setSkills(saved.skills);
           else                    setSkills(DEFAULT_SKILLS);
           if (saved.intensity)    setIntensity(saved.intensity);
-          if (saved.routines)     setRoutines(saved.routines);
           if (saved.sessions) {
             setSessions(saved.sessions);
           }
@@ -456,6 +478,7 @@ export default function useAppState() {
             setTimeout(() => {
               setPendingAutoStart(program);
               setMainPage(`program-${program}`);
+              setShowStartupCanvas(false);
               const defaultPage = PROGRAM_DEFAULT_PAGES[program];
               if (defaultPage) {
                 setActivePage(defaultPage);
@@ -480,8 +503,8 @@ export default function useAppState() {
   // ── Auto-save on every projects/focus/onwardItems/skills change ──
   useEffect(() => {
     if (!loaded) return;
-    window.electronAPI?.saveState({ projects, focus, onwardItems, skills, intensity, routines, sessions });
-  }, [projects, focus, onwardItems, skills, intensity, routines, sessions, loaded]);
+    window.electronAPI?.saveState({ projects, focus, onwardItems, skills, intensity, sessions });
+  }, [projects, focus, onwardItems, skills, intensity, sessions, loaded]);
 
   // ── localStorage persistence ──
   useLocalStorageSync([
@@ -555,6 +578,7 @@ export default function useAppState() {
   // This is the single source of truth for all LLM-facing state.
   const blackboard = useMemo(() => compileBlackboard({
     projects,
+    pathsStore,
     onwardItems,
     selectedForToday,
     streakDays,
@@ -567,6 +591,7 @@ export default function useAppState() {
     now,
   }), getBlackboardDeps({
     projects,
+    pathsStore,
     onwardItems,
     selectedForToday,
     streakDays,
@@ -577,6 +602,11 @@ export default function useAppState() {
     mainPage,
     getTodayStats,
   }));
+
+  // Forward the compiled Blackboard to useNOVA for the volatile user message.
+  // Render-time assignment is safe here: blackboard is memoized from the same
+  // render and the ref is only read inside event handlers/effects.
+  blackboardRef.current = blackboard;
 
   // ── Sync app state into NOVA interaction store (via Blackboard) ──
   // Gap 10 resolution: Uses buildInteractionSyncPayload to derive the sync
@@ -604,6 +634,7 @@ export default function useAppState() {
   return {
     // State values
     projects, setProjects,
+    pathsStore, setPathsStore,
     selectedId, setSelectedId,
     focus, setFocus,
     modal, setModal,
@@ -635,7 +666,6 @@ export default function useAppState() {
     pendingAutoStart, setPendingAutoStart,
     intensity, setIntensity,
     showApiKey, setShowApiKey,
-    showMindCheckCard, setShowMindCheckCard,
     sessions, setSessions,
     activeSession, setActiveSession,
     prioritizeInput, setPrioritizeInput,
@@ -644,7 +674,6 @@ export default function useAppState() {
     geminiResponse, setGeminiResponse,
     geminiLoading, setGeminiLoading,
     pomodoroPreselect, setPomodoroPreselect,
-    routines, setRoutines,
     focusMode, setFocusMode,
     selectedForToday, setSelectedForToday,
     deferredItems, setDeferredItems,

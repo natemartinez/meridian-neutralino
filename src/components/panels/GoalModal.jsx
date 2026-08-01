@@ -4,7 +4,7 @@ import { askAI } from '../../utils/api';
 
 export default function GoalModal({ onClose, onCreate, apiKey, model }) {
   const [step,    setStep]    = useState('choose'); // 'choose' | 'form'
-  const [goalType, setGoalType] = useState(null);
+  const [goalType, setGoalType] = useState(null);   // 'short' | 'long' | 'open'
 
   const [title,   setTitle]   = useState('');
   const [desc,    setDesc]    = useState('');
@@ -14,6 +14,9 @@ export default function GoalModal({ onClose, onCreate, apiKey, model }) {
   const [loading, setLoading] = useState(false);
 
   const isLong = goalType === 'long';
+  const isOpen = goalType === 'open';
+  // Taxonomy: short (weeks) · long (months/years) · open (no deadline)
+  const category = isLong ? 'long' : (isOpen ? 'open' : 'short');
 
   async function handleCreate() {
     if (!isLong && !title.trim()) return;
@@ -22,8 +25,10 @@ export default function GoalModal({ onClose, onCreate, apiKey, model }) {
 
     const systemPrompt = `You are a productivity assistant.
 Return ONLY a valid JSON array. No markdown, no explanation.
-Each item: { "title": string, "isCheckpoint": boolean, "skill": string|null }
-Generate ${isLong ? '3-4 checkpoints and 2-3 subtasks' : '4-6 subtasks and 1-2 checkpoints'}.
+Each item is a checkpoint (a sub-goal/milestone):
+  { "title": string, "isCheckpoint": true, "subtasks": [ { "title": string, "skill": string|null } ], "skill": string|null }
+Checkpoints are sub-goals/milestones that CONTAIN 2-4 subtasks underneath them (the steps needed to reach that milestone).
+Generate ${isLong ? '2-4 checkpoints (each with 2-4 subtasks)' : '1-3 checkpoints (each with 2-3 subtasks)'}.
 For "skill", pick the most relevant from: ${TAGGABLE_SKILLS.join(', ')}. Use null if none fit.`;
 
     const userPrompt = isLong
@@ -35,49 +40,39 @@ Relevant: ${smart.relevant}
 Target date: ${smart.timeBound}`
       : `Goal: ${title}\nDescription: ${desc}`;
 
+    // Base goal payload. No Deadline goals have no deadline by invariant.
+    const goalBase = {
+      title:       isLong ? smart.specific : title,
+      desc:        isLong ? `Measurable: ${smart.measurable}. Relevant: ${smart.relevant}.` : desc,
+      measurable:  isLong ? smart.measurable : '',
+      achievable:  isLong ? smart.achievable : '',
+      relevant:    isLong ? smart.relevant : '',
+      deadline:    isLong ? smart.timeBound : null,
+      priority:    'low',
+      category,
+    };
+
     try {
       const raw    = await askAI(systemPrompt, userPrompt, apiKey, { model });
       const text   = raw.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(text);
 
-      const subtasks    = parsed.filter(item => !item.isCheckpoint).map(item => ({
+      const checkpoints = parsed.map(item => ({
         id:    Date.now() + Math.random(),
         title: item.title,
         done:  false,
-        skill: item.skill || null,
-      }));
-      const checkpoints = parsed.filter(item => item.isCheckpoint).map(item => ({
-        id:    Date.now() + Math.random(),
-        title: item.title,
-        done:  false,
+        subtasks: (item.subtasks || []).map(st => ({
+          id:    Date.now() + Math.random(),
+          title: st.title,
+          done:  false,
+          skill: st.skill || null,
+        })),
       }));
 
-      onCreate({
-        title:       isLong ? smart.specific : title,
-        desc:        isLong ? `Measurable: ${smart.measurable}. Relevant: ${smart.relevant}.` : desc,
-        measurable:  isLong ? smart.measurable : '',
-        achievable:  isLong ? smart.achievable : '',
-        relevant:    isLong ? smart.relevant : '',
-        deadline:    isLong ? smart.timeBound : '',
-        priority:    'low',
-        scale:       isLong ? 'long' : 'short',
-        subtasks,
-        checkpoints,
-      });
+      onCreate({ ...goalBase, checkpoints });
     } catch (e) {
       console.error('Subtask generation failed', e);
-      onCreate({
-        title:      isLong ? smart.specific : title,
-        desc:       isLong ? '' : desc,
-        measurable: isLong ? smart.measurable : '',
-        achievable: isLong ? smart.achievable : '',
-        relevant:   isLong ? smart.relevant : '',
-        deadline:   isLong ? smart.timeBound : '',
-        priority:   'low',
-        scale:      isLong ? 'long' : 'short',
-        subtasks:    [],
-        checkpoints: [],
-      });
+      onCreate({ ...goalBase, checkpoints: [] });
     } finally {
       setLoading(false);
       onClose();
@@ -94,6 +89,16 @@ Target date: ${smart.timeBound}`
     fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#56687f',
     letterSpacing: 1, marginBottom: 4, display: 'block',
   };
+  const cardStyle = {
+    background: '#121820', border: '1px solid #1b2336', borderRadius: 10,
+    padding: '16px 18px', cursor: 'pointer', transition: 'border-color 0.2s',
+  };
+
+  const TYPE_META = {
+    short: { title: 'Short-Term Goal',  subtitle: 'Days · Weeks — quick start' },
+    long:  { title: 'Long-Term Goal',   subtitle: 'Months · Years — SMART methodology' },
+    open:  { title: 'No Deadline',      subtitle: 'Ongoing — no fixed target date' },
+  };
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
@@ -107,20 +112,15 @@ Target date: ${smart.timeBound}`
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
-              <div onClick={() => { setGoalType('short'); setStep('form'); }}
-                   style={{ background: '#121820', border: '1px solid #1b2336', borderRadius: 10, padding: '16px 18px', cursor: 'pointer', transition: 'border-color 0.2s' }}
-                   onMouseEnter={e => e.currentTarget.style.borderColor = '#f0b42960'}
-                   onMouseLeave={e => e.currentTarget.style.borderColor = '#1b2336'}>
-                <div style={{ fontFamily: 'Syne', fontSize: 14, color: '#d6e2f5', fontWeight: 600, marginBottom: 4 }}>Short-Term Goal</div>
-                <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#56687f' }}>Days · Weeks — quick start</div>
-              </div>
-              <div onClick={() => { setGoalType('long'); setStep('form'); }}
-                   style={{ background: '#121820', border: '1px solid #1b2336', borderRadius: 10, padding: '16px 18px', cursor: 'pointer', transition: 'border-color 0.2s' }}
-                   onMouseEnter={e => e.currentTarget.style.borderColor = '#f0b42960'}
-                   onMouseLeave={e => e.currentTarget.style.borderColor = '#1b2336'}>
-                <div style={{ fontFamily: 'Syne', fontSize: 14, color: '#d6e2f5', fontWeight: 600, marginBottom: 4 }}>Long-Term Goal</div>
-                <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#56687f' }}>Months · Years — SMART methodology</div>
-              </div>
+              {['short', 'long', 'open'].map(type => (
+                <div key={type} onClick={() => { setGoalType(type); setStep('form'); }}
+                     style={cardStyle}
+                     onMouseEnter={e => e.currentTarget.style.borderColor = '#f0b42960'}
+                     onMouseLeave={e => e.currentTarget.style.borderColor = '#1b2336'}>
+                  <div style={{ fontFamily: 'Syne', fontSize: 14, color: '#d6e2f5', fontWeight: 600, marginBottom: 4 }}>{TYPE_META[type].title}</div>
+                  <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#56687f' }}>{TYPE_META[type].subtitle}</div>
+                </div>
+              ))}
             </div>
 
             <button onClick={onClose} style={{ width: '100%', background: 'transparent', border: '1px solid #1b2336', borderRadius: 6, color: '#56687f', padding: '9px 0', fontFamily: 'IBM Plex Mono', fontSize: 11, cursor: 'pointer' }}>
@@ -132,10 +132,10 @@ Target date: ${smart.timeBound}`
         {step === 'form' && (
           <>
             <h3 style={{ fontFamily: 'Syne', color: '#f0b429', margin: '0 0 6px' }}>
-              {isLong ? 'Long-Term Goal' : 'Short-Term Goal'}
+              {TYPE_META[goalType]?.title || 'Goal'}
             </h3>
             <p style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#56687f', margin: '0 0 20px' }}>
-              {isLong ? 'Months · Years — SMART methodology' : 'Days · Weeks — quick start'}
+              {TYPE_META[goalType]?.subtitle || ''}
             </p>
 
             {!isLong && (

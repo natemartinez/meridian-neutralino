@@ -14,15 +14,40 @@ import { parseNOVAMessage, parseInlineFormatting } from '../../utils/novaChatFor
  *   color          - Program accent color (e.g. meta.color)
  *   onOptionSelect - (optionText: string) => void  (optional, for multiple-choice)
  */
-export default function NOVAMessageBlock({ content, color, onOptionSelect }) {
+export default function NOVAMessageBlock({ content, color, onOptionSelect, options }) {
   const segments = useMemo(() => parseNOVAMessage(content), [content]);
   const accentColor = color || T.accent;
 
-  if (!segments.length) return null;
+  // Merge structured options (from schema `options` field) with any legacy
+  // `[OPTIONS]` blocks parsed from content. The structured array wins; legacy
+  // parsed segments act as a fallback for older persisted messages.
+  const mergedSegments = useMemo(() => {
+    const structured = Array.isArray(options) && options.length ? options : null;
+    if (!structured) return segments;
+
+    const seen = new Set();
+    const deduped = [...structured];
+    const legacy = segments
+      .filter(s => s.type === 'options')
+      .flatMap(s => s.items || [])
+      .filter(item => !deduped.includes(item));
+    for (const item of legacy) {
+      if (!seen.has(item)) {
+        seen.add(item);
+        deduped.push(item);
+      }
+    }
+    return [
+      ...segments.filter(s => s.type !== 'options'),
+      { type: 'options', items: deduped },
+    ];
+  }, [segments, options]);
+
+  if (!mergedSegments.length) return null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {segments.map((seg, idx) => {
+      {mergedSegments.map((seg, idx) => {
         switch (seg.type) {
           case 'paragraph':
             return (

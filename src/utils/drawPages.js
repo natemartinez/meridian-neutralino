@@ -589,8 +589,11 @@ export function drawMapPage(ctx, dpr, w, h, t, refs) {
     const overdueGoals = projs.filter(p => {
       if (!p.deadline) return false;
       const d=new Date(p.deadline);
-      const tot=p.subtasks.length+p.checkpoints.length;
-      const dn=p.subtasks.filter(s=>s.done).length+p.checkpoints.filter(c=>c.done).length;
+      const topLevelSubs = p.subtasks || [];
+      const cpSubs = (p.checkpoints || []).reduce((sum, cp) => sum + (cp.subtasks || []).length, 0);
+      const tot = topLevelSubs.length + cpSubs;
+      const dn = topLevelSubs.filter(s=>s.done).length
+        + (p.checkpoints || []).reduce((sum, cp) => sum + (cp.subtasks || []).filter(s=>s.done).length, 0);
       return d < wkStart && dn < tot;
     });
 
@@ -670,7 +673,9 @@ export function drawPathsPage(ctx, dpr, w, h, t, refs) {
   const { projectsRef, selectedIdRef, pathsHitAreasRef } = refs;
   const hitAreas = [];
   const PAD  = 24 * dpr;
-  const projs = projectsRef.current.filter(p => p.scale === 'medium' || p.scale === 'long');
+  // Defensive read: prefer `category` (new field), fall back to legacy `scale`
+  const cat = (p) => p.category || (p.scale === 'medium' ? 'long' : p.scale) || 'open';
+  const projs = projectsRef.current.filter(p => cat(p) === 'long');
   const selId = selectedIdRef.current;
 
   // Heading
@@ -688,9 +693,9 @@ export function drawPathsPage(ctx, dpr, w, h, t, refs) {
     ctx.fillStyle = T.muted;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('No medium or long-term goals yet.', w/2, h/2 - 10*dpr);
+    ctx.fillText('No long-term goals yet.', w/2, h/2 - 10*dpr);
     ctx.font = `${9*dpr}px 'IBM Plex Mono',monospace`;
-    ctx.fillText('Set Horizon to Medium or Long in New Goal.', w/2, h/2 + 10*dpr);
+    ctx.fillText('Set Horizon to Long or No Deadline in New Goal.', w/2, h/2 + 10*dpr);
     ctx.restore();
     pathsHitAreasRef.current = hitAreas;
     return;
@@ -698,8 +703,8 @@ export function drawPathsPage(ctx, dpr, w, h, t, refs) {
 
   const topPad = 28 * dpr;
   const colW = (w - PAD*3) / 2;
-  const medium = projs.filter(p => p.scale === 'medium');
-  const long   = projs.filter(p => p.scale === 'long');
+  const long   = projs.filter(p => cat(p) === 'long');
+  const open   = projs.filter(p => cat(p) === 'open');
 
   const CARD_H = 90 * dpr;
   const CARD_GAP = 10 * dpr;
@@ -764,8 +769,11 @@ export function drawPathsPage(ctx, dpr, w, h, t, refs) {
       ctx.restore();
 
       // Subtask ratio
-      const tot  = p.subtasks.length + p.checkpoints.length;
-      const done = p.subtasks.filter(s=>s.done).length + p.checkpoints.filter(c=>c.done).length;
+      const topLevelSubs = p.subtasks || [];
+      const cpSubs = (p.checkpoints || []).reduce((sum, cp) => sum + (cp.subtasks || []).length, 0);
+      const tot  = topLevelSubs.length + cpSubs;
+      const done = topLevelSubs.filter(s=>s.done).length
+        + (p.checkpoints || []).reduce((sum, cp) => sum + (cp.subtasks || []).filter(s=>s.done).length, 0);
       ctx.save();
       ctx.font = `${7*dpr}px 'IBM Plex Mono',monospace`;
       ctx.fillStyle = rgba(T.muted, .7);
@@ -793,8 +801,8 @@ export function drawPathsPage(ctx, dpr, w, h, t, refs) {
     });
   };
 
-  drawCol(medium, PAD,          'MEDIUM TERM');
-  drawCol(long,   PAD*2+colW,   'LONG TERM');
+  drawCol(long, PAD,          'LONG TERM');
+  drawCol(open, PAD*2+colW,   'NO DEADLINE');
 
   pathsHitAreasRef.current = hitAreas;
 }
@@ -1014,7 +1022,8 @@ export function drawGoalsPage(ctx, dpr, w, h, t, refs) {
     const isSel = p.id === selId;
     const isTopGoal = topGoalIds.includes(p.id);
     const pct = progress(p) / 100;
-    const hasSubtasks = (p.subtasks?.length || 0) > 0 || (p.checkpoints?.length || 0) > 0;
+    const hasSubtasks = (p.subtasks?.length || 0) > 0
+      || (p.checkpoints || []).some(cp => (cp.subtasks?.length || 0) > 0);
     const isComplete = !!p.completedAt;
 
     // Glow if selected

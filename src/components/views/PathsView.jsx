@@ -21,11 +21,10 @@ function AddMilestoneInline({ projectId, onAdd, color }) {
   );
 }
 
-export default function PathsView({ setGoalsProjects, goalsProjects, onNavigateToGoals }) {
-  const [projects, setProjects] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('meridian_projects') || '[]'); }
-    catch { return []; }
-  });
+export default function PathsView({ pathsStore, setPathsStore, setGoalsProjects, goalsProjects, onNavigateToGoals }) {
+  // Paths store is lifted to useAppState (single source of truth shared with the blackboard).
+  const projects = pathsStore || [];
+  const setProjects = setPathsStore || (() => {});
   const [expandedId, setExpandedId] = useState(null);
   const [showModal,  setShowModal]  = useState(false);
 
@@ -34,10 +33,6 @@ export default function PathsView({ setGoalsProjects, goalsProjects, onNavigateT
   const [color,           setColor]           = useState('#53aaff');
   const [newMilestone,    setNewMilestone]    = useState('');
   const [draftMilestones, setDraftMilestones] = useState([]);
-
-  useEffect(() => {
-    localStorage.setItem('meridian_projects', JSON.stringify(projects));
-  }, [projects]);
 
   // ── Sync subtasks from goals back to Paths milestones ──
   // Whenever goalsProjects changes, update the local projects' milestones
@@ -110,9 +105,10 @@ export default function PathsView({ setGoalsProjects, goalsProjects, onNavigateT
       measurable: '',
       achievable: '',
       relevant: '',
-      deadline: '',
+      deadline: null,
       priority: 'low',
-      scale: 'medium',
+      category: 'long',
+      pathIds: [project.id],
       inFocus: false,
       completedAt: null,
       subtasks: project.milestones.map(m => ({
@@ -159,6 +155,7 @@ export default function PathsView({ setGoalsProjects, goalsProjects, onNavigateT
         const progress   = getProgress(project);
         const done       = project.milestones.filter(m => m.completed).length;
         const isInGoals  = goalsProjects?.some(g => g.id === project.id);
+        const linkedGoalCount = goalsProjects?.filter(g => (g.pathIds || []).includes(project.id)).length || 0;
 
         return (
           <div key={project.id} style={{ background: '#0d1017', border: `1px solid ${isExpanded ? project.color + '55' : '#1b2336'}`, borderRadius: 12, marginBottom: 14, overflow: 'hidden', transition: 'border-color 0.2s' }}>
@@ -175,6 +172,11 @@ export default function PathsView({ setGoalsProjects, goalsProjects, onNavigateT
                   {isInGoals && (
                     <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#53aaff22', color: '#53aaff', border: '1px solid #53aaff44' }}>
                       IN GOALS
+                    </span>
+                  )}
+                  {linkedGoalCount > 0 && (
+                    <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#3ecf7e22', color: '#3ecf7e', border: '1px solid #3ecf7e44' }}>
+                      {linkedGoalCount} LINKED
                     </span>
                   )}
                 </div>

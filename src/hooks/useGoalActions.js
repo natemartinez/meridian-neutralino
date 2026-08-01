@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { T } from '../utils/theme.js';
 import { askAI } from '../utils/api.js';
 import { uid, projectPos, inferInitialQuadrant, quadrantCenter } from '../utils/helpers.js';
+import { inferCategory } from '../utils/migration.js';
 import { addSkillEvidence, updateSkillMeta } from '../constants/skills.js';
 import { buildLightKnowledgeContext } from '../utils/knowledge.js';
 
@@ -47,7 +48,6 @@ export default function useGoalActions({
   setSessions,
   setBrainDumpEntries,
   setJournalEntries,
-  setShowMindCheckCard,
   setSkills,
   setXpSkills,
   setTopGoals,
@@ -85,11 +85,22 @@ export default function useGoalActions({
       relevant:    goalData.relevant || '',
       deadline:    goalData.deadline || '',
       priority:    goalData.priority || 'low',
-      scale:       goalData.scale || 'short',
+      category:    inferCategory(goalData),
+      pathIds:     goalData.pathIds || [],
       inFocus:     false,
       completedAt: null,
-      subtasks:    (goalData.subtasks || []).map(st => ({ id: uid(), title: st.title, done: false, skill: st.skill || null })),
-      checkpoints: (goalData.checkpoints || []).map(cp => ({ id: uid(), title: cp.title, done: false })),
+      subtasks: (goalData.subtasks || []).map(st => ({ id: uid(), title: st.title, done: false, skill: st.skill || null })),
+      checkpoints: (goalData.checkpoints || []).map(cp => ({
+        id: uid(),
+        title: cp.title,
+        done: false,
+        subtasks: (cp.subtasks || []).map(st => ({
+          id: uid(),
+          title: st.title,
+          done: false,
+          skill: st.skill || null,
+        })),
+      })),
     };
     setProjects(prev => [...prev, newProject]);
     setSelectedId(id);
@@ -154,10 +165,20 @@ export default function useGoalActions({
 
   const deleteAvailableTask = (task) => {
     if (task.type === 'subtask') {
-      setProjects(prev => prev.map(p => ({
-        ...p,
-        subtasks: p.subtasks?.filter(st => st.id !== task.id) || [],
-      })));
+      setProjects(prev => prev.map(p => {
+        // Try top-level subtasks first
+        if (p.subtasks?.some(st => st.id === task.id)) {
+          return { ...p, subtasks: p.subtasks.filter(st => st.id !== task.id) };
+        }
+        // Also search within checkpoint subtasks
+        return {
+          ...p,
+          checkpoints: (p.checkpoints || []).map(cp => ({
+            ...cp,
+            subtasks: (cp.subtasks || []).filter(st => st.id !== task.id),
+          })),
+        };
+      }));
     } else if (task.type === 'checkpoint') {
       setProjects(prev => prev.map(p => ({
         ...p,
@@ -251,40 +272,58 @@ export default function useGoalActions({
     // Find or create a project for this task, then add subtasks
     const existingProject = projects.find(p => p.id === task.goalId);
     if (existingProject) {
-      // Add subtasks to the existing project
+      // Add subtasks to the first checkpoint (create a default one if none exists)
       const newSubtasks = subTasks.map(st => ({
         id: uid(),
         title: extractSubtaskTitle(st),
         done: false,
         createdAt: Date.now(),
       }));
-      setProjects(prev => prev.map(p =>
-        p.id === existingProject.id
-          ? { ...p, subtasks: [...p.subtasks, ...newSubtasks] }
-          : p
-      ));
+      setProjects(prev => prev.map(p => {
+        if (p.id !== existingProject.id) return p;
+        const firstCp = p.checkpoints?.[0];
+        if (firstCp) {
+          return {
+            ...p,
+            checkpoints: p.checkpoints.map((cp, idx) =>
+              idx === 0 ? { ...cp, subtasks: [...(cp.subtasks || []), ...newSubtasks] } : cp
+            ),
+          };
+        }
+        // No checkpoints — create a default one
+        return {
+          ...p,
+          checkpoints: [{ id: uid(), title: 'Tasks', done: false, subtasks: newSubtasks }],
+        };
+      }));
     } else {
-      // Create a new project for this task
+      // Create a new project for this task with a default checkpoint
       const newProject = {
         id: uid(),
         title: task.title,
         desc: '',
         color: T.accent,
         priority: task.priority || 'low',
-        scale: 'short',
+        category: 'short',
+        pathIds: [],
         deadline: '',
         measurable: '',
         achievable: '',
         relevant: '',
         completedAt: null,
         createdAt: Date.now(),
-        subtasks: subTasks.map(st => ({
+        subtasks: [],
+        checkpoints: [{
           id: uid(),
-          title: extractSubtaskTitle(st),
+          title: 'Tasks',
           done: false,
-          createdAt: Date.now(),
-        })),
-        checkpoints: [],
+          subtasks: subTasks.map(st => ({
+            id: uid(),
+            title: extractSubtaskTitle(st),
+            done: false,
+            createdAt: Date.now(),
+          })),
+        }],
       };
       setProjects(prev => [...prev, newProject]);
     }
@@ -332,7 +371,6 @@ export default function useGoalActions({
         title: item.title,
         goalId: item.goalId,
       });
-      setShowMindCheckCard(true);
     }
     const remainingNovaItems = onwardItems.filter(it => it.novaTaskId && !it.done && it.id !== id).length;
     if (novaState.dailyPlan && remainingNovaItems < 5 && !novaState.planGenLoading) {
@@ -351,29 +389,59 @@ export default function useGoalActions({
       ...g, subskills: [...g.subskills, { id: uid(), name, level: 1 }]
     }));
 
-  const toggleSubtask = (projId, stId) => {
+  const toggleSubtask = (projId, stId, cpId) => {
     setProjects((prev) => prev.map((p) => {
       if (p.id !== projId) return p;
-      return {
-        ...p, subtasks: p.subtasks.map((s) => {
-          if (s.id !== stId) return s;
-          const nowCompleting = !s.done;
-
-          if (s.skill && nowCompleting) {
-            // Find which group contains this skill and record evidence
-            setXpSkills(prevSkills => {
-              for (const [groupName, group] of Object.entries(prevSkills)) {
-                if (group.skills[s.skill] !== undefined) {
-                  return addSkillEvidence(prevSkills, groupName, s.skill, 0, p.title);
+      // If cpId is provided, toggle within that checkpoint's subtasks
+      if (cpId) {
+        return {
+          ...p,
+          checkpoints: p.checkpoints.map((cp) => {
+            if (cp.id !== cpId) return cp;
+            return {
+              ...cp,
+              subtasks: (cp.subtasks || []).map((s) => {
+                if (s.id !== stId) return s;
+                const nowCompleting = !s.done;
+                if (s.skill && nowCompleting) {
+                  setXpSkills(prevSkills => {
+                    for (const [groupName, group] of Object.entries(prevSkills)) {
+                      if (group.skills[s.skill] !== undefined) {
+                        return addSkillEvidence(prevSkills, groupName, s.skill, 0, p.title);
+                      }
+                    }
+                    return prevSkills;
+                  });
                 }
-              }
-              return prevSkills;
-            });
-          }
-
-          if (nowCompleting) updateStreak();
-          return { ...s, done: nowCompleting, completedAt: nowCompleting ? new Date().toISOString() : null };
-        }),
+                if (nowCompleting) updateStreak();
+                return { ...s, done: nowCompleting, completedAt: nowCompleting ? new Date().toISOString() : null };
+              }),
+            };
+          }),
+        };
+      }
+      // No cpId — search all checkpoints for matching subtask (legacy/migration fallback)
+      return {
+        ...p,
+        checkpoints: p.checkpoints.map((cp) => ({
+          ...cp,
+          subtasks: (cp.subtasks || []).map((s) => {
+            if (s.id !== stId) return s;
+            const nowCompleting = !s.done;
+            if (s.skill && nowCompleting) {
+              setXpSkills(prevSkills => {
+                for (const [groupName, group] of Object.entries(prevSkills)) {
+                  if (group.skills[s.skill] !== undefined) {
+                    return addSkillEvidence(prevSkills, groupName, s.skill, 0, p.title);
+                  }
+                }
+                return prevSkills;
+              });
+            }
+            if (nowCompleting) updateStreak();
+            return { ...s, done: nowCompleting, completedAt: nowCompleting ? new Date().toISOString() : null };
+          }),
+        })),
       };
     }));
   };
@@ -388,9 +456,21 @@ export default function useGoalActions({
 
   const toggleCheckpoint = (projId, cpId) =>
     setProjects((prev) => prev.map((p) => p.id !== projId ? p : {
-      ...p, checkpoints: p.checkpoints.map((c) => c.id === cpId
-        ? { ...c, done: !c.done, completedAt: !c.done ? new Date().toISOString() : null }
-        : c)
+      ...p, checkpoints: p.checkpoints.map((c) => {
+        if (c.id !== cpId) return c;
+        const nowCompleting = !c.done;
+        return {
+          ...c,
+          done: nowCompleting,
+          completedAt: nowCompleting ? new Date().toISOString() : null,
+          // Bulk-toggle all nested subtasks to match
+          subtasks: (c.subtasks || []).map(s => ({
+            ...s,
+            done: nowCompleting,
+            completedAt: nowCompleting ? new Date().toISOString() : null,
+          })),
+        };
+      })
     }));
 
   const toggleFocus = (projId) =>
@@ -418,23 +498,79 @@ export default function useGoalActions({
     setProjects(prev => prev.map(p => p.id !== id ? p : { ...p, title: newTitle.trim() }));
   };
 
-  const deleteSubtask = (projId, stId) =>
-    setProjects(prev => prev.map(p => p.id !== projId ? p : { ...p, subtasks: p.subtasks.filter(s => s.id !== stId) }));
+  const deleteSubtask = (projId, stId, cpId) =>
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projId) return p;
+      // If cpId provided, delete from that checkpoint's subtasks
+      if (cpId) {
+        return {
+          ...p,
+          checkpoints: p.checkpoints.map(cp =>
+            cp.id !== cpId ? cp : { ...cp, subtasks: (cp.subtasks || []).filter(s => s.id !== stId) }
+          ),
+        };
+      }
+      // No cpId — search all checkpoints for matching subtask (legacy/migration fallback)
+      return {
+        ...p,
+        checkpoints: p.checkpoints.map(cp => ({
+          ...cp,
+          subtasks: (cp.subtasks || []).filter(s => s.id !== stId),
+        })),
+      };
+    }));
 
   const deleteCheckpoint = (projId, cpId) =>
-    setProjects(prev => prev.map(p => p.id !== projId ? p : { ...p, checkpoints: p.checkpoints.filter(c => c.id !== cpId) }));
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projId) return p;
+      const cp = p.checkpoints.find(c => c.id === cpId);
+      const orphans = (cp?.subtasks || []).map(s => ({ ...s }));
+      const remaining = p.checkpoints.filter(c => c.id !== cpId);
+      // If there's a remaining checkpoint, move orphans there; otherwise drop them
+      if (remaining.length > 0 && orphans.length > 0) {
+        return {
+          ...p,
+          checkpoints: remaining.map((c, idx) =>
+            idx === 0 ? { ...c, subtasks: [...(c.subtasks || []), ...orphans] } : c
+          ),
+        };
+      }
+      return { ...p, checkpoints: remaining };
+    }));
 
-  const addSubtask = () => {
+  const addSubtask = (cpId) => {
     const t = addInput.trim();
     if (!t || !selected) return;
-    setProjects((prev) => prev.map((p) => p.id === selected.id ? { ...p, subtasks: [...p.subtasks, { id: uid(), title: t, done: false }] } : p));
+    setProjects((prev) => prev.map((p) => {
+      if (p.id !== selected.id) return p;
+      // If cpId provided, add to that checkpoint
+      if (cpId) {
+        return {
+          ...p,
+          checkpoints: p.checkpoints.map(cp =>
+            cp.id !== cpId ? cp : { ...cp, subtasks: [...(cp.subtasks || []), { id: uid(), title: t, done: false }] }
+          ),
+        };
+      }
+      // No cpId — fallback to first checkpoint (shouldn't happen with new UI, but keep safe)
+      const firstCp = p.checkpoints?.[0];
+      if (firstCp) {
+        return {
+          ...p,
+          checkpoints: p.checkpoints.map((cp, idx) =>
+            idx === 0 ? { ...cp, subtasks: [...(cp.subtasks || []), { id: uid(), title: t, done: false }] } : cp
+          ),
+        };
+      }
+      return p;
+    }));
     setAddInput('');
   };
 
   const addCheckpoint = () => {
     const t = addInput.trim();
     if (!t || !selected) return;
-    setProjects((prev) => prev.map((p) => p.id === selected.id ? { ...p, checkpoints: [...p.checkpoints, { id: uid(), title: t, done: false }] } : p));
+    setProjects((prev) => prev.map((p) => p.id === selected.id ? { ...p, checkpoints: [...p.checkpoints, { id: uid(), title: t, done: false, subtasks: [] }] } : p));
     setAddInput('');
   };
 
@@ -446,9 +582,11 @@ export default function useGoalActions({
     try {
       const subtasks    = selected.subtasks    ?? [];
       const checkpoints = selected.checkpoints ?? [];
-      const done   = subtasks.filter((s) => s.done).length;
-      const total  = subtasks.length;
-      const cpDone = checkpoints.filter((c) => c.done).length;
+      const cpSubs = checkpoints.reduce((sum, cp) => sum + (cp.subtasks || []).length, 0);
+      const doneCpSubs = checkpoints.reduce((sum, cp) => sum + (cp.subtasks || []).filter(s => s.done).length, 0);
+      const done   = subtasks.filter((s) => s.done).length + doneCpSubs;
+      const total  = subtasks.length + cpSubs;
+      const cpDone = checkpoints.filter((c) => c.subtasks && c.subtasks.length > 0 && c.subtasks.every(s => s.done)).length;
       const lightCtx = buildLightKnowledgeContext(knowledgePool);
       const system = (`You are a thoughtful, non-pushy productivity companion named NOVA. Keep check-ins brief (2–3 sentences), warm, and psychologically honest. No toxic positivity. Focus on reflection and clarity, not pressure.${lightCtx ? ' ' + lightCtx : ''}`).trim();
       const msg = await askAI(system, `Goal: "${selected.title}". Progress: ${done}/${total} subtasks done, ${cpDone}/${checkpoints.length} checkpoints reached. Do a brief check-in.`, apiKey, { model });
@@ -483,7 +621,37 @@ export default function useGoalActions({
     }
   };
 
+  // ── Path linking helpers (Goals → Paths connection) ──
+
+  /** Link an existing goal to a Path by appending to its `pathIds`. */
+  const linkGoalToPath = useCallback((goalId, pathId) => {
+    setProjects(prev => prev.map(p =>
+      p.id !== goalId ? p : { ...p, pathIds: Array.from(new Set([...(p.pathIds || []), pathId])) }
+    ));
+  }, [setProjects]);
+
+  /** Merge `absorbedPathId`'s milestones into `targetPathId` and reassign goal links. */
+  const mergePaths = useCallback((targetPathId, absorbedPathId) => {
+    setProjects(prev => prev.map(p => {
+      if (p.pathIds && p.pathIds.includes(absorbedPathId)) {
+        const next = p.pathIds.filter(id => id !== absorbedPathId);
+        if (!next.includes(targetPathId)) next.push(targetPathId);
+        return { ...p, pathIds: next };
+      }
+      return p;
+    }));
+  }, [setProjects]);
+
+  /** Create a goal already linked to one or more Paths. */
+  const createGoalWithPaths = useCallback((goalData, pathIds = []) => {
+    createGoalFromModal({ ...goalData, pathIds });
+  }, [createGoalFromModal]);
+
   return {
+    createGoalFromModal,
+    linkGoalToPath,
+    mergePaths,
+    createGoalWithPaths,
     createGoalFromModal,
     addOnwardItem,
     confirmPendingDrop,

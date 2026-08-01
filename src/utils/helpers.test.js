@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { progress, parseDeferClue, estimatePomodoros, buildDailySummary } from './helpers.js';
+import { progress, parseDeferClue, estimatePomodoros, buildDailySummary, inferInitialQuadrant, getCategory } from './helpers.js';
 
 // ============================================================
 // progress
@@ -40,8 +40,8 @@ describe('progress', () => {
       subtasks: [{ done: true }, { done: false }, { done: true }],
       checkpoints: [{ done: false }],
     };
-    // total = 4, done = 2 => 50%
-    expect(progress(p)).toBe(50);
+    // total = 3 subtasks, done = 2 => 67%
+    expect(progress(p)).toBe(67);
   });
 
   it('rounds to nearest integer', () => {
@@ -49,8 +49,8 @@ describe('progress', () => {
       subtasks: [{ done: true }],
       checkpoints: [{ done: false }],
     };
-    // total = 2, done = 1 => 50%
-    expect(progress(p)).toBe(50);
+    // total = 1 subtask, done = 1 => 100%
+    expect(progress(p)).toBe(100);
   });
 });
 
@@ -243,5 +243,43 @@ describe('buildDailySummary', () => {
     expect(summary.maintenanceMinutes).toBe(15);
     expect(summary.totalMinutes).toBe(40);
     expect(summary.sessionCount).toBe(2);
+  });
+});
+
+// ============================================================
+// inferInitialQuadrant — open category (Goals → Paths taxonomy)
+// ============================================================
+describe('inferInitialQuadrant', () => {
+  it('open goals are never urgent by deadline and default to q2', () => {
+    // Open category with a past deadline (invariant says deadline is null,
+    // but even if present it must NOT make the goal urgent)
+    expect(inferInitialQuadrant({ category: 'open', deadline: '2020-01-01', priority: 'medium' })).toBe('q2');
+    expect(inferInitialQuadrant({ category: 'open', deadline: null })).toBe('q2');
+  });
+
+  it('open goals stay q2 even with low priority (ongoing life areas)', () => {
+    expect(inferInitialQuadrant({ category: 'open', priority: 'low' })).toBe('q2');
+  });
+
+  it('short-term goals with an imminent deadline land in q1 (urgent + important)', () => {
+    const soon = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+    expect(inferInitialQuadrant({ category: 'short', deadline: soon, priority: 'high' })).toBe('q1');
+  });
+
+  it('long goals without an urgent deadline default to q2', () => {
+    const far = new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10);
+    expect(inferInitialQuadrant({ category: 'long', deadline: far, priority: 'medium' })).toBe('q2');
+  });
+
+  it('short-term low-priority goals with an imminent deadline land in q3', () => {
+    const soon = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+    expect(inferInitialQuadrant({ category: 'short', deadline: soon, priority: 'low' })).toBe('q3');
+  });
+
+  it('legacy scale fallback still resolves via getCategory', () => {
+    expect(getCategory({ scale: 'medium' })).toBe('long');
+    expect(getCategory({ scale: 'long' })).toBe('long');
+    expect(getCategory({ scale: 'short' })).toBe('short');
+    expect(getCategory({})).toBe('open');
   });
 });
