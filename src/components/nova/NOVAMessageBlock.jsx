@@ -104,6 +104,7 @@ export default function NOVAMessageBlock({ content, color, onOptionSelect, optio
               />
             );
 
+          case 'divider':
             return (
               <div
                 key={idx}
