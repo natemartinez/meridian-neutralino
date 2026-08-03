@@ -7,10 +7,9 @@ const PROG_META = {
   focus:        { label: 'Focus',      color: T.blue },
   preview:      { label: 'Preview',    color: T.cyan },
   calibration:  { label: 'Paths',      color: T.accent },
-  organize:     { label: 'Organize',   color: '#ff6b35' },
 };
 
-const PROG_ORDER = ['briefing', 'focus', 'preview', 'calibration', 'organize'];
+const PROG_ORDER = ['briefing', 'focus', 'preview', 'calibration'];
 
 function fmtTime(iso) {
   const d = new Date(iso);

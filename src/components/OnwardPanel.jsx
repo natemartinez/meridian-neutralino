@@ -28,6 +28,7 @@ export default function OnwardPanel({
   const [resizing, setResizing] = useState(null); // { itemId, startY, startDuration }
   const [selectedTask, setSelectedTask] = useState(null); // clicked task detail panel
   const [dragReadyTaskId, setDragReadyTaskId] = useState(null); // task armed for drag after click
+  const [expandedGoals, setExpandedGoals] = useState(() => new Set()); // collapsible goal headers
   const gridRef = useRef(null);
 
   // ── Day navigation state ──
@@ -214,9 +215,6 @@ export default function OnwardPanel({
           .map(id => (projects || []).find(p => p.id === id))
           .filter(Boolean);
         const hasAny = targetTasks.length > 0 || otherTasks.length > 0 || targetGoals.length > 0;
-
-        // ── Collapsible goal header state ──
-        const [expandedGoals, setExpandedGoals] = React.useState(() => new Set());
 
         const toggleGoal = (goalId) => {
           setExpandedGoals(prev => {
@@ -571,7 +569,7 @@ export default function OnwardPanel({
                     right: 8,
                     height: Math.max(20, blockHeight - 2),
                     background: `${blockColor}15`,
-                    border: `1.5px solid ${isSelected ? blockColor : blockColor}50`,
+                    border: `1.5px solid ${blockColor}50`,
                     borderLeft: `3px solid ${blockColor}`,
                     borderRadius: 6,
                     padding: '4px 6px',

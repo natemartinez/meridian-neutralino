@@ -253,6 +253,7 @@ describe('NOVA_DEFAULT', () => {
       syncEvents: [],
       routine: null,
       programChats: { briefing: [], focus: null, preview: [], calibration: [] },
+      organizeAnalysis: null,
       suggestedTasks: [],
       dailyPlan: null,
       planGenLoading: false,

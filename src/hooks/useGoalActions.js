@@ -54,6 +54,7 @@ export default function useGoalActions({
   setSunId,
   setConfirmDelete,
   setAddInput,
+  setBacklogItems,
 
   // NOVA API
   addSyncEvent,
@@ -652,7 +653,6 @@ export default function useGoalActions({
     linkGoalToPath,
     mergePaths,
     createGoalWithPaths,
-    createGoalFromModal,
     addOnwardItem,
     confirmPendingDrop,
     cancelPendingDrop,

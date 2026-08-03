@@ -23,6 +23,7 @@ import ProgramsList from './nova/ProgramsList.jsx';
 import SessionHistoryLog from './nova/SessionHistoryLog.jsx';
 import NovaInsightsPanel from './nova/NovaInsightsPanel.jsx';
 import NOVAProgramPanel from './nova/NOVAProgramPanel.jsx';
+import OrganizeOverviewView from './nova/OrganizeOverviewView.jsx';
 import NovaToast from './nova/NovaToast.jsx';
 import StartupCanvas from './nova/StartupCanvas.jsx';
 import NovaCompassChat from './nova/NovaCompassChat.jsx';
@@ -106,11 +107,12 @@ export default function AppRouter({
 
   // ── NOVA ──
   novaState, setNovaState,
+  blackboard,
   novaChatInput, setNovaChatInput,
   novaLoading, setNovaLoading, knowledgePool,
   addSyncEvent, onNewSession,
   addKnowledgeEntry, deleteKnowledgeEntry, editKnowledgeEntry,
-  updateCorrections, sendNOVAMessage,
+  updateCorrections, sendNOVAMessage, runOrganizeAnalysis,
   generateNovaPlan, buildNOVASystemPrompt,
   scanWeeklyGoals, suggestSubtasks, novaRetry,
   confirmInsight, dismissInsight, recordPlanAccuracy,
@@ -369,8 +371,8 @@ export default function AppRouter({
                     activePageRef.current = 'paths';
                     closeWaypoint();
                   } else if (page === 'program-organize') {
-                    setActivePage('briefing-chat');
-                    activePageRef.current = 'briefing-chat';
+                    setActivePage('overview');
+                    activePageRef.current = 'overview';
                     closeWaypoint();
                   }
                 }}
@@ -396,10 +398,6 @@ export default function AppRouter({
                   } else if (programId === 'calibration') {
                     setActivePage('paths');
                     activePageRef.current = 'paths';
-                    closeWaypoint();
-                  } else if (programId === 'organize') {
-                    setActivePage('briefing-chat');
-                    activePageRef.current = 'briefing-chat';
                     closeWaypoint();
                   }
                   // 2. Brief delay to ensure the program panel is mounted, then send the prompt
@@ -535,24 +533,37 @@ export default function AppRouter({
                         confirmInsight={confirmInsight}
                         dismissInsight={dismissInsight}
                         onSubNav={onSubNav}
-                        onOrganize={() => {
-                          setMainPage('program-organize');
-                          setActivePage('briefing-chat');
-                          activePageRef.current = 'briefing-chat';
-                          closeWaypoint();
-                        }}
                         onNewGoal={() => setModal(true)}
-                        createGoalWithPaths={createGoalWithPaths}
-                        linkGoalToPath={linkGoalToPath}
-                        mergePaths={mergePaths}
-                        pathsStore={pathsStore}
-                        setPathsStore={setPathsStore}
                       />
                     </div>
                   );
                 })()}
               </div>
               </>
+            )}
+            {mainPage === 'program-organize' && (
+              <OrganizeOverviewView
+                blackboard={blackboard}
+                novaState={novaState}
+                apiKey={apiKey}
+                runOrganizeAnalysis={runOrganizeAnalysis}
+                novaLoading={novaLoading}
+                onNewGoal={() => setModal(true)}
+                createGoalWithPaths={createGoalWithPaths}
+                linkGoalToPath={linkGoalToPath}
+                mergePaths={mergePaths}
+                pathsStore={pathsStore}
+                setPathsStore={setPathsStore}
+                addSyncEvent={addSyncEvent}
+                onBack={() => {
+                  setMainPage('hq');
+                  setActivePage('goals');
+                  activePageRef.current = 'goals';
+                  setShowStartupCanvas(false);
+                  closeWaypoint();
+                }}
+                T={T}
+              />
             )}
             {mainPage === 'tracking' && (
               <TrackingPage
@@ -629,7 +640,7 @@ export default function AppRouter({
               <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                 {(() => {
                   const progId = extractProgId(mainPage);
-                  const labelMap = { briefing:'Goals', focus:'Focus', preview:'Preview', calibration:'Paths', organize:'Organize' };
+                  const labelMap = { briefing:'Goals', focus:'Focus', preview:'Preview', calibration:'Paths' };
                   const label = labelMap[progId];
                   if (!label) return null;
                   const isBriefing = progId === 'briefing';
@@ -690,12 +701,7 @@ export default function AppRouter({
                         {goalsView === 'matrix' ? '☰ List View' : '⊞ Matrix View'}
                       </button>
                       <button
-                        onClick={() => {
-                          setMainPage('program-organize');
-                          setActivePage('briefing-chat');
-                          activePageRef.current = 'briefing-chat';
-                          closeWaypoint();
-                        }}
+                        onClick={() => onOpenProgramWithPage('organize', 'overview')}
                         style={{
                           fontFamily:"'IBM Plex Mono',monospace",
                           fontSize:11,
@@ -768,12 +774,6 @@ export default function AppRouter({
                   suggestSubtask={suggestSubtask}
                   topGoals={topGoals}
                   onToggleTopGoal={toggleTopGoal}
-                  onOrganize={() => {
-                    setMainPage('program-organize');
-                    setActivePage('briefing-chat');
-                    activePageRef.current = 'briefing-chat';
-                    closeWaypoint();
-                  }}
                 />
               );
             })()}
