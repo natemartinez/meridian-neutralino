@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import { sanitizeHTML, sanitizeText, sanitizeWorkLogsState } from '../../utils/sanitize.js';
 
 const T = {
   bg:     '#0c111a',
@@ -81,12 +82,19 @@ function LogEditor({ log, folderId, folderName, onSave, onBack }) {
 }
 
 export default function WorkLogsView() {
+  // Read-back is sanitized so tainted data already in storage is never trusted.
   const [folders, setFolders] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('meridian_wl_folders') || 'null') || []; }
+    try {
+      const parsed = JSON.parse(localStorage.getItem('meridian_wl_folders') || 'null') || [];
+      return sanitizeWorkLogsState({ folders: parsed }).folders;
+    }
     catch { return []; }
   });
   const [logs, setLogs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('meridian_wl_logs') || '{}'); }
+    try {
+      const parsed = JSON.parse(localStorage.getItem('meridian_wl_logs') || '{}');
+      return sanitizeWorkLogsState({ logs: parsed }).logs;
+    }
     catch { return {}; }
   });
 
@@ -100,16 +108,21 @@ export default function WorkLogsView() {
   const [hoveredFolder,  setHoveredFolder]  = useState(null);
   const [movingLogId,    setMovingLogId]    = useState(null);
 
-  useEffect(() => { localStorage.setItem('meridian_wl_folders', JSON.stringify(folders)); }, [folders]);
-  useEffect(() => { localStorage.setItem('meridian_wl_logs',    JSON.stringify(logs));    }, [logs]);
+  useEffect(() => {
+    localStorage.setItem('meridian_wl_folders', JSON.stringify(sanitizeWorkLogsState({ folders }).folders));
+  }, [folders]);
+  useEffect(() => {
+    localStorage.setItem('meridian_wl_logs', JSON.stringify(sanitizeWorkLogsState({ logs }).logs));
+  }, [logs]);
 
   const activeFolder = folders.find(f => f.id === activeFolderId);
   const folderLogs   = logs[activeFolderId] || [];
   const activeLog    = folderLogs.find(l => l.id === activeLogId);
 
   function addFolder() {
-    if (!newFolderName.trim()) return;
-    setFolders(prev => [...prev, { id: Date.now(), name: newFolderName.trim() }]);
+    const name = sanitizeText(newFolderName);
+    if (!name) return;
+    setFolders(prev => [...prev, { id: Date.now(), name }]);
     setNewFolderName('');
     setShowNewFolder(false);
   }
@@ -150,7 +163,12 @@ export default function WorkLogsView() {
     setLogs(prev => ({
       ...prev,
       [folderId]: (prev[folderId] || []).map(l =>
-        l.id === logId ? { ...l, content, ...(title !== undefined ? { title } : {}), updatedAt: new Date().toISOString() } : l
+        l.id === logId ? {
+          ...l,
+          content: sanitizeHTML(content),
+          ...(title !== undefined ? { title: sanitizeText(title) } : {}),
+          updatedAt: new Date().toISOString(),
+        } : l
       ),
     }));
   }, []);
@@ -177,8 +195,7 @@ export default function WorkLogsView() {
   // ── Folders screen ──────────────────────────────────────────────────────────
   if (screen === 'folders') return (
     <div style={{ padding: 20, height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <div style={{ fontFamily: 'Syne', color: T.accent, fontSize: 16, fontWeight: 700, letterSpacing: '.06em' }}>WORK LOGS</div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 18 }}>
         <button onClick={() => setShowNewFolder(s => !s)}
                 style={{ ...iconBtn, color: T.muted, border: `1px solid ${T.border}`, borderRadius: 6, padding: '5px 12px' }}>
           + Folder
@@ -216,9 +233,9 @@ export default function WorkLogsView() {
           return renamingId === folder.id ? (
             <input key={folder.id} autoFocus value={renameValue}
                    onChange={e => setRenameValue(e.target.value)}
-                   onBlur={() => { setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, name: renameValue } : f)); setRenamingId(null); }}
+                   onBlur={() => { setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, name: sanitizeText(renameValue) } : f)); setRenamingId(null); }}
                    onKeyDown={e => {
-                     if (e.key === 'Enter') { setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, name: renameValue } : f)); setRenamingId(null); }
+                     if (e.key === 'Enter') { setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, name: sanitizeText(renameValue) } : f)); setRenamingId(null); }
                      if (e.key === 'Escape') setRenamingId(null);
                    }}
                    style={{ background: T.bg, border: `1px solid ${T.accent}`, borderRadius: 8, padding: '14px 16px', color: T.text, fontFamily: 'Syne', fontSize: 13, outline: 'none' }} />
