@@ -38,11 +38,13 @@ jobs:
         shell: bash
         run: |
           mkdir -p resources/js resources/icons
-          curl -sL -o resources/js/neutralino.js \
+          # --proto '=https' forbids direct http:// fetches; --proto-redir 'all,https'
+          # also forces any redirect target to https; -f fails on HTTP errors.
+          curl -sfL --proto '=https' --proto-redir 'all,https' -o resources/js/neutralino.js \
             "https://cdn.jsdelivr.net/npm/@neutralinojs/lib@6.8.0/dist/neutralino.js"
-          curl -sL -o resources/js/neutralino.d.ts \
+          curl -sfL --proto '=https' --proto-redir 'all,https' -o resources/js/neutralino.d.ts \
             "https://cdn.jsdelivr.net/npm/@neutralinojs/lib@6.8.0/dist/neutralino.d.ts"
-          curl -sL -o resources/icons/appIcon.png \
+          curl -sfL --proto '=https' --proto-redir 'all,https' -o resources/icons/appIcon.png \
             "https://raw.githubusercontent.com/neutralinojs/neutralinojs-minimal/main/resources/icons/appIcon.png"
 
       - name: Build production binary
