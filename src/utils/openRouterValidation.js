@@ -191,8 +191,6 @@ export function validateKeyFormat(key) {
  */
 function computeBackoff(attempt, baseMs = RATE_LIMIT_BASE_DELAY_MS, maxMs = RATE_LIMIT_MAX_DELAY_MS) {
   const exponential = Math.min(maxMs, baseMs * Math.pow(2, attempt));
-  // NOSONAR: jitter only spreads retry timing to avoid thundering-herd; it is
-  // not used for anything security-related, so Math.random is appropriate.
   const jitter = 0.5 + Math.random() * 0.5;
   return Math.round(exponential * jitter);
 }

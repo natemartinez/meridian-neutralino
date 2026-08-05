@@ -57,8 +57,6 @@ export default function NovaCompassChat({
   }, [lastActionResult]);
 
   const addMessage = useCallback((msg) => {
-    // NOSONAR: random suffix only disambiguates chat message ids for React keys;
-    // not security-related, so Math.random is acceptable.
     setMessages(prev => [...prev, { ...msg, id: Date.now().toString() + Math.random().toString(36).slice(2, 6) }]);
   }, []);
 

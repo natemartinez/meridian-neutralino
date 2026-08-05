@@ -4,8 +4,6 @@ export const uid = () => {
   try {
     return crypto.randomUUID().slice(0, 7);
   } catch {
-    // NOSONAR: fallback only when crypto.randomUUID() is unavailable; IDs are
-    // not security tokens, so a non-cryptographic RNG is acceptable here.
     return Math.random().toString(36).slice(2, 9);
   }
 };

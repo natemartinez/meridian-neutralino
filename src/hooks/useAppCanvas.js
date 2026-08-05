@@ -135,8 +135,6 @@ export default function useAppCanvas({
       }
 
       starsRef.current = Array.from({ length: 42 }, () => ({
-        // NOSONAR: star-field values are purely visual (positions, size, opacity,
-        // twinkle timing); no security implications, so Math.random is fine.
         x:    Math.random() * rect.width,
         y:    Math.random() * rect.height,
         s:    Math.random() * 1.4 + .25,
