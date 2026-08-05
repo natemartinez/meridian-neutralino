@@ -3,9 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!--
+    CSP note: script-src intentionally omits 'unsafe-inline' and 'unsafe-eval'.
+    The production build emits only external <script src> tags, so no inline
+    script allowance is needed. Vite's dev server injects an inline preamble,
+    so the dev plugin (vite.config.js) relaxes script-src to include
+    'unsafe-inline' ONLY under `vite` (never under `vite build`).
+    See the cspDev plugin in vite.config.js.
+  -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' 'unsafe-eval';
+    script-src 'self';
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     connect-src 'self' https://api.deepseek.com https://openrouter.ai;
     img-src 'self' data:;

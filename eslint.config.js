@@ -17,6 +17,8 @@ export default [
       globals: {
         ...globals.browser,
         ...globals.node,
+        // Neutralino.js injects this global at runtime (via __neutralino_globals.js)
+        Neutralino: 'readonly',
       },
       parserOptions: {
         ecmaFeatures: {

@@ -3,6 +3,24 @@ import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
 
+// Vite plugin: relax script-src for the DEV server only.
+// The production CSP in index.html is strict (script-src 'self' — no
+// unsafe-inline/unsafe-eval). Vite's dev server injects an inline module
+// preamble + React refresh code, which strict CSP would block. This plugin
+// rewrites the CSP meta ONLY when served by `vite` (dev), never in builds.
+function cspDev() {
+  return {
+    name: 'csp-dev-relax',
+    apply: 'serve',
+    transformIndexHtml(html) {
+      return html.replace(
+        /(script-src\s+'self';)/,
+        "script-src 'self' 'unsafe-inline';"
+      );
+    },
+  };
+}
+
 // Vite plugin: serves .tmp/auth_info.json at /auth_info.json during dev
 // so neutralino-bridge.js can fetch the real NL_TOKEN before init().
 function neuAuthProxy() {
@@ -26,7 +44,7 @@ function neuAuthProxy() {
 }
 
 export default defineConfig({
-  plugins: [react(), neuAuthProxy()],
+  plugins: [react(), neuAuthProxy(), cspDev()],
   base: './',
   test: {
     environment: 'jsdom',
