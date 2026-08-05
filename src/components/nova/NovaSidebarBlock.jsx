@@ -4,16 +4,30 @@ import { computePlanningConfidence } from '../../utils/nova.js';
 
 export default function NovaSidebarBlock({
   novaState, mainPage, onOpenInsights, onBackToHQ,
-  novaCompassOpen, onToggleCompass, collapsed,
+  novaCompassOpen, onToggleCompass, collapsed, onOpenCompass,
 }) {
   const confidence = computePlanningConfidence(novaState.syncEvents);
   const confidenceColor = confidence >= 70 ? T.green : confidence >= 40 ? T.accent : T.muted;
   const confidenceLabel = confidence >= 70 ? 'Knows you well' : confidence >= 40 ? 'Learning fast' : 'Getting started';
   const insightsOpen = mainPage === 'nova-insights';
 
-  // When sidebar is collapsed, this block is hidden (CSS display:none).
-  // A floating compass icon handles toggling from collapsed state.
-  if (collapsed) return null;
+  // When sidebar is collapsed, render a compact NOVA logo at the top of the
+  // sidebar instead of the full block. Clicking it re-expands the sidebar and
+  // opens the compass (replaces the old floating compass button).
+  if (collapsed) {
+    return (
+      <div
+        className="nova-compact"
+        title="Open NOVA"
+        onClick={() => {
+          if (onOpenCompass) onOpenCompass();
+          else if (onToggleCompass) onToggleCompass();
+        }}
+      >
+        <span style={{ fontSize: 18, lineHeight: 1 }}>🧭</span>
+      </div>
+    );
+  }
 
   return (
     <div className="sec nova-block">

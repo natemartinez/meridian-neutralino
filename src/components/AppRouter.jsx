@@ -134,7 +134,7 @@ export default function AppRouter({
 
   // ── Waypoint / navigation helpers ──
   openWaypoint, closeWaypoint,
-  onOpenProgramWithPage, onSubNav,
+  onOpenProgramWithPage,
 
   // ── Action Registry (for NOVA Compass) ──
   actionRegistry,
@@ -200,6 +200,7 @@ export default function AppRouter({
               novaCompassOpen={novaCompassOpen}
               onToggleCompass={() => setNovaCompassOpen(v => !v)}
               collapsed={sidebarCollapsed}
+              onOpenCompass={() => { setSidebarCollapsed(false); setNovaCompassOpen(true); }}
             />
             {novaCompassOpen ? (
               <NovaCompassChat
@@ -237,12 +238,6 @@ export default function AppRouter({
                 onBackToHQ={() => { setNovaLoading(false); setPendingAutoStart(null); setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; setShowStartupCanvas(true); closeWaypoint(); }}
                 addSyncEvent={addSyncEvent}
                 onOpenProgramWithPage={onOpenProgramWithPage}
-                onSubNavNavigate={(programId, subNavId) => {
-                  setMainPage(`program-${programId}`);
-                  // Map 'briefing' sub-nav to 'briefing-chat' page
-                  const page = (programId === 'briefing' && subNavId === 'briefing') ? 'briefing-chat' : subNavId;
-                  setTimeout(() => onSubNav(page), 50);
-                }}
                 onToggleHistory={() => setSidebarView('session-history')}
               />
             )}
@@ -279,39 +274,6 @@ export default function AppRouter({
             onMouseEnter={e => { e.currentTarget.style.opacity='1'; e.currentTarget.style.color=T.text; e.currentTarget.style.borderColor='#7a8ba3'; }}
             onMouseLeave={e => { e.currentTarget.style.opacity='0.5'; e.currentTarget.style.color=T.muted; e.currentTarget.style.borderColor=T.border; }}
           >{sidebarCollapsed ? '▸' : '◂'}</button>
-
-          {/* ── Floating compass for collapsed sidebar ── */}
-          {sidebarCollapsed && (
-            <button
-              onClick={() => { setSidebarCollapsed(false); setNovaCompassOpen(true); }}
-              title="Open NOVA Chat"
-              style={{
-                position:'fixed',
-                left:8,
-                top:'50%',
-                transform:'translateY(-50%)',
-                zIndex:1000,
-                width:36,
-                height:36,
-                borderRadius:'50%',
-                background:T.card,
-                border:`1px solid ${novaCompassOpen ? T.accent : T.border}`,
-                display:'flex',
-                alignItems:'center',
-                justifyContent:'center',
-                cursor:'pointer',
-                fontSize:18,
-                lineHeight:1,
-                padding:0,
-                transition:'all .2s',
-                boxShadow: novaCompassOpen ? `0 0 12px ${T.accent}40` : 'none',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = T.accent + '80'; e.currentTarget.style.boxShadow = `0 0 12px ${T.accent}30`; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = novaCompassOpen ? T.accent : T.border; e.currentTarget.style.boxShadow = novaCompassOpen ? `0 0 12px ${T.accent}40` : 'none'; }}
-            >
-              🧭
-            </button>
-          )}
 
           {/* ── Sidebar footer nav — Track / Settings ── */}
           <div className="sig-ftr">
@@ -532,7 +494,6 @@ export default function AppRouter({
                         novaRetry={novaRetry}
                         confirmInsight={confirmInsight}
                         dismissInsight={dismissInsight}
-                        onSubNav={onSubNav}
                         onNewGoal={() => setModal(true)}
                       />
                     </div>
@@ -638,13 +599,7 @@ export default function AppRouter({
           {isProgram(mainPage) && (
             <div className="ctb" style={{ justifyContent: 'space-between' }}>
               <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                {(() => {
-                  const progId = extractProgId(mainPage);
-                  const labelMap = { briefing:'Goals', focus:'Focus', preview:'Preview', calibration:'Paths' };
-                  const label = labelMap[progId];
-                  if (!label) return null;
-                  const isBriefing = progId === 'briefing';
-                  return isBriefing ? (
+                {extractProgId(mainPage) === 'briefing' && (
                     <>
                       <button
                         onClick={() => setModal(true)}
@@ -727,15 +682,7 @@ export default function AppRouter({
                         ⟐ Organize Tasks
                       </button>
                     </>
-                  ) : (
-                    <span style={{
-                      fontFamily:"'Syne',sans-serif",
-                      fontSize:16,
-                      fontWeight:700,
-                      color:T.accent,
-                    }}>{label}</span>
-                  );
-                })()}
+                )}
               </div>
             </div>
           )}

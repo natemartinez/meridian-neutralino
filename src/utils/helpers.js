@@ -121,6 +121,32 @@ export function quadrantCenter(quadrant, axisX, axisY) {
   }
 }
 
+/**
+ * Resolve the render position (CSS px) for a goal on the Eisenhower matrix.
+ *
+ * Goals created without a `pos` field (e.g. NOVA breakdown tasks) or whose
+ * stored pos has drifted off-canvas are re-homed to the center of their
+ * quadrant using the LIVE canvas dimensions so they always appear.
+ *
+ * @param {{ pos?: {x:number,y:number}, quadrant?: string }} goal
+ * @param {number} axisX - X-coordinate of the vertical divider (CSS px)
+ * @param {number} axisY - Y-coordinate of the horizontal divider (CSS px)
+ * @param {number} [margin=48] - Minimum distance from any canvas edge (CSS px)
+ * @returns {{ x: number, y: number }}
+ */
+export function resolveGoalRenderPos(goal, axisX, axisY, margin = 48) {
+  const cssW = axisX * 2;
+  const cssH = axisY * 2;
+  const pos = goal?.pos;
+  if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)
+      && pos.x >= margin && pos.x <= cssW - margin
+      && pos.y >= margin && pos.y <= cssH - margin) {
+    return { x: pos.x, y: pos.y };
+  }
+  const quadrant = goal?.quadrant || inferInitialQuadrant(goal) || 'q2';
+  return quadrantCenter(quadrant, axisX, axisY);
+}
+
 export const progress = (p) => {
   // Count subtasks: top-level + within checkpoints
   const topLevelSubs = p.subtasks || [];

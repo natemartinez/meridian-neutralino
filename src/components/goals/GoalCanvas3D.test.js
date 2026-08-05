@@ -68,10 +68,11 @@ function createGoal(goalData, existingProjectsCount) {
 /**
  * Simulates the mapping logic in drawGoalsPage.
  * Transforms a projects array into rendering data with pixel positions.
+ * NOTE: the matrix shows ALL goals (including completed ones, which are
+ * rendered with a green checkmark) so the matrix always matches the database.
  */
 function mapProjectsToNodes(projects, selectedId, topGoalIds, pan) {
   return projects
-    .filter(p => !p.completedAt)
     .map((p, i) => {
       const pos = p.pos || { x: 240 + i * 440, y: 270 };
       const px = pos.x + pan.x;
@@ -189,13 +190,15 @@ describe('GoalCanvas3D — goal creation → rendering pipeline', () => {
       expect(nodes[0].title).toBe('Fresh Goal');
     });
 
-    it('filters out completed goals', () => {
+    it('includes completed goals alongside active goals', () => {
       const active = createGoal({ title: 'Active' }, 0);
       const completed = { ...createGoal({ title: 'Done' }, 1), completedAt: '2024-01-01' };
       const nodes = mapProjectsToNodes([active, completed], null, [], pan);
 
-      expect(nodes).toHaveLength(1);
+      expect(nodes).toHaveLength(2);
       expect(nodes[0].id).toBe(active.id);
+      expect(nodes[1].id).toBe(completed.id);
+      expect(nodes[1].isComplete).toBe(true);
     });
 
     it('maps position correctly with pan offset', () => {
@@ -236,10 +239,11 @@ describe('GoalCanvas3D — goal creation → rendering pipeline', () => {
       expect(nodes[0].renderY).toBe(270);
     });
 
-    it('returns empty array when all goals are completed', () => {
+    it('returns completed goals with isComplete flag set', () => {
       const done = { ...createGoal({ title: 'Done' }, 0), completedAt: '2024-06-01' };
       const nodes = mapProjectsToNodes([done], null, [], pan);
-      expect(nodes).toHaveLength(0);
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0].isComplete).toBe(true);
     });
 
     it('handles empty projects array', () => {
@@ -263,7 +267,8 @@ describe('GoalCanvas3D — goal creation → rendering pipeline', () => {
     it('marks completed goals with isComplete flag', () => {
       const goal = { ...createGoal({ title: 'Done' }, 0), completedAt: '2024-06-17' };
       const nodes = mapProjectsToNodes([goal], null, [], pan);
-      expect(nodes).toHaveLength(0); // filtered out
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0].isComplete).toBe(true);
     });
   });
 
@@ -383,13 +388,14 @@ describe('GoalCanvas3D — goal creation → rendering pipeline', () => {
       });
     });
 
-    it('completed goals are excluded even if newly added', () => {
+    it('completed goals are included even if newly added', () => {
       const completedGoal = {
         ...createGoal({ title: 'Already Done' }, 0),
         completedAt: '2024-06-17',
       };
       const nodes = mapProjectsToNodes([completedGoal], null, [], { x: 0, y: 0 });
-      expect(nodes).toHaveLength(0);
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0].isComplete).toBe(true);
     });
 
     it('computes correct progress for goals with mixed completion states', () => {

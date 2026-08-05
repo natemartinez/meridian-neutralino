@@ -124,12 +124,8 @@ export default function OnwardPanel({
     <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
       <div style={{ padding:'18px 18px 14px', borderBottom:`1px solid ${T.border}` }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div>
-            <div style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:700, color:T.accent, marginBottom:2 }}>ONWARD</div>
-            <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted }}>time blocks</div>
-          </div>
           {/* ── Day navigation ── */}
-          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:6, marginLeft:'auto' }}>
             <button
               onClick={() => goToDay(-1)}
               title="Previous day"

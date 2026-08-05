@@ -22,8 +22,6 @@ function NOVAProgramPanel({
   dismissInsight,
   // Navigation restructure props
   onNewGoal,
-  // Sub-nav navigation prop
-  onSubNav,
 }) {
   const [showContext, setShowContext] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
@@ -116,12 +114,6 @@ function NOVAProgramPanel({
   const isPreview = progId === 'preview';
   const isCalibration = progId === 'calibration';
 
-  // ── Sub-nav items per program (moved from Compass bar) ──
-  const SUB_NAVS = {
-    focus:       [{ id: 'onward',   label: 'ONWARD' }, { id: 'worklogs', label: 'WORK LOGS' }],
-    preview:     [{ id: 'preview-calendar', label: 'CALENDAR' }],
-  };
-  const subNavs = SUB_NAVS[progId] || [];
   const focusPlan = novaState.programChats.focus;
   const msgEndRef = React.useRef(null);
 
@@ -217,9 +209,7 @@ function NOVAProgramPanel({
     <div style={{ display:'flex', flexDirection:'column', height:'100%', overflow:'hidden' }}>
       {/* Program header */}
       <div style={{ display:'flex', alignItems:'center', padding:'14px 18px', borderBottom:`1px solid ${T.border}`, flexShrink:0 }}>
-        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div className="wp-ttl" style={{ color:meta.color }}>{meta.label}</div>
-          <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+        <div style={{ display:'flex', gap:4, alignItems:'center', marginLeft:'auto' }}>
             {/* ── Per-program contextual action buttons ── */}
             {progActions.map((action, i) => (
               <button
@@ -241,60 +231,21 @@ function NOVAProgramPanel({
                 }}
               >{action.label}</button>
             ))}
-            {/* ── Briefing sub-nav: Briefing + New Goal ── */}
             {isBriefing && (
-              <>
-                <button
-                  onClick={() => { setBriefingPhase('chat'); }}
-                  style={{
-                    background: briefingPhase === 'chat' ? `${meta.color}18` : 'none',
-                    border: `1px solid ${briefingPhase === 'chat' ? meta.color + '50' : T.border}`,
-                    borderRadius: 4,
-                    color: briefingPhase === 'chat' ? meta.color : T.muted,
-                    cursor: 'pointer', fontSize: 9,
-                    padding: '2px 8px',
-                    fontFamily:"'IBM Plex Mono',monospace",
-                    letterSpacing: '.05em',
-                    whiteSpace: 'nowrap',
-                  }}
-                >Briefing</button>
-                <button
-                  onClick={onNewGoal}
-                  style={{
-                    background: 'none',
-                    border: `1px solid ${T.border}`,
-                    borderRadius: 4,
-                    color: T.muted,
-                    cursor: 'pointer', fontSize: 9,
-                    padding: '2px 8px',
-                    fontFamily:"'IBM Plex Mono',monospace",
-                    letterSpacing: '.05em',
-                    whiteSpace: 'nowrap',
-                  }}
-                >+ New Goal</button>
-              </>
-            )}
-            {/* ── Per-program sub-nav buttons (moved from Compass bar) ── */}
-            {subNavs.length > 0 && (
-              <>
-                {subNavs.map(sub => (
-                  <button
-                    key={sub.id}
-                    onClick={() => onSubNav && onSubNav(sub.id)}
-                    style={{
-                      background: 'none',
-                      border: `1px solid ${T.border}`,
-                      borderRadius: 4,
-                      color: T.muted,
-                      cursor: 'pointer', fontSize: 9,
-                      padding: '2px 8px',
-                      fontFamily:"'IBM Plex Mono',monospace",
-                      letterSpacing: '.05em',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >{sub.label}</button>
-                ))}
-              </>
+              <button
+                onClick={onNewGoal}
+                style={{
+                  background: 'none',
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 4,
+                  color: T.muted,
+                  cursor: 'pointer', fontSize: 9,
+                  padding: '2px 8px',
+                  fontFamily:"'IBM Plex Mono',monospace",
+                  letterSpacing: '.05em',
+                  whiteSpace: 'nowrap',
+                }}
+              >+ New Goal</button>
             )}
             <>
               <button
@@ -307,9 +258,8 @@ function NOVAProgramPanel({
                 style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:4, color:T.muted, cursor:'pointer', fontSize:9, padding:'2px 6px', fontFamily:"'IBM Plex Mono',monospace", letterSpacing:'.05em' }}
               >NEW SESSION</button>
             </>
-          </div>
-        </div>
       </div>
+</div>
 
       {showContext && (
         <div style={{ margin:'0 12px', padding:'8px 10px', background:'#1a1a2e', border:`1px solid ${meta.color}44`, borderRadius:6, maxHeight:200, overflowY:'auto', fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted, lineHeight:1.6, whiteSpace:'pre-wrap' }}>

@@ -2,7 +2,7 @@
  * Component tests for NovaSidebarBlock
  *
  * Covers:
- *   - Collapsed state (returns null)
+ *   - Collapsed state (renders compact NOVA logo; clicking opens compass)
  *   - Default state (compass icon, NOVA label, confidence badge)
  *   - NovaCompassOpen state (NOVA CHAT label, accent border)
  *   - Confidence levels (high ≥70, medium ≥40, low <40)
@@ -113,10 +113,30 @@ describe('NovaSidebarBlock', () => {
   // ── Collapsed state ──
 
   describe('collapsed state', () => {
-    it('returns null when collapsed is true', () => {
+    it('renders a compact NOVA logo when collapsed (no full block)', () => {
       const r = renderComp(createDefaultProps({ collapsed: true }));
-      // Component returns null, so container should have no .sec.nova-block
+      // Compact logo is rendered, full block is not
+      expect(r.container.querySelector('.nova-compact')).toBeTruthy();
       expect(r.container.querySelector('.sec.nova-block')).toBeNull();
+      expect(r.getByText('🧭')).toBeTruthy();
+    });
+
+    it('clicking the compact logo calls onOpenCompass when provided', () => {
+      const onOpenCompass = vi.fn();
+      const r = renderComp(createDefaultProps({ collapsed: true, onOpenCompass }));
+      r.click(r.container.querySelector('.nova-compact'));
+      expect(onOpenCompass).toHaveBeenCalledOnce();
+    });
+
+    it('falls back to onToggleCompass when onOpenCompass is not provided', () => {
+      const onToggleCompass = vi.fn();
+      const r = renderComp(createDefaultProps({
+        collapsed: true,
+        onOpenCompass: undefined,
+        onToggleCompass,
+      }));
+      r.click(r.container.querySelector('.nova-compact'));
+      expect(onToggleCompass).toHaveBeenCalledOnce();
     });
   });
 

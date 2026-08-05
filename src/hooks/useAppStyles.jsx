@@ -38,6 +38,8 @@ export default function useAppStyles() {
       .sig.collapsed .sig-brand,
       .sig.collapsed .sig-subt{display:none;}
       .sig.collapsed .nova-block{display:none !important;}
+      .sig.collapsed .nova-compact{display:flex;align-items:center;justify-content:center;width:100%;height:38px;margin:0 0 10px;background:${T.card};border:1px solid ${T.border};border-radius:7px;cursor:pointer;transition:border-color .2s,background .2s;flex-shrink:0;}
+      .sig.collapsed .nova-compact:hover{border-color:${T.accent}80;background:${T.accent}0d;}
       .sig.collapsed .prg-txt{display:none !important;}
       .sec{padding:10px 11px 6px;}
       .secl{font-size:7.5px;color:${T.muted};text-transform:uppercase;letter-spacing:.12em;display:flex;align-items:center;gap:5px;margin-bottom:8px;}
@@ -63,6 +65,7 @@ export default function useAppStyles() {
       .sig-ftr-btn{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;border:1px solid transparent;background:transparent;color:${T.muted};font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.04em;cursor:pointer;transition:all .14s;white-space:nowrap;overflow:hidden;}
       .sig-ftr-btn:hover{background:${T.accent}10;border-color:${T.border};color:${T.text};}
       .sig.collapsed .sig-ftr{display:none;}
+      .sig.sig-compass-open .sig-ftr{display:none;}
 
       /* ── COMMAND ── */
       .cmd{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;position:relative;}

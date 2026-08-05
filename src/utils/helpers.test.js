@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { progress, parseDeferClue, estimatePomodoros, buildDailySummary, inferInitialQuadrant, getCategory } from './helpers.js';
+import { progress, parseDeferClue, estimatePomodoros, buildDailySummary, inferInitialQuadrant, getCategory, resolveGoalRenderPos, quadrantCenter } from './helpers.js';
 
 // ============================================================
 // progress
@@ -281,5 +281,52 @@ describe('inferInitialQuadrant', () => {
     expect(getCategory({ scale: 'long' })).toBe('long');
     expect(getCategory({ scale: 'short' })).toBe('short');
     expect(getCategory({})).toBe('open');
+  });
+});
+
+// ============================================================
+// resolveGoalRenderPos — matrix visibility (Issue 4)
+// ============================================================
+describe('resolveGoalRenderPos', () => {
+  const axisX = 600; // canvas 1200 CSS px wide
+  const axisY = 400; // canvas 800 CSS px tall
+
+  it('returns the stored pos unchanged when it is on-canvas', () => {
+    const goal = { pos: { x: 300, y: 200 }, quadrant: 'q2' };
+    expect(resolveGoalRenderPos(goal, axisX, axisY)).toEqual({ x: 300, y: 200 });
+  });
+
+  it('re-homes goals without a pos to the center of their inferred quadrant', () => {
+    // Open category goals default to q2 (Schedule) → center = (300, 200)
+    const goal = { category: 'open' };
+    expect(resolveGoalRenderPos(goal, axisX, axisY)).toEqual({ x: 300, y: 200 });
+  });
+
+  it('re-homes goals without a pos using an explicit quadrant', () => {
+    const goal = { quadrant: 'q1' };
+    expect(resolveGoalRenderPos(goal, axisX, axisY)).toEqual(quadrantCenter('q1', axisX, axisY));
+  });
+
+  it('re-homes off-canvas stored positions (e.g. legacy projectPos fallback)', () => {
+    // Legacy fallback for index ≥3 was 240 + i*440 → 1560, off a 1200px canvas.
+    // Should be pulled back to the quadrant center instead.
+    const goal = { pos: { x: 1560, y: 270 }, quadrant: 'q4' };
+    const resolved = resolveGoalRenderPos(goal, axisX, axisY);
+    expect(resolved.x).toBeLessThan(axisX);
+    expect(resolved.x).toBeGreaterThan(0);
+    expect(resolved.y).toBeGreaterThan(axisY);
+  });
+
+  it('re-homes positions with non-finite components', () => {
+    const goal = { pos: { x: NaN, y: 270 }, quadrant: 'q2' };
+    expect(resolveGoalRenderPos(goal, axisX, axisY)).toEqual(quadrantCenter('q2', axisX, axisY));
+  });
+
+  it('respects a custom margin when checking visibility', () => {
+    // pos at x=100 is fine with default margin (48) but outside a 150px margin
+    const goal = { pos: { x: 100, y: 200 }, quadrant: 'q2' };
+    expect(resolveGoalRenderPos(goal, axisX, axisY)).toEqual({ x: 100, y: 200 });
+    const rehomed = resolveGoalRenderPos(goal, axisX, axisY, 150);
+    expect(rehomed).toEqual(quadrantCenter('q2', axisX, axisY));
   });
 });

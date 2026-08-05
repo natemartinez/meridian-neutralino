@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { T } from '../utils/theme.js';
-import { projectPos, calculateQuadrant } from '../utils/helpers.js';
+import { resolveGoalRenderPos, calculateQuadrant } from '../utils/helpers.js';
 import { drawOnwardPage, drawMapPage, drawPathsPage, drawSkillsPage, drawGoalsPage } from '../utils/drawPages.js';
 import { isCanvasPage } from '../constants/programs.js';
 import { ROW_START, ROW_END, VISIBLE_HOURS, TOTAL_ROWS, PAD, DEFAULT_CLIENT_HEIGHT } from '../constants/layout.js';
@@ -268,14 +268,17 @@ export default function useAppCanvas({
     const projs  = projectsRef.current;
 
     // Goals page: viewport is locked (no pan). Only goal nodes are draggable.
-    const clickedProj = projs.find((p, pi) => {
-      const pp = p.pos || projectPos(pi);
+    // Use the same re-homed position resolver as drawGoalsPage so click/drag
+    // detection matches exactly where goals are rendered on canvas.
+    const axisXcss = rect.width / 2;
+    const axisYcss = rect.height / 2;
+    const clickedProj = projs.find((p) => {
+      const pp = resolveGoalRenderPos(p, axisXcss, axisYcss);
       return Math.hypot(cx - pp.x, cy - pp.y) < 44;
     });
 
     if (clickedProj) {
-      const pi = projs.indexOf(clickedProj);
-      const pp = clickedProj.pos || projectPos(pi);
+      const pp = resolveGoalRenderPos(clickedProj, axisXcss, axisYcss);
       const d  = { type: 'node', id: clickedProj.id, ox: cx - pp.x, oy: cy - pp.y };
       draggingRef.current = d;
       setDragging(d);

@@ -480,6 +480,7 @@ export default function useGoalActions({
   const deleteGoal = (id) => {
     setProjects(prev => prev.filter(p => p.id !== id));
     if (selectedId === id) setSelectedId(null);
+    closeWaypoint();
     setConfirmDelete(null);
   };
 

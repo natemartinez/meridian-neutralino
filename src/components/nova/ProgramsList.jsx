@@ -8,7 +8,6 @@ const PROGRAMS = [
     desc: 'Command center',
     color: T.accent,
     defaultPage: null,
-    subNavs: [],
     icon: (
       <svg width="16" height="16" viewBox="0 0 13 13">
         <path d="M6.5 1.5 L12 6 L11 6 L11 11.5 L2 11.5 L2 6 L1 6 Z" fill="none" stroke={T.accent} strokeWidth="1.3" strokeLinejoin="round"/>
@@ -22,9 +21,6 @@ const PROGRAMS = [
     desc: 'Morning debrief',
     color: '#F59E0B',
     defaultPage: 'goals',
-    subNavs: [
-      { id: 'briefing', label: 'BRIEFING' },
-    ],
     icon: (
       <svg width="16" height="16" viewBox="0 0 13 13">
         <circle cx="6.5" cy="6.5" r="5" fill="none" stroke="#F59E0B" strokeWidth="1.4"/>
@@ -38,10 +34,6 @@ const PROGRAMS = [
     desc: 'Deep focus',
     color: T.blue,
     defaultPage: 'onward',
-    subNavs: [
-      { id: 'onward',   label: 'ONWARD' },
-      { id: 'worklogs', label: 'WORK LOGS' },
-    ],
     icon: (
       <svg width="16" height="16" viewBox="0 0 13 13">
         <path d="M6.5 1.5 L11.5 6.5 L6.5 11.5 L1.5 6.5 Z" fill="none" stroke={T.blue} strokeWidth="1.4"/>
@@ -55,9 +47,6 @@ const PROGRAMS = [
     desc: 'Plan ahead',
     color: T.cyan,
     defaultPage: 'map',
-    subNavs: [
-      { id: 'preview-calendar', label: 'CALENDAR' },
-    ],
     icon: (
       <svg width="16" height="16" viewBox="0 0 13 13">
         <path d="M6.5 1.5 L11.5 6.5 L6.5 11.5 L1.5 6.5 Z" fill="none" stroke={T.cyan} strokeWidth="1.4"/>
@@ -72,7 +61,6 @@ const PROGRAMS = [
     desc: 'Long-term vision',
     color: T.accent,
     defaultPage: 'paths',
-    subNavs: [],
     icon: (
       <svg width="16" height="16" viewBox="0 0 13 13">
         <path d="M6.5 1.5 L11.5 6.5 L6.5 11.5 L1.5 6.5 Z" fill="none" stroke={T.accent} strokeWidth="1.4"/>
@@ -83,7 +71,7 @@ const PROGRAMS = [
   },
 ];
 
-export default function ProgramsList({ mainPage, onOpenProgram, onBackToHQ, addSyncEvent, onSubNavNavigate, onOpenProgramWithPage, collapsed, onToggleHistory }) {
+export default function ProgramsList({ mainPage, onOpenProgram, onBackToHQ, addSyncEvent, onOpenProgramWithPage, collapsed, onToggleHistory }) {
   const [hoveredId, setHoveredId] = useState(null);
 
   return (
@@ -105,7 +93,6 @@ export default function ProgramsList({ mainPage, onOpenProgram, onBackToHQ, addS
         const isHq = prog.id === 'hq';
         const isActive = isHq ? mainPage === 'hq' : mainPage === `program-${prog.id}`;
         const isHovered = hoveredId === prog.id;
-        const hasSubNavs = prog.subNavs.length > 0;
         return (
           <div
             key={prog.id}
@@ -192,50 +179,6 @@ export default function ProgramsList({ mainPage, onOpenProgram, onBackToHQ, addS
                 </div>
               )}
             </div>
-
-            {/* ── Hover-reveal sub-nav chips ── */}
-            {!collapsed && hasSubNavs && (
-              <div style={{
-                display: 'flex',
-                gap: 4,
-                padding: '0 14px',
-                marginTop: 0,
-                overflow: 'hidden',
-                maxHeight: isHovered ? 28 : 0,
-                opacity: isHovered ? 1 : 0,
-                transition: 'all 0.2s ease',
-              }}>
-                {prog.subNavs.map(sub => (
-                  <span
-                    key={sub.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onSubNavNavigate) {
-                        onSubNavNavigate(prog.id, sub.id);
-                      } else {
-                        // Fallback: open program first
-                        onOpenProgram(prog.id);
-                      }
-                    }}
-                    style={{
-                      fontSize: 8,
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      background: `${prog.color}18`,
-                      border: `1px solid ${prog.color}30`,
-                      color: prog.color,
-                      fontFamily: "'IBM Plex Mono',monospace",
-                      letterSpacing: '.05em',
-                      whiteSpace: 'nowrap',
-                      cursor: 'pointer',
-                      transition: 'background 0.15s',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = `${prog.color}30`; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = `${prog.color}18`; }}
-                  >{sub.label}</span>
-                ))}
-              </div>
-            )}
           </div>
         );
       })}

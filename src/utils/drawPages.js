@@ -1,6 +1,6 @@
 import { T } from './theme.js';
 import { hexToRgb, rgba, drawGlow, drawProgressArc, rrect, drawSubtaskNode, drawCheckpointNode, drawMatrixAxes } from './canvas.js';
-import { progress, QUADRANTS, calculateQuadrant } from './helpers.js';
+import { progress, QUADRANTS, calculateQuadrant, resolveGoalRenderPos } from './helpers.js';
 
 // ── Onward page ──────────────────────────────────────────────────────────────
 // scrollY: canvas.parentElement.scrollTop * dpr (computed in frame() before call)
@@ -906,7 +906,9 @@ export function drawSkillsPage(ctx, dpr, w, h, t, refs) {
 export function drawGoalsPage(ctx, dpr, w, h, t, refs) {
   const { projectsRef, selectedIdRef, panRef, draggingRef, goalHitAreasRef, topGoalsRef, goalDragRef } = refs;
   const hitAreas = [];
-  const projs = projectsRef.current.filter(p => !p.completedAt);
+  // Matrix shows ALL goals from the database — including completed ones,
+  // which are rendered with a green checkmark (see isComplete below).
+  const projs = projectsRef.current || [];
   const selId = selectedIdRef.current;
   const drag = draggingRef.current;
   const topGoalIds = topGoalsRef?.current || [];
@@ -919,12 +921,19 @@ export function drawGoalsPage(ctx, dpr, w, h, t, refs) {
   const axisY = h / 2;
   drawMatrixAxes(ctx, dpr, w, h, QUADRANTS, axisX, axisY);
 
+  // ── Resolve a visible render position (CSS px) for every goal ───────
+  // Goals created without a pos field (e.g. breakdown tasks spawned by NOVA)
+  // or whose stored pos has drifted off-canvas are re-homed to the center of
+  // their quadrant using the LIVE canvas dimensions so they always appear.
+  // axisX/axisY are in device pixels; resolveGoalRenderPos expects CSS px.
+  const positions = projs.map(p => resolveGoalRenderPos(p, axisX / dpr, axisY / dpr));
+
   // ── Background nebula glow ──────────────────────────────────────────
   if (projs.length > 0) {
     // Compute bounding box of all goals (no pan offset — viewport is locked)
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     projs.forEach((p, i) => {
-      const pos = p.pos || { x: 240 + i * 440, y: 270 };
+      const pos = positions[i];
       const px = pos.x * dpr;
       const py = pos.y * dpr;
       if (px < minX) minX = px; if (px > maxX) maxX = px;
@@ -947,23 +956,19 @@ export function drawGoalsPage(ctx, dpr, w, h, t, refs) {
 
   // ── Constellation lines between nearby goals ────────────────────────
   if (projs.length >= 2) {
-    const positions = projs.map((p, i) => {
-      const pos = p.pos || { x: 240 + i * 440, y: 270 };
-      return { x: pos.x * dpr, y: pos.y * dpr, color: p.color };
-    });
-    // Connect goals that are within 600px of each other
+    // Connect goals that are within 600px of each other (positions are CSS px)
     for (let i = 0; i < positions.length; i++) {
       for (let j = i + 1; j < positions.length; j++) {
-        const dx = positions[i].x - positions[j].x;
-        const dy = positions[i].y - positions[j].y;
+        const dx = positions[i].x * dpr - positions[j].x * dpr;
+        const dy = positions[i].y * dpr - positions[j].y * dpr;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < 600 * dpr) {
           const alpha = Math.max(0, 0.12 * (1 - dist / (600 * dpr)));
           const twinkle = 0.6 + 0.4 * Math.sin(t * 0.5 + i * 2.3 + j * 1.7);
           ctx.save();
           ctx.beginPath();
-          ctx.moveTo(positions[i].x, positions[i].y);
-          ctx.lineTo(positions[j].x, positions[j].y);
+          ctx.moveTo(positions[i].x * dpr, positions[i].y * dpr);
+          ctx.lineTo(positions[j].x * dpr, positions[j].y * dpr);
           ctx.strokeStyle = `rgba(214,226,245,${alpha * twinkle})`;
           ctx.lineWidth = 0.5 * dpr;
           ctx.setLineDash([3 * dpr, 6 * dpr]);
@@ -991,7 +996,7 @@ export function drawGoalsPage(ctx, dpr, w, h, t, refs) {
   // ── Floating space dust particles ───────────────────────────────────
   // Deterministic particles based on goal positions for visual depth
   projs.forEach((p, i) => {
-    const pos = p.pos || { x: 240 + i * 440, y: 270 };
+    const pos = positions[i];
     const px = pos.x * dpr;
     const py = pos.y * dpr;
     // Scatter tiny dots around each goal
@@ -1012,7 +1017,7 @@ export function drawGoalsPage(ctx, dpr, w, h, t, refs) {
 
   // Draw each goal as a static, draggable node
   projs.forEach((p, i) => {
-    const pos = p.pos || { x: 240 + i * 440, y: 270 };
+    const pos = positions[i];
     // Apply drag offset if this goal is being dragged
     const dragOffX = (gd && gd.id === p.id) ? gd.offsetX : 0;
     const dragOffY = (gd && gd.id === p.id) ? gd.offsetY : 0;
