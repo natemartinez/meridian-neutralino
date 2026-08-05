@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { TAGGABLE_SKILLS } from '../../constants/skills';
 import { askAI } from '../../utils/api';
 
-export default function GoalModal({ onClose, onCreate, apiKey, model }) {
+export default function GoalModal({ onClose, onCreate, apiKey, aiEnabled = true, model }) {
   const [step,    setStep]    = useState('choose'); // 'choose' | 'form'
   const [goalType, setGoalType] = useState(null);   // 'short' | 'long' | 'open'
 
@@ -53,6 +53,14 @@ Target date: ${smart.timeBound}`
     };
 
     try {
+      // No-AI mode / no key: create the goal immediately without generating
+      // AI checkpoints. The manual goal path must never depend on the AI.
+      if (!aiEnabled || !apiKey) {
+        onCreate({ ...goalBase, checkpoints: [] });
+        setLoading(false);
+        onClose();
+        return;
+      }
       const raw    = await askAI(systemPrompt, userPrompt, apiKey, { model });
       const text   = raw.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(text);

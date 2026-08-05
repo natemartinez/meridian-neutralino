@@ -48,7 +48,7 @@ function extractOrganizeAction(raw) {
   return action;
 }
 
-export function useNOVA({ apiKey, model, projects, focus, waypointContext, loaded, pendingAutoStart, setPendingAutoStart, blackboardRef }) {
+export function useNOVA({ apiKey, aiMode = 'on', model, projects, focus, waypointContext, loaded, pendingAutoStart, setPendingAutoStart, blackboardRef }) {
   const [novaState, setNovaState] = useState(() => {
     try {
       const s = localStorage.getItem('meridian_nova_v1');
@@ -375,7 +375,7 @@ ${programContext ? `\n${programContext}` : ''}
   // Auto-start NOVA programs when waypoint opens OR pendingAutoStart is set
   useEffect(() => {
     if (!loaded) return;
-    if (!apiKey) return;
+    if (!apiKey || aiMode === 'off') return;
     if (novaLoading) {
       console.log('[DEBUG] useNOVA auto-start: bailing out, novaLoading is true');
       return;
@@ -450,10 +450,10 @@ ${programContext ? `\n${programContext}` : ''}
         }));
       }
     }).finally(() => setNovaLoading(false));
-  }, [waypointContext?.type, waypointContext?.id, pendingAutoStart, apiKey, buildNOVASystemPrompt, buildBlackboardUserMessage, loaded, novaSessionKey, novaRetry, novaLoading, novaState.programChats, setPendingAutoStart]);
+  }, [waypointContext?.type, waypointContext?.id, pendingAutoStart, apiKey, aiMode, buildNOVASystemPrompt, buildBlackboardUserMessage, loaded, novaSessionKey, novaRetry, novaLoading, novaState.programChats, setPendingAutoStart]);
 
   const extractNOVAInsights = useCallback(async (programId, messages) => {
-    if (!apiKey || messages.length < 3) return;
+    if (!apiKey || aiMode === 'off' || messages.length < 3) return;
     const transcript = messages.map(m => `${m.role}: ${m.content}`).join('\n');
     const raw = await chatWithNOVA([
       { role: 'system', content: 'You are a JSON API that extracts insights from productivity coaching conversations.' },
@@ -501,7 +501,7 @@ ${programContext ? `\n${programContext}` : ''}
         }));
       }
     } catch { /* silently ignore parse errors */ }
-  }, [apiKey]);
+  }, [apiKey, aiMode]);
 
   const confirmInsight = useCallback((insightId) => {
     setNovaState(prev => {
@@ -587,7 +587,7 @@ ${programContext ? `\n${programContext}` : ''}
    * Results go to pendingInsights for user confirmation.
    */
   const inferKnowledgeFromMessage = useCallback(async (userText, programId) => {
-    if (!apiKey || userText.trim().length < 20) return;
+    if (!apiKey || aiMode === 'off' || userText.trim().length < 20) return;
     try {
       const system = 'You are a knowledge extraction API. Extract knowledge entries from user messages.';
       const result = await chatWithNOVA([
@@ -612,11 +612,11 @@ ${programContext ? `\n${programContext}` : ''}
     } catch {
       // Silently fail — real-time inference is best-effort
     }
-  }, [apiKey]);
+  }, [apiKey, aiMode]);
 
   const sendNOVAMessage = useCallback(async (programId, overrideText) => {
     const text = (overrideText || novaChatInput).trim();
-    if (!text || novaLoading || !apiKey) return;
+    if (!text || novaLoading || !apiKey || aiMode === 'off') return;
     if (!overrideText) setNovaChatInput('');
 
     // When overrideText is provided (from startup action buttons), it's a pre-crafted prompt.
@@ -722,7 +722,7 @@ ${programContext ? `\n${programContext}` : ''}
         }
       }
     } finally { setNovaLoading(false); }
-  }, [novaChatInput, novaLoading, apiKey, novaState, buildNOVASystemPrompt, buildBlackboardUserMessage, addSyncEvent, extractNOVAInsights, novaRetry, inferKnowledgeFromMessage, novaSessionKey, blackboardRef]);
+  }, [novaChatInput, novaLoading, apiKey, aiMode, novaState, buildNOVASystemPrompt, buildBlackboardUserMessage, addSyncEvent, extractNOVAInsights, novaRetry, inferKnowledgeFromMessage, novaSessionKey, blackboardRef]);
 
   /**
    * One-shot Organize analysis — NOT a chat turn.
@@ -733,7 +733,7 @@ ${programContext ? `\n${programContext}` : ''}
    * The proposal is rendered as a card with Confirm/Cancel by OrganizeOverviewView.
    */
   const runOrganizeAnalysis = useCallback(async () => {
-    if (!apiKey || novaLoading) return;
+    if (!apiKey || aiMode === 'off' || novaLoading) return;
     setNovaLoading(true);
     try {
       const systemPrompt = buildNOVASystemPrompt('organize', false, null);
@@ -770,7 +770,7 @@ ${programContext ? `\n${programContext}` : ''}
       }));
       return { content, action, options };
     } finally { setNovaLoading(false); }
-  }, [apiKey, novaLoading, buildNOVASystemPrompt, buildBlackboardUserMessage, novaRetry, model, blackboardRef, setNovaState, sanitizeLLMContent]);
+  }, [apiKey, aiMode, novaLoading, buildNOVASystemPrompt, buildBlackboardUserMessage, novaRetry, model, blackboardRef, setNovaState, sanitizeLLMContent]);
 
   // Internal helpers for generateNovaPlan (same logic as App.jsx's calcStreak/getWeeklyData)
   const allCompletionDates = () => {
@@ -815,7 +815,7 @@ ${programContext ? `\n${programContext}` : ''}
   };
 
   const generateNovaPlan = useCallback(async (userPriorities) => {
-    if (!apiKey || novaState.planGenLoading) return;
+    if (!apiKey || aiMode === 'off' || novaState.planGenLoading) return;
 
     // Dynamic confidence threshold based on plan accuracy history
     const confidence = computePlanningConfidence(novaState.syncEvents);
@@ -954,13 +954,13 @@ Generate a JSON object with a "tasks" array of 5-7 tasks for ${isPlanningForTomo
         planError: err.message || 'Failed to generate daily plan',
       }));
     }
-  }, [apiKey, projects, novaState.planGenLoading, novaState.syncEvents, novaState.routine, novaState.planAccuracy, knowledgePool, novaRetry]);
+  }, [apiKey, aiMode, projects, novaState.planGenLoading, novaState.syncEvents, novaState.routine, novaState.planAccuracy, knowledgePool, novaRetry]);
 
   generateNovaPlanRef.current = generateNovaPlan;
 
   // Startup: generate daily plan if stale (only if confidence >= 80%)
   useEffect(() => {
-    if (!apiKey) return;
+    if (!apiKey || aiMode === 'off') return;
     const today = new Date().toISOString().slice(0, 10);
     const plan  = novaState.dailyPlan;
     const confidence = computePlanningConfidence(novaState.syncEvents);
@@ -980,7 +980,7 @@ Generate a JSON object with a "tasks" array of 5-7 tasks for ${isPlanningForTomo
 
   // ── Weekly Goals Scan ──
   const scanWeeklyGoals = useCallback(async () => {
-    if (!apiKey) return;
+    if (!apiKey || aiMode === 'off') return;
     setNovaState(prev => ({ ...prev, weeklyInsights: { loading: true, text: null, error: null } }));
 
     const now = new Date();
@@ -1040,14 +1040,14 @@ Generate a JSON object with a "tasks" array of 5-7 tasks for ${isPlanningForTomo
         weeklyInsights: { loading: false, text: null, error: 'Failed to scan weekly goals. Try again.' },
       }));
     }
-  }, [apiKey, projects, novaRetry]);
+  }, [apiKey, aiMode, projects, novaRetry]);
 
   /**
    * suggestSubtasks — asks NOVA to break a goal into actionable subtasks.
    * Returns an array of { title, description } objects, or null on failure.
    */
   const suggestSubtasks = useCallback(async (goalTitle, goalDescription, existingSubtasks = []) => {
-    if (!apiKey) return null;
+    if (!apiKey || aiMode === 'off') return null;
     const system = 'You are NOVA, a task breakdown specialist. Given a goal, suggest 3-7 concrete, actionable subtasks. Return ONLY a JSON array of objects with "title" (string, max 60 chars) and "description" (string, max 120 chars, optional) fields. No markdown, no code fences, no extra text.';
     const existingBlock = existingSubtasks.length > 0
       ? `\n\nExisting subtasks (do NOT duplicate these):\n${existingSubtasks.map(s => `- ${s.title || s}`).join('\n')}`
@@ -1070,7 +1070,7 @@ Generate a JSON object with a "tasks" array of 5-7 tasks for ${isPlanningForTomo
     } catch {
       return null;
     }
-  }, [apiKey, model, novaRetry]);
+  }, [apiKey, aiMode, model, novaRetry]);
 
   return {
     novaState, setNovaState,

@@ -85,7 +85,10 @@ export default function useAppCanvas({
       isCanvasPage: isCanvasPage(mainPage),
       hasCanvas: !!canvasRef.current,
     });
-    if (!loaded || !apiKey || !isCanvasPage(mainPage)) return;
+    // No-AI mode: the canvas is the core navigation surface and must render
+    // even without an API key. AI gating is handled at the feature level
+    // (NOVA chat/insights/programs), not by blocking the canvas.
+    if (!loaded || !isCanvasPage(mainPage)) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dpr = window.devicePixelRatio || 1;

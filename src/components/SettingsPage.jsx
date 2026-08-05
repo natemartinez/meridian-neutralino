@@ -2,7 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { T } from '../utils/theme.js';
 import { validateApiKey } from '../utils/api.js';
 
-export default function SettingsPage({ apiKey, setApiKey, model, setModel, intensity, setIntensity, showApiKey, setShowApiKey, setMainPage, buildNOVASystemPrompt, onNewSession }) {
+export default function SettingsPage({ apiKey, setApiKey, aiMode, setAiMode, model, setModel, intensity, setIntensity, showApiKey, setShowApiKey, setMainPage, buildNOVASystemPrompt, onNewSession }) {
+  const [keyStorageMode, setKeyStorageMode] = useState(null); // 'encrypted' | 'local' | 'browser' | null
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const mode = await window.electronAPI?.getKeyStorageMode?.();
+        if (!cancelled) setKeyStorageMode(mode || null);
+      } catch {
+        if (!cancelled) setKeyStorageMode(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const [keyVal, setKeyVal]       = useState(apiKey || '');
   const [keySaved, setKeySaved]   = useState(false);
   const [keyError, setKeyError]   = useState('');
@@ -25,6 +38,9 @@ export default function SettingsPage({ apiKey, setApiKey, model, setModel, inten
     try { await (window.electronAPI?.setApiKey(trimmed) ?? Promise.resolve()); }
     catch { /* storage error — key still usable for this session */ }
     setApiKey?.(trimmed);
+    // Saving a key re-enables AI mode automatically — No-AI is a graceful
+    // degraded state, not a separate fork of the app.
+    setAiMode?.('on');
     setKeySaved(true);
     setTimeout(() => setKeySaved(false), 2000);
   };
@@ -90,7 +106,41 @@ export default function SettingsPage({ apiKey, setApiKey, model, setModel, inten
           {keyError && (
             <div style={{ color:T.rose, fontSize:10, fontFamily:"'IBM Plex Mono',monospace", marginBottom:8, lineHeight:1.4 }}>{keyError}</div>
           )}
-          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted }}>API key — used for AI Check-in, Plan My Day, Suggest Subtask</div>
+          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted, lineHeight:1.5 }}>
+            API key — used for AI Check-in, Plan My Day, Suggest Subtask.<br/>
+            {keyStorageMode === 'encrypted' && 'Stored encrypted in your OS keychain.'}
+            {keyStorageMode === 'local' && 'Stored locally on this device (not encrypted).'}
+            {keyStorageMode === 'browser' && 'Session-only in browser dev — not persisted.'}
+            {!keyStorageMode && 'Storage status unavailable.'}
+          </div>
+        </div>
+        {/* ── AI Mode toggle ── */}
+        <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:'18px 20px', marginBottom:16 }}>
+          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted, letterSpacing:'.12em', marginBottom:4 }}>NOVA / AI MODE</div>
+          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.dim, marginBottom:14, lineHeight:1.5 }}>
+            {aiMode === 'on'
+              ? 'NOVA is on — AI chat, insights, and program planning are active.'
+              : 'No-AI mode — goals, onward, work logs, pomodoro, paths & tracking all work. AI chat, insights, and programs are hidden.'}
+          </div>
+          <div style={{ display:'flex', gap:8 }}>
+            <button
+              onClick={() => setAiMode?.(aiMode === 'on' ? 'off' : 'on')}
+              style={{
+                flex:1,
+                background: aiMode === 'on' ? `${T.accent}22` : 'transparent',
+                border:`1px solid ${aiMode === 'on' ? `${T.accent}60` : T.border}`,
+                borderRadius:6, padding:'8px 0',
+                color: aiMode === 'on' ? T.accent : T.muted,
+                fontFamily:"'Syne',sans-serif", fontSize:11, fontWeight:700,
+                cursor:'pointer', letterSpacing:'.05em', transition:'all .15s',
+              }}
+            >{aiMode === 'on' ? '✓ NOVA ON' : 'NOVA OFF — TAP TO ENABLE'}</button>
+          </div>
+          {aiMode === 'off' && (
+            <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.muted, marginTop:10, lineHeight:1.5 }}>
+              Enable AI by entering an API key above, or toggle NOVA back on (a key will be required).
+            </div>
+          )}
         </div>
         {/* AI Model */}
         <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:'18px 20px', marginBottom:16 }}>

@@ -2,7 +2,8 @@ import React from 'react';
 import { T } from '../utils/theme.js';
 import { progress } from '../utils/helpers.js';
 
-export default function MapPanel({ hoveredWeek, projects, weeklyInsights, onWeeklyCheckin, companionLoading }) {
+export default function MapPanel({ hoveredWeek, projects, weeklyInsights, onWeeklyCheckin, companionLoading, aiEnabled = true }) {
+  const aiOff = !aiEnabled;
   if (hoveredWeek === null) {
     return (
       <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:24, textAlign:'center' }}>
@@ -91,22 +92,28 @@ export default function MapPanel({ hoveredWeek, projects, weeklyInsights, onWeek
             }}>✦</div>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily:"'Syne',sans-serif", fontSize: 11, fontWeight: 700, color: T.accent }}>NOVA Weekly Check-in</div>
-              <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize: 8, color: T.muted }}>Goal alignment scan</div>
+              <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize: 8, color: T.muted }}>{aiOff ? 'Offline — No-AI mode' : 'Goal alignment scan'}</div>
             </div>
             <button
               onClick={onWeeklyCheckin}
-              disabled={companionLoading || weeklyInsights?.loading}
+              disabled={aiOff || companionLoading || weeklyInsights?.loading}
               style={{
-                background: companionLoading || weeklyInsights?.loading ? T.border : `${T.accent}18`,
-                border: `1px solid ${companionLoading || weeklyInsights?.loading ? T.border : T.accent}40`,
+                background: aiOff || companionLoading || weeklyInsights?.loading ? T.border : `${T.accent}18`,
+                border: `1px solid ${aiOff || companionLoading || weeklyInsights?.loading ? T.border : T.accent}40`,
                 borderRadius: 5, padding: '5px 10px',
-                color: companionLoading || weeklyInsights?.loading ? T.muted : T.accent,
+                color: aiOff || companionLoading || weeklyInsights?.loading ? T.muted : T.accent,
                 fontFamily:"'IBM Plex Mono',monospace", fontSize: 8,
-                cursor: companionLoading || weeklyInsights?.loading ? 'default' : 'pointer',
+                cursor: aiOff || companionLoading || weeklyInsights?.loading ? 'default' : 'pointer',
                 letterSpacing: '0.05em', whiteSpace: 'nowrap',
               }}
             >{weeklyInsights?.loading ? 'Scanning…' : 'Scan Week'}</button>
           </div>
+
+          {aiOff && (
+            <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize: 9, color: T.muted, padding: '6px 0' }}>
+              NOVA is offline in No-AI mode — add an API key in Settings to scan your week.
+            </div>
+          )}
 
           {weeklyInsights?.loading && (
             <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize: 9, color: T.muted, padding: '8px 0', textAlign:'center' }}>
@@ -133,7 +140,7 @@ export default function MapPanel({ hoveredWeek, projects, weeklyInsights, onWeek
             </div>
           )}
 
-          {!weeklyInsights && (
+          {!aiOff && !weeklyInsights && (
             <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize: 9, color: T.muted, padding: '4px 0' }}>
               Click "Scan Week" for NOVA's assessment of your weekly goal alignment.
             </div>

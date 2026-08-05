@@ -24,7 +24,7 @@ export default function TrackingPage({
   apiKey, model, geminiInput, setGeminiInput, geminiResponse, setGeminiResponse, geminiLoading, setGeminiLoading,
   focus, knowledgePool,
   pomodoroPreselect, onClearPomodoroPreselect,
-  setMainPage,
+  setMainPage, aiEnabled = true,
 }) {
   const [trackView, setTrackView] = useState('performance');
 
@@ -136,7 +136,7 @@ export default function TrackingPage({
 
   // Gemini check-in
   const handleGeminiCheckin = async (userMsg) => {
-    if (!apiKey) { setGeminiResponse('Add your OpenRouter key in Settings first.'); return; }
+    if (!aiEnabled || !apiKey) { setGeminiResponse('NOVA is offline in No-AI mode — add an API key in Settings to enable AI check-ins.'); return; }
     setGeminiLoading(true);
     const focusAreas = focus.filter(Boolean).join(', ') || 'none set';
     const goalList = projects.filter(p => p.inFocus).map(p => p.title).join(', ') || 'none';
@@ -343,6 +343,7 @@ export default function TrackingPage({
         </div>
 
         {/* ── AI Check-in ── */}
+        {aiEnabled ? (
         <div style={{ background:T.surface, border:`1px solid ${T.accent}30`, borderRadius:10, padding:'16px 18px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
             <span style={{ fontFamily:"'Syne',sans-serif", fontSize:11, fontWeight:800, color:T.accent, letterSpacing:'.08em' }}>✦ AI CHECK-IN</span>
@@ -373,6 +374,15 @@ export default function TrackingPage({
             </button>
           </div>
         </div>
+        ) : (
+        <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:'16px 18px', textAlign:'center' }}>
+          <div style={{ fontFamily:"'Syne',sans-serif", fontSize:11, fontWeight:800, color:T.muted, letterSpacing:'.08em', marginBottom:6 }}>✦ AI CHECK-IN</div>
+          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:T.dim, lineHeight:1.6 }}>
+            NOVA is offline in No-AI mode.<br/>
+            Add an API key in Settings to enable AI check-ins.
+          </div>
+        </div>
+        )}
 
       </div>
       )}

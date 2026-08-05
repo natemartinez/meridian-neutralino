@@ -14,7 +14,7 @@ import meridianLogo from '../assets/meridian_full_logo.png';
  * The server-side result is cached in memory for 5 minutes to avoid
  * redundant API calls during the onboarding flow.
  */
-export default function ApiKeyScreen({ onSave }) {
+export default function ApiKeyScreen({ onSave, onSkip }) {
   const [val, setVal]       = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr]       = useState('');
@@ -231,6 +231,20 @@ export default function ApiKeyScreen({ onSave }) {
           {saving ? 'Saving…' : validating ? 'Validating…' : 'Save & Continue'}
         </button>
 
+        {/* Skip — enter the app in No-AI mode */}
+        {onSkip && (
+          <button
+            onClick={onSkip}
+            disabled={isProcessing}
+            style={{
+              width:'100%', marginTop:10, background:'none',
+              border:'none', color:T.muted, fontSize:12, cursor:'pointer',
+              padding:'6px 0', fontFamily:"'IBM Plex Mono',monospace",
+            }}
+          >
+            Skip for now — use Meridian without AI
+          </button>
+        )}
       </div>
     </div>
   );

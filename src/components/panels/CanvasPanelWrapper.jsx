@@ -70,6 +70,7 @@ export default function CanvasPanelWrapper({ panelId, ...props }) {
             weeklyInsights={props.novaState?.weeklyInsights}
             onWeeklyCheckin={props.scanWeeklyGoals}
             companionLoading={props.novaState?.weeklyInsights?.loading || false}
+            aiEnabled={props.aiEnabled}
           />
         )}
         {panelId === 'skills' && (

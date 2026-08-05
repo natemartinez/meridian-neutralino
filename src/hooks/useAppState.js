@@ -59,6 +59,12 @@ export default function useAppState() {
     return saved || '';
   });
 
+  // ── No-AI mode ──────────────────────────────────────────────────
+  // 'on'  = NOVA / AI features enabled (requires an API key).
+  // 'off' = use Meridian fully offline without an API key. Goals,
+  //         work logs, pomodoro, streaks, deadlines all still work;
+  //         AI chat, insights, and program planning are hidden.
+  const [aiMode, setAiMode] = useLocalStorageState('meridian_ai_mode', 'on');
   const [, setPlanningDay]          = useState(false);
   const [addInput, setAddInput]     = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -214,7 +220,7 @@ export default function useAppState() {
     dismissInsight,
     recordPlanAccuracy,
     setNovaLoading,
-  } = useNOVA({ apiKey, model, projects, focus, waypointContext, loaded, pendingAutoStart, setPendingAutoStart, blackboardRef });
+  } = useNOVA({ apiKey, aiMode, model, projects, focus, waypointContext, loaded, pendingAutoStart, setPendingAutoStart, blackboardRef });
 
   // ── NOVA Active Interactions ──
   const novaInteractions = useNovaInteractions();
@@ -470,9 +476,10 @@ export default function useAppState() {
         if (savedModel) setModel(savedModel);
         setLoaded(true);
 
-        // Determine auto-start program after loading
+        // Determine auto-start program after loading.
+        // No-AI mode: never auto-start a program — the AI surfaces are hidden.
         const effectiveApiKey = key || apiKey;
-        if (effectiveApiKey) {
+        if (effectiveApiKey && aiMode !== 'off') {
           const program = determineAutoStartProgram({
             apiKey: effectiveApiKey,
             syncEvents: novaState.syncEvents,
@@ -567,6 +574,8 @@ export default function useAppState() {
   // would create a second, plaintext copy of the key on disk.
   useEffect(() => { if (model) localStorage.setItem('meridian_model', model); }, [model]);
   useEffect(() => { sunIdRef.current = sunId; if (sunId) localStorage.setItem('meridian_sun_id', sunId); }, [sunId]);
+  // No-AI mode flag — persisted so the choice survives restarts.
+  useEffect(() => { localStorage.setItem('meridian_ai_mode', aiMode); }, [aiMode]);
 
   // ── Scroll to current time + resize canvas when waypoint opens ──
   useOnwardScroll(activePage, canvasRef, resizeRef);
@@ -656,6 +665,7 @@ export default function useAppState() {
     loaded, setLoaded,
     apiKey, setApiKey,
     model, setModel,
+    aiMode, setAiMode,
     setPlanningDay,
     addInput, setAddInput,
     confirmDelete, setConfirmDelete,

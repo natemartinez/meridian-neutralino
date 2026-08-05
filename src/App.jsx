@@ -55,7 +55,19 @@ function Meridian() {
   });
 
   if (!appState.loaded) return null;
-  if (!appState.apiKey) return <ApiKeyScreen onSave={appState.setApiKey} />;
+
+  // No-AI mode: users without an API key can still use Meridian fully.
+  // The gate only applies when AI mode is ON and no key has been saved.
+  // A "Skip for now" escape lets the user enter No-AI mode from the
+  // key screen instead of being blocked.
+  if (appState.aiMode === 'on' && !appState.apiKey) {
+    return (
+      <ApiKeyScreen
+        onSave={appState.setApiKey}
+        onSkip={() => appState.setAiMode('off')}
+      />
+    );
+  }
 
   // 6. Render — pass everything as props to AppRouter
   return (

@@ -49,6 +49,7 @@ export default function AppRouter({
   dragging, setDragging,
   apiKey, setApiKey,
   model, setModel,
+  aiMode, setAiMode,
   addInput, setAddInput,
   confirmDelete, setConfirmDelete,
   activePage, setActivePage,
@@ -184,6 +185,79 @@ export default function AppRouter({
   const colorFor  = (i) => NODE_PALETTE[i % NODE_PALETTE.length];
   const [novaCompassOpen, setNovaCompassOpen] = useState(false);
 
+  // ── No-AI mode ────────────────────────────────────────────────
+  // aiMode 'off' (No-AI) hides the generative NOVA surfaces (chat,
+  // programs, insights, organize) but keeps goals, onward, work logs,
+  // pomodoro, paths, skills, and tracking fully functional.
+  const aiEnabled = aiMode !== 'off';
+
+  const goToHQ = () => {
+    setNovaLoading(false);
+    setPendingAutoStart(null);
+    setMainPage('hq');
+    setActivePage('goals');
+    activePageRef.current = 'goals';
+    setShowStartupCanvas(false);
+    closeWaypoint();
+  };
+
+  // Compact offline card shown in the SIGNAL sidebar when No-AI mode is on.
+  // Always rendered (like NovaSidebarBlock) so the sidebar keeps its identity
+  // in No-AI mode; in the collapsed state it shrinks to a compact chip.
+  const NoAIOfflineCard = () => (
+    <div className="sec" style={{ padding:'10px 12px', margin:'0 4px' }}>
+      {sidebarCollapsed ? (
+        <div
+          className="nova-compact"
+          title="NOVA offline — add an API key in Settings"
+          onClick={() => { setSidebarCollapsed(false); }}
+        >
+          <span style={{ fontSize: 18, lineHeight: 1 }}>🧭</span>
+        </div>
+      ) : (
+        <div style={{
+          background:T.card,
+          border:`1px solid ${T.border}`,
+          borderRadius:7,
+          padding:'12px 12px',
+          textAlign:'center',
+        }}>
+          <div style={{ fontSize:20, lineHeight:1.2, marginBottom:4, opacity:.8 }}>🧭</div>
+          <div style={{
+            fontFamily:"'IBM Plex Mono',monospace",
+            fontSize:9,
+            color:T.muted,
+            letterSpacing:'.08em',
+            marginBottom:8,
+          }}>NOVA OFFLINE</div>
+          <div style={{
+            fontFamily:"'IBM Plex Mono',monospace",
+            fontSize:8,
+            color:T.dim,
+            lineHeight:1.5,
+            marginBottom:8,
+          }}>
+            Add an API key in Settings to activate AI chat, insights & programs.
+          </div>
+          <button
+            onClick={() => setMainPage('settings')}
+            style={{
+              background:'none',
+              border:`1px solid ${T.accent}50`,
+              borderRadius:5,
+              color:T.accent,
+              fontFamily:"'IBM Plex Mono',monospace",
+              fontSize:8,
+              padding:'4px 12px',
+              cursor:'pointer',
+              letterSpacing:'.04em',
+            }}
+          >Connect AI</button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <>
       {appStyles}
@@ -192,17 +266,21 @@ export default function AppRouter({
         {/* ═══ SIGNAL ═══ */}
         <div className={`sig${sidebarCollapsed ? ' collapsed' : ''}${novaCompassOpen ? ' sig-compass-open' : ''}`}>
           <div className="sig-inner">
-            <NovaSidebarBlock
-              novaState={novaState}
-              mainPage={mainPage}
-              onOpenInsights={() => setMainPage('nova-insights')}
-              onBackToHQ={() => { setNovaLoading(false); setPendingAutoStart(null); setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; setShowStartupCanvas(true); closeWaypoint(); }}
-              novaCompassOpen={novaCompassOpen}
-              onToggleCompass={() => setNovaCompassOpen(v => !v)}
-              collapsed={sidebarCollapsed}
-              onOpenCompass={() => { setSidebarCollapsed(false); setNovaCompassOpen(true); }}
-            />
-            {novaCompassOpen ? (
+            {aiEnabled ? (
+              <NovaSidebarBlock
+                novaState={novaState}
+                mainPage={mainPage}
+                onOpenInsights={() => setMainPage('nova-insights')}
+                onBackToHQ={goToHQ}
+                novaCompassOpen={novaCompassOpen}
+                onToggleCompass={() => setNovaCompassOpen(v => !v)}
+                collapsed={sidebarCollapsed}
+                onOpenCompass={() => { setSidebarCollapsed(false); setNovaCompassOpen(true); }}
+              />
+            ) : (
+              <NoAIOfflineCard />
+            )}
+            {aiEnabled && novaCompassOpen ? (
               <NovaCompassChat
                 novaState={novaState}
                 setNovaState={setNovaState}
@@ -225,7 +303,7 @@ export default function AppRouter({
                 novaState={novaState}
                 mainPage={mainPage}
                 onOpenProgram={(id) => setMainPage(`program-${id}`)}
-                onBackToHQ={() => { setNovaLoading(false); setPendingAutoStart(null); setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; setShowStartupCanvas(true); closeWaypoint(); }}
+                onBackToHQ={goToHQ}
                 onOpenProgramWithPage={onOpenProgramWithPage}
                 addSyncEvent={addSyncEvent}
                 onTogglePrograms={() => setSidebarView('programs')}
@@ -235,7 +313,7 @@ export default function AppRouter({
                 collapsed={sidebarCollapsed}
                 mainPage={mainPage}
                 onOpenProgram={(id) => { setMainPage(`program-${id}`); }}
-                onBackToHQ={() => { setNovaLoading(false); setPendingAutoStart(null); setMainPage('hq'); setActivePage('goals'); activePageRef.current = 'goals'; setShowStartupCanvas(true); closeWaypoint(); }}
+                onBackToHQ={goToHQ}
                 addSyncEvent={addSyncEvent}
                 onOpenProgramWithPage={onOpenProgramWithPage}
                 onToggleHistory={() => setSidebarView('session-history')}
@@ -305,7 +383,7 @@ export default function AppRouter({
         <div className={`cmd${waypointOpen ? ' wp-open' : ''}`}>
           {/* Body */}
           <div className="cbody">
-            {mainPage === 'hq' && showStartupCanvas ? (
+            {aiEnabled && mainPage === 'hq' && showStartupCanvas ? (
               <StartupCanvas
                 lastProgram={getLastActiveProgram(novaState?.programChats)}
                 focusMode={focusMode}
@@ -457,7 +535,7 @@ export default function AppRouter({
                     <WorkLogsView />
                   </div>
                 )}
-                {activePage === 'briefing-chat' && isProgram(mainPage) && (() => {
+                {aiEnabled && activePage === 'briefing-chat' && isProgram(mainPage) && (() => {
                   const progId = extractProgId(mainPage);
                   return (
                     <div style={{ position: 'absolute', inset: 0, background: '#0c111a', zIndex: 10, display: 'flex', flexDirection: 'column', padding: 16 }}>
@@ -502,7 +580,7 @@ export default function AppRouter({
               </div>
               </>
             )}
-            {mainPage === 'program-organize' && (
+            {aiEnabled && mainPage === 'program-organize' && (
               <OrganizeOverviewView
                 blackboard={blackboard}
                 novaState={novaState}
@@ -528,6 +606,7 @@ export default function AppRouter({
             )}
             {mainPage === 'tracking' && (
               <TrackingPage
+                aiEnabled={aiEnabled}
                 projects={projects}
                 onwardItems={onwardItems}
                 sessions={sessions}
@@ -561,6 +640,8 @@ export default function AppRouter({
               <SettingsPage
                 apiKey={apiKey}
                 setApiKey={setApiKey}
+                aiMode={aiMode}
+                setAiMode={setAiMode}
                 model={model}
                 setModel={setModel}
                 intensity={intensity}
@@ -582,7 +663,7 @@ export default function AppRouter({
                 setMainPage={setMainPage}
               />
             )}
-            {mainPage === 'nova-insights' && (
+            {aiEnabled && mainPage === 'nova-insights' && (
               <NovaInsightsPanel
                 novaState={novaState}
                 apiKey={apiKey}
@@ -655,6 +736,7 @@ export default function AppRouter({
                       >
                         {goalsView === 'matrix' ? '☰ List View' : '⊞ Matrix View'}
                       </button>
+                      {aiEnabled && (
                       <button
                         onClick={() => onOpenProgramWithPage('organize', 'overview')}
                         style={{
@@ -681,6 +763,7 @@ export default function AppRouter({
                       >
                         ⟐ Organize Tasks
                       </button>
+                      )}
                     </>
                 )}
               </div>
@@ -754,6 +837,7 @@ export default function AppRouter({
                 hoveredWeek={hoveredWeek}
                 novaState={novaState}
                 scanWeeklyGoals={scanWeeklyGoals}
+                aiEnabled={aiEnabled}
                 skills={skills}
                 selectedSkillId={selectedSkillId}
                 updateSkillLevel={updateSkillLevel}
@@ -795,6 +879,7 @@ export default function AppRouter({
       {modal && (
         <GoalModal
           apiKey={apiKey}
+          aiEnabled={aiEnabled}
           model={model}
           onClose={() => { setModal(false); setForm({ title:'', desc:'', measurable:'', achievable:'', relevant:'', deadline:'', priority:'low', scale:'short' }); }}
           onCreate={createGoalFromModal}
