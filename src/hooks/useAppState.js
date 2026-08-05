@@ -30,7 +30,12 @@ export default function useAppState() {
   const [pan, setPan]               = useState({ x: 0, y: 0 });
   const [dragging, setDragging]     = useState(null);
   const [loaded, setLoaded]         = useState(false);
-  const [apiKey, setApiKey]         = useState(() => localStorage.getItem('meridian_api_key') || null);
+  // NOTE: The API key is NEVER read from or written to localStorage.
+  // In production it lives in Neutralino storage (OS keychain when
+  // --enable-encrypted-storage is active, plaintext file otherwise).
+  // It is loaded from the extension in the mount effect below and kept
+  // only in renderer memory for the session.
+  const [apiKey, setApiKey]         = useState(null);
   // Model names follow OpenRouter's provider/model format (e.g. "deepseek/deepseek-chat").
   // Previously the app used bare DeepSeek model names without the provider prefix.
   const [model, setModel]           = useState(() => {
@@ -53,6 +58,7 @@ export default function useAppState() {
     }
     return saved || '';
   });
+
   const [, setPlanningDay]          = useState(false);
   const [addInput, setAddInput]     = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -555,8 +561,10 @@ export default function useAppState() {
     skills, hoveredWeek, selectedSkillId, topGoals,
   ]);
 
-  // ── Persist apiKey/model/sunId to localStorage (side-effect writes) ──
-  useEffect(() => { if (apiKey) localStorage.setItem('meridian_api_key', apiKey); }, [apiKey]);
+  // ── Persist model/sunId to localStorage (side-effect writes) ──
+  // NOTE: apiKey is intentionally NOT persisted here. It is loaded from the
+  // extension at mount and kept in memory only. Storing it in localStorage
+  // would create a second, plaintext copy of the key on disk.
   useEffect(() => { if (model) localStorage.setItem('meridian_model', model); }, [model]);
   useEffect(() => { sunIdRef.current = sunId; if (sunId) localStorage.setItem('meridian_sun_id', sunId); }, [sunId]);
 

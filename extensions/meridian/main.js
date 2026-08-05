@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 const os = require('os');
+const { setEncryptedMode, isEncryptedMode } = require('./keyStorage.js');
 
 // ── Rate limiting state ──
 let lastKillTime = 0;
@@ -88,8 +89,26 @@ async function callOpenRouter(messages, params = {}) {
 
 // ── Extension Message Handler ──
 class MeridianExtension {
+  // When the extension runs with --enable-encrypted-storage, enable the OS
+  // keychain-backed storage first so the key never hits a plaintext file.
+  // Without the flag, storage is local and the renderer is told so.
+  async initKeyStorage() {
+    if (!isEncryptedMode()) return false;
+    try {
+      await Neutralino.storage.setNativeStorageEnabled(true);
+      return true;
+    } catch {
+      setEncryptedMode(false);
+      return false;
+    }
+  }
+
   async onMessage(id, method, params) {
     switch (method) {
+      // ── Key storage mode ──
+      // The renderer queries this to label the UI honestly (keychain vs local).
+      case 'getKeyStorageMode':
+        return { success: true, data: isEncryptedMode() ? 'encrypted' : 'local' };
       // ── State ──
       case 'saveState':
         fs.writeFileSync(STATE_FILE, JSON.stringify(params), 'utf-8');
@@ -103,6 +122,7 @@ class MeridianExtension {
 
       // ── Auth ──
       case 'getApiKey': {
+        await this.initKeyStorage();
         try {
           const key = await Neutralino.storage.getData('meridian_api_key');
           return { success: true, data: key || null };
@@ -123,6 +143,7 @@ class MeridianExtension {
         }
       }
       case 'setApiKey': {
+        await this.initKeyStorage();
         try {
           await Neutralino.storage.setData('meridian_api_key', params);
           return { success: true };

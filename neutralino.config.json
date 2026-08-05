@@ -69,7 +69,9 @@
     "meridian": {
       "path": "/extensions/meridian/main.js",
       "type": "nodeExtension",
-      "args": []
+      "args": [
+        "--enable-encrypted-storage"
+      ]
     }
   },
   "cli": {

@@ -60,10 +60,22 @@ async function ext(method, params) {
     return browserFetchAI(method, params);
   }
   if (method === 'getApiKey') {
-    return null; // API key is stored in OS keychain via extension only
+    // Browser dev fallback — in-memory only. The key is NOT persisted to
+    // localStorage here; the App-level setApiKey state keeps it in memory.
+    // (A dev-only convenience: if a key was provided this session it stays
+    // for the session; on reload the user re-enters it. This matches the
+    // security posture that the key never touches localStorage in dev.)
+    return null;
   }
   if (method === 'setApiKey') {
-    return; // API key is stored in OS keychain via extension only
+    // Browser dev fallback — no persistent storage; key lives in renderer
+    // memory for the session only. Log an explicit notice so devs know the
+    // key is not persisted across reloads in browser mode.
+    console.warn('[meridian] Browser dev mode: API key is session-only (not persisted to disk).');
+    return;
+  }
+  if (method === 'getKeyStorageMode') {
+    return 'browser'; // No persistent storage in plain browser dev mode
   }
   if (method === 'getModel') {
     return localStorage.getItem('meridian_model') || null;
@@ -92,6 +104,7 @@ window.electronAPI = {
   loadState:            ()      => ext('loadState'),
   getApiKey:            ()      => ext('getApiKey'),
   setApiKey:            (key)   => ext('setApiKey', key),
+  getKeyStorageMode:    ()      => ext('getKeyStorageMode'),
   getModel:             ()      => ext('getModel'),
   setModel:             (m)     => ext('setModel', m),
   getMorningTime:       ()      => ext('getMorningTime'),

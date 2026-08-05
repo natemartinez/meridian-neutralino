@@ -20,7 +20,23 @@ export default function ApiKeyScreen({ onSave }) {
   const [err, setErr]       = useState('');
   const [validating, setValidating] = useState(false);
   const [serverStatus, setServerStatus] = useState(null); // 'checking' | 'valid' | 'invalid' | null
+  const [storageMode, setStorageMode] = useState(null); // 'encrypted' | 'local' | 'browser' | null
   const abortRef = useRef(null);
+
+  // Query the extension for the ACTUAL storage mode so the UI can label
+  // honestly ("OS keychain" vs "local file") instead of claiming encryption.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const mode = await window.electronAPI?.getKeyStorageMode?.();
+        if (!cancelled) setStorageMode(mode || null);
+      } catch {
+        if (!cancelled) setStorageMode(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -136,13 +152,19 @@ export default function ApiKeyScreen({ onSave }) {
 
   const isProcessing = saving || validating;
 
+  const storageLabel =
+    storageMode === 'encrypted' ? 'stored encrypted in your OS keychain' :
+    storageMode === 'local'     ? 'stored locally on this device' :
+    storageMode === 'browser'   ? 'session-only (not persisted in browser dev)' :
+                                  'storage status unavailable';
+
   return (
     <div style={{ position:'fixed', inset:0, background:T.bg, display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:16, padding:'40px 48px', width:440, boxShadow:'0 8px 40px #00000080' }}>
         <img src={meridianLogo} alt="Meridian" style={{ width:180, display:'block', marginBottom:12 }} />
         <div style={{ color:T.muted, fontSize:13, marginBottom:28, lineHeight:1.5 }}>
           Enter your API key to enable AI features.<br/>
-          Get a key at <strong>openrouter.ai/keys</strong> — stored encrypted on this device.
+          Get a key at <strong>openrouter.ai/keys</strong> — {storageLabel}.
         </div>
 
         {/* Input field */}
@@ -208,6 +230,7 @@ export default function ApiKeyScreen({ onSave }) {
         >
           {saving ? 'Saving…' : validating ? 'Validating…' : 'Save & Continue'}
         </button>
+
       </div>
     </div>
   );
