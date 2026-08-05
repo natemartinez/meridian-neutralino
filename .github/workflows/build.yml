@@ -7,6 +7,16 @@ on:
   pull_request:
     branches: [main]
 
+# Security #4: Release artifacts are code-signed and notarized on macOS.
+# Requires the following GitHub Actions secrets (set in the repo settings):
+#   APPLE_CERTIFICATE_P12       - base64 of the Developer ID Application .p12
+#   APPLE_CERTIFICATE_PASSWORD  - password for the .p12
+#   APPLE_ID                    - Apple ID email (notarization)
+#   APPLE_APP_SPECIFIC_PASSWORD - app-specific password for notarization
+#   APPLE_TEAM_ID               - Apple Developer Team ID
+# The signing step only runs on macOS runners and only for tag pushes
+# (refs/tags/v*). PRs and non-tag pushes still build + test unsigned.
+
 jobs:
   build:
     strategy:
@@ -47,8 +57,72 @@ jobs:
           curl -sfL --proto '=https' --proto-redir 'all,https' -o resources/icons/appIcon.png \
             "https://raw.githubusercontent.com/neutralinojs/neutralinojs-minimal/main/resources/icons/appIcon.png"
 
-      - name: Build production binary
-        run: npm run dist
+      - name: Build production binary (release, macOS bundle)
+        run: npm run dist -- --release --macos-bundle
+        env:
+          MACOS_BUNDLE: '1'
+
+      - name: Import Apple Developer ID certificate (macOS, tags only)
+        if: runner.os == 'macOS' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          # Decode + install the Developer ID Application certificate into the
+          # macOS keychain so `codesign` can use it.
+          echo -n "$APPLE_CERTIFICATE_P12" | base64 --decode > /tmp/apple_cert.p12
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          security create-keychain -p "" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "" "$KEYCHAIN"
+          security import /tmp/apple_cert.p12 -k "$KEYCHAIN" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: -k "" "$KEYCHAIN"
+          security list-keychain -d user -s "$KEYCHAIN" "$(security default-keychain -d user)"
+          rm -f /tmp/apple_cert.p12
+
+      - name: Codesign macOS app bundle (tags only)
+        if: runner.os == 'macOS' && startsWith(github.ref, 'refs/tags/v')
+        working-directory: dist/meridian
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # neu build --macos-bundle produces a .app bundle (or the binary
+          # itself). Sign with Developer ID Application + hardened runtime +
+          # entitlements. The identity is found automatically via the keychain.
+          APP_NAME="Meridian"
+          if [ -d "$APP_NAME.app" ]; then
+            codesign --force --deep --options runtime \
+              --entitlements build/entitlements.mac.plist \
+              --sign "Developer ID Application" "$APP_NAME.app"
+          else
+            # Fallback: sign the bare universal binary.
+            codesign --force --deep --options runtime \
+              --entitlements build/entitlements.mac.plist \
+              --sign "Developer ID Application" "$APP_NAME"
+          fi
+          codesign --verify --verbose=2 "$APP_NAME.app" 2>/dev/null || codesign --verify --verbose=2 "$APP_NAME"
+
+      - name: Notarize macOS app (tags only)
+        if: runner.os == 'macOS' && startsWith(github.ref, 'refs/tags/v')
+        working-directory: dist/meridian
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Package the signed app into a zip and submit it to Apple for
+          # notarization, then staple the ticket to the app.
+          APP_NAME="Meridian"
+          if [ -d "$APP_NAME.app" ]; then
+            ditto -c -k --keepParent "$APP_NAME.app" "$APP_NAME-notarize.zip"
+            xcrun notarytool submit "$APP_NAME-notarize.zip" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --wait
+            xcrun stapler staple "$APP_NAME.app"
+            rm -f "$APP_NAME-notarize.zip"
+          fi
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
@@ -56,6 +130,7 @@ jobs:
           name: meridian-${{ matrix.os }}
           path: |
             dist/meridian/resources.neu
+            dist/meridian/Meridian.app
           if-no-files-found: error
 
       - name: Publish to GitHub Releases
@@ -64,4 +139,5 @@ jobs:
         with:
           files: |
             dist/meridian/resources.neu
+            dist/meridian/Meridian.app
           generate_release_notes: true
