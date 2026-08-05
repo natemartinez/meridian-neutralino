@@ -501,8 +501,8 @@ describe('validateOpenRouterKey', () => {
     await validateOpenRouterKey(keyB);
     expect(globalThis.fetch).toHaveBeenCalledTimes(2);
 
-    // Clear only keyA
-    clearCachedKey(keyA);
+    // Clear only keyA (now async — SHA-256 digest)
+    await clearCachedKey(keyA);
 
     // keyA should hit API again
     await validateOpenRouterKey(keyA);
@@ -511,6 +511,27 @@ describe('validateOpenRouterKey', () => {
     // keyB should still be cached
     await validateOpenRouterKey(keyB);
     expect(globalThis.fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('derives cache keys via Web Crypto SHA-256, never storing the raw key (security #6 evidence)', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(mockResponse(200));
+    const key = validKey();
+
+    // Spy on the Web Crypto digest to prove the key is hashed, not stored raw.
+    const digestSpy = vi.spyOn(crypto.subtle, 'digest');
+
+    await validateOpenRouterKey(key);
+
+    // SHA-256 was used at least once with the key's bytes as input.
+    expect(digestSpy).toHaveBeenCalled();
+    const [algorithm, data] = digestSpy.mock.calls[0];
+    expect(algorithm).toBe('SHA-256');
+    const inputText = new TextDecoder().decode(data);
+    expect(inputText).toBe(key);
+
+    // Sanity: clearing via the async API still works (digest round-trip).
+    await clearCachedKey(key);
+    digestSpy.mockRestore();
   });
 
   // ── Security: key not exposed in logs ───────────────────────

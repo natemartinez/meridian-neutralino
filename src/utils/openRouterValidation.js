@@ -101,30 +101,32 @@ export function clearValidationCache() {
  * Remove a specific key from the validation cache.
  * @param {string} apiKey - The API key to remove from cache
  */
-export function clearCachedKey(apiKey) {
-  const cacheKey = deriveCacheKey(apiKey);
+export async function clearCachedKey(apiKey) {
+  const cacheKey = await deriveCacheKey(apiKey);
   validationCache.delete(cacheKey);
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
- * Derive a deterministic cache key from an API key.
- * Uses a SHA-256-like approach (simple hash) to avoid storing the raw key.
- * In production, this could use the Web Crypto API's subtle.digest.
+ * Derive a deterministic cache key from an API key using a real
+ * SHA-256 digest (Web Crypto API), so the raw key is never stored or
+ * recoverable from the cache. The digest is truncated to 16 hex chars
+ * (64 bits of entropy) — plenty for an in-memory cache key, and it
+ * keeps the cache lookup keys compact.
  *
  * @param {string} apiKey - The API key
- * @returns {string} Deterministic hash for cache lookup
+ * @returns {Promise<string>} Deterministic hex digest for cache lookup
  */
-function deriveCacheKey(apiKey) {
-  // Simple hash function — sufficient for cache key derivation
-  let hash = 0;
-  for (let i = 0; i < apiKey.length; i++) {
-    const char = apiKey.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash |= 0; // Convert to 32-bit integer
+async function deriveCacheKey(apiKey) {
+  const data = new TextEncoder().encode(apiKey);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  const bytes = new Uint8Array(digest);
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, '0');
   }
-  return `or-v-${Math.abs(hash).toString(36)}`;
+  return `or-v-${hex.slice(0, 16)}`;
 }
 
 /**
@@ -433,7 +435,7 @@ export async function validateOpenRouterKey(apiKey, options = {}) {
 
   // ── Step 2: Cache lookup ───────────────────────────────────────────────
   if (!bypassCache) {
-    const cacheKey = deriveCacheKey(apiKey);
+    const cacheKey = await deriveCacheKey(apiKey);
     const cached = getCachedResult(cacheKey, cacheTtlMs);
     if (cached) {
       console.log('[OpenRouterValidation] Returning cached validation result');
@@ -476,7 +478,7 @@ export async function validateOpenRouterKey(apiKey, options = {}) {
   if (lastResult.valid || lastResult.code === 'unauthorized' || lastResult.code === 'forbidden') {
     // Cache definitive results (valid, unauthorized, forbidden)
     // Don't cache transient errors (rate_limited, server_error, network_error)
-    const cacheKey = deriveCacheKey(apiKey);
+    const cacheKey = await deriveCacheKey(apiKey);
     setCachedResult(cacheKey, lastResult, cacheTtlMs);
   }
 

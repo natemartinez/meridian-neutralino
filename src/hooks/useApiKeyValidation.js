@@ -148,7 +148,10 @@ export function useApiKeyValidation() {
     }
 
     if (apiKey) {
-      clearCachedKey(apiKey);
+      // Async cache eviction — fire-and-forget. deriveCacheKey now uses
+      // Web Crypto (async SHA-256); cache clearing is best-effort and must
+      // not block the UI or the synchronous clearValidation() contract.
+      clearCachedKey(apiKey).catch(() => {});
     }
   }, []);
 
