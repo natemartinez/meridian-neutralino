@@ -31,10 +31,10 @@ Meridian is a **native desktop application** built with [Neutralino.js](https://
 
 ### Prerequisites
 
-| Dependency | Version | Notes |
-| --- | --- | --- |
-Node.js | `>= 22` | Required for tooling + the extension runtime |
-npm | bundled with Node | Package manager |
+| Dependency | Version           | Notes                                        |
+| ------------| -------------------| ----------------------------------------------|
+| Node.js    | `>= 22`           | Required for tooling + the extension runtime |
+| npm        | bundled with Node | Package manager                              |
 
 Platform prerequisites (for Neutralino's WebView):
 
@@ -100,12 +100,7 @@ Example from the Blackboard to OpenRouter:
 ### Flow 1: NOVA Chat
 
 **Entry:** NovaCompassChat.jsx → sendNOVAMessage('compass', text)
-
 **Architecture:** Multi-turn conversation loop with history (programChats).
-**Schema:** CHAT_SCHEMA_OPENROUTER (content, options, ready).
-**Output contract:** Free-form text + optional clickable options + optional embedded actions parsed by parseActionsFromResponse().
-**Commit path:** Chat renders inline; if NOVA returns an action, the user sees a Confirm/Cancel button with undo (NovaCompassChat.jsx) before actionRegistry.dispatch() executes.
-**Signature:** conversation loop + action registry + undo.
 
 **Diagram:**
 ```
@@ -114,12 +109,8 @@ User types → sendNOVAMessage('compass', text) → compileBlackboard() → buil
 
 ### Flow 2: Subtask-building
 **Entry:** StartupCanvas.jsx → suggestSubtasks(...) (defined in useNOVA.js)
-
 **Architecture:** A one-shot LLM call — no chat history, no FSM, triggered imperatively from the startup canvas.
-**Schema:** None — the prompt asks for a bare JSON array of { title, description }, parsed directly in suggestSubtasks().
-**Output contract:** A structured array, not a message.
-**Commit path:** Suggestions render as a checklist UI; acceptance calls handleBreakdownTask(goal, suggestions), persisting subtasks directly into the goal — no action registry, no undo — because the mutation is user-initiated, not NOVA-initiated.
-**Signature:** one-shot generator → direct structured mutation of goal data.
+
 
 **Diagram:**
 ```
@@ -128,12 +119,8 @@ User clicks "Suggest Subtasks" → suggestSubtasks(goal) → compileBlackboard()
 
 ### Flow 3: Organize Tasks
 **Entry:** OrganizeOverviewView.jsx → runOrganizeAnalysis() (defined in useNOVA.js)
-
 **Architecture:** A one-shot analysis, explicitly documented as "NOT a chat turn" (useNOVA.js) — the result is stored in novaState.organizeAnalysis, never in programChats.
-**Schema:** ORGANIZE_SCHEMA_OPENROUTER — the most elaborate: content, options, plus a structured action proposal (create-goal / link-goal / merge-paths / create-path), sanitized by extractOrganizeAction().
-**Output contract:** Structured proposal object + human-readable content.
-**Commit path:** Rendered as a proposal card with ✓ CONFIRM / ✕ DISMISS (OrganizeOverviewView.jsx) — the "agency guard" documented in ORGANIZE_DIRECTIVE: "You never execute mutations directly... propose choices for the user to make." On confirm, the view calls createGoalWithPaths / linkGoalToPath / mergePaths / setPathsStore directly.
-**Signature:** one-shot analysis → schema-constrained action proposal → agency-guard Confirm/Cancel.
+
 
 **Diagram:**
 ```
