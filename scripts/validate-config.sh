@@ -23,10 +23,10 @@ CONFIG_PATH="$PROJECT_DIR/$CONFIG_FILE"
 BINARY_PATH="$PROJECT_DIR/bin/neutralino-mac_arm64"
 
 # SHA256 hash of the known-good patched binary (dispatch_sync → main-thread check fix)
-# Generated from the cmake build on 2026-06-22 from neutralinojs v6.8.0 source.
+# Regenerated on 2026-07-20 from the patched neutralinojs v6.8.0 binary in bin/.
 # If the binary is rebuilt (e.g., after a Neutralino version upgrade), this hash
 # must be updated to match the new patched binary.
-EXPECTED_HASH="e8e2da54b0f8c51d5d815b20c3a9175be2eb5dfa4e000029dcfdd68f5a37a30f"
+EXPECTED_HASH="7d448fe8e8d04c14542ead50b9602647d8890800ebefa50099ba5bc4a7ce3268"
 
 # Detect CI environment — skip binary checks in CI since the patched binary
 # in bin/ is not checked into version control. CI builds fresh binaries via

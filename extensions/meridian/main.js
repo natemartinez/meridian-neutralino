@@ -81,7 +81,22 @@ async function callOpenRouter(messages, params = {}) {
   });
   if (!r.ok) {
     const errText = await r.text().catch(() => 'Unknown error');
-    return { success: false, error: `API returned ${r.status}: ${errText}` };
+    // Log the full provider response server-side (Neutralino writes this to the
+    // app log file). Never forward raw provider bodies to the renderer — they
+    // can echo request context and leak model/provider internals into the UI.
+    console.error(`[meridian] OpenRouter error ${r.status}: ${errText}`);
+    // Static hints only — no provider data interpolated here.
+    const hints = {
+      401: 'Check your API key in Settings.',
+      402: 'Your OpenRouter account has insufficient credits.',
+      403: 'Your API key lacks permission for this model.',
+      404: 'The selected model was not found on OpenRouter.',
+      429: 'Rate limit reached. Try again in a moment.',
+    };
+    return {
+      success: false,
+      error: `OpenRouter request failed (${r.status}). ${hints[r.status] || 'See the app log for details.'}`,
+    };
   }
   const data = await r.json();
   return { success: true, data: data.choices?.[0]?.message?.content || '' };
@@ -161,7 +176,8 @@ class MeridianExtension {
             { role: 'user', content: userMsg },
           ], { apiKey, model, schemaType, signal: AbortSignal.timeout(30000) });
         } catch (err) {
-          return { success: false, error: err.message || String(err) };
+          console.error('[meridian] aiQuery failed:', err.message || err);
+          return { success: false, error: 'AI request failed. See the app log for details.' };
         }
       }
       case 'aiChat': {
@@ -169,7 +185,8 @@ class MeridianExtension {
           const { messages, apiKey, model, schemaType } = params || {};
           return await callOpenRouter(messages, { apiKey, model, schemaType, signal: AbortSignal.timeout(45000) });
         } catch (err) {
-          return { success: false, error: err.message || String(err) };
+          console.error('[meridian] aiChat failed:', err.message || err);
+          return { success: false, error: 'AI request failed. See the app log for details.' };
         }
       }
 

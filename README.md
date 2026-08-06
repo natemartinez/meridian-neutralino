@@ -16,7 +16,58 @@ This application's architecture divides the application logic from AI’s logic,
 - **Work Logs**: Track your work sessions and productivity
 - **Pomodoro Timer**: Built-in timer for focused work sessions
 - **Deadlines**: Set and track deadlines for your goals
-- **Canvas**: Visual workspace for planning and organizing
+
+
+## Installation
+
+Meridian is a **native desktop application** built with [Neutralino.js](https://neutralino.js.org/) — it is **not** a localhost web app.
+
+### What "native desktop" means here
+
+- The UI is a React single-page app, but it runs inside your OS's **native WebView** (WKWebView on macOS, WebView2 on Windows, WebKitGTK on Linux) — not a browser tab, and not a bundled Chromium/Electron runtime.
+- A small native Neutralino server hosts the frontend locally inside the app and exposes a minimal, allowlisted set of OS capabilities (window control, events, extensions).
+- A separate **Node.js extension process** (`extensions/meridian/`) provides the heavier native features — OS keychain storage for your API key, a local SQLite database (`better-sqlite3`), and app state files — via an internal IPC channel.
+- The binary is small and memory-light because it reuses your OS's own WebView instead of shipping a full browser engine.
+
+### Prerequisites
+
+| Dependency | Version | Notes |
+| --- | --- | --- |
+Node.js | `>= 22` | Required for tooling + the extension runtime |
+npm | bundled with Node | Package manager |
+
+Platform prerequisites (for Neutralino's WebView):
+
+- **macOS**: none — uses the system WKWebView.
+- **Windows 10/11**: Microsoft Edge **WebView2 Runtime** (preinstalled on current Windows).
+- **Linux**: WebKitGTK + GTK3 dev libraries (e.g. `webkit2gtk-4.1`, `libgtk-3-dev`).
+
+### Setup & run
+
+```bash
+# 1. Install root dependencies (React, Vite, Neutralino CLI)
+npm install
+
+# 2. Install the extension's native dependencies (better-sqlite3)
+cd extensions/meridian && npm install && cd ..
+
+# 3a. Run in the native desktop shell (Neutralino window)
+npm start
+
+# 3b. Or run the renderer alone in a browser for quick UI iteration
+npm run dev
+```
+
+### Tests, lint, and release build
+
+```bash
+npm test          # unit tests (Vitest)
+npm run lint      # ESLint on src/
+npm run dist      # production build -> resources.neu + native binary (macOS .app)
+```
+
+> When you launch via `npm start`, the app runs as a desktop window with the OS keychain and local SQLite enabled. `npm run dev` is browser-only: key storage and the extension database are stubbed, and API calls go directly to OpenRouter from the browser.
+
 
 ## Architecture
 
@@ -113,10 +164,11 @@ Meridian is a local-first desktop application. Your goals, work logs, pomodoro h
 
 | Data | Location | Notes |
 | --- | --- | --- |
-| App state (goals, logs, timers, UI prefs) | Local app storage (JSON via Neutralino, `~/.config/meridian/storage.json`) | Plaintext on disk |
-| SQLite database (extension, if used) | Local `meridian.db` | Plaintext on disk |
+| App state (goals, logs, timers, UI prefs) | `~/.config/meridian/meridian-state.json` | Plaintext on disk |
+| Settings (model, morning time) | `~/.config/meridian/settings.json` | Plaintext on disk |
+| Pomodoro timer state | `~/.config/meridian-pomodoro/state.json` | Plaintext on disk |
+| SQLite database (NOVA sessions, insights, check-ins, knowledge pool) | `~/.config/meridian/nova-memory.db` | Plaintext on disk |
 | OpenRouter API key | OS keychain (encrypted) **or** local app storage | See below |
-| AI mode / settings | Local app storage | Plaintext on disk |
 
 ### Your OpenRouter API key
 
