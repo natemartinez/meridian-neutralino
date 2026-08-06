@@ -1,24 +1,61 @@
 name: Build & Release Meridian
 
+# Two distinct jobs:
+#   1. test  — runs on every push to main and on every PR. Fast feedback,
+#              no release artifacts. This job must never fail on a normal push.
+#   2. build — full build + macOS code-sign/notarize + GitHub Release. Runs
+#              ONLY on version tags (v*) or via manual workflow_dispatch.
+#
+# Why? Releasing on every push is intentional here: signing/notarization
+# requires Apple secrets that are only available for tag-triggered releases.
+# Normal commits to main therefore run tests only — no build, no artifacts.
 on:
   push:
     branches: [main]
     tags: 'v*'
   pull_request:
     branches: [main]
-
-# Security #4: Release artifacts are code-signed and notarized on macOS.
-# Requires the following GitHub Actions secrets (set in the repo settings):
-#   APPLE_CERTIFICATE_P12       - base64 of the Developer ID Application .p12
-#   APPLE_CERTIFICATE_PASSWORD  - password for the .p12
-#   APPLE_ID                    - Apple ID email (notarization)
-#   APPLE_APP_SPECIFIC_PASSWORD - app-specific password for notarization
-#   APPLE_TEAM_ID               - Apple Developer Team ID
-# The signing step only runs on macOS runners and only for tag pushes
-# (refs/tags/v*). PRs and non-tag pushes still build + test unsigned.
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Build release artifacts (sign/notarize if Apple secrets are set)'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
+  # ── Job 1: Test only (every push / PR / manual run) ────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install extension dependencies
+        working-directory: extensions/meridian
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+  # ── Job 2: Build + release (tags or manual dispatch only) ──────────────────
   build:
+    name: Build (${{ matrix.os }})
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
@@ -41,9 +78,6 @@ jobs:
         working-directory: extensions/meridian
         run: npm ci
 
-      - name: Run tests
-        run: npm test
-
       - name: Download Neutralino client library and template resources
         shell: bash
         run: |
@@ -62,6 +96,8 @@ jobs:
         env:
           MACOS_BUNDLE: '1'
 
+      # Only tag pushes produce a signed/notarized release. Manual dispatch
+      # builds unsigned artifacts (useful for pre-release validation).
       - name: Import Apple Developer ID certificate (macOS, tags only)
         if: runner.os == 'macOS' && startsWith(github.ref, 'refs/tags/v')
         env:
