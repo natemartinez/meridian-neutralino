@@ -416,6 +416,7 @@ export async function validateOpenRouterKey(apiKey, options = {}) {
     bypassCache = false,
     signal,
     timeoutMs = 10000,
+    backoffBaseMs = RATE_LIMIT_BASE_DELAY_MS,
   } = options;
 
   // ── Step 1: Format validation ──────────────────────────────────────────
@@ -456,7 +457,7 @@ export async function validateOpenRouterKey(apiKey, options = {}) {
 
     // If rate-limited, wait and retry
     if (lastResult.code === 'rate_limited' && attempt < MAX_RATE_LIMIT_RETRIES) {
-      const delayMs = computeBackoff(attempt);
+      const delayMs = computeBackoff(attempt, backoffBaseMs);
       console.warn(`[OpenRouterValidation] Rate limited, waiting ${Math.round(delayMs / 1000)}s before retry`);
       await new Promise(resolve => setTimeout(resolve, delayMs));
       continue;

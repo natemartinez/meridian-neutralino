@@ -235,87 +235,55 @@ describe('validateOpenRouterKey', () => {
 
   // ── Rate limiting ───────────────────────────────────────────
 
+  // These rate-limit tests deliberately avoid fake timers: they use tiny real
+  // backoff delays (backoffBaseMs: 5) so each retry settles in real
+  // milliseconds. Fake timers + advanceTimersByTimeAsync intermittently hang
+  // under Vitest 4.x when the full suite runs in parallel.
+  const FAST_BACKOFF = { backoffBaseMs: 5 };
+
   it('returns rate_limited for 429 response', async () => {
-    vi.useFakeTimers();
     globalThis.fetch = vi.fn().mockResolvedValue(mockResponse(429));
 
-    const promise = validateOpenRouterKey(validKey());
-    // Fast-forward through all retry delays
-    for (let i = 0; i < 4; i++) {
-      await vi.advanceTimersByTimeAsync(30000);
-    }
-
-    const result = await promise;
+    const result = await validateOpenRouterKey(validKey(), FAST_BACKOFF);
     expect(result.valid).toBe(false);
     expect(result.code).toBe('rate_limited');
     expect(result.statusCode).toBe(429);
-
-    vi.useRealTimers();
   });
 
   it('includes Retry-After duration in rate limit message', async () => {
-    // Use vi.useFakeTimers to avoid real delays
-    vi.useFakeTimers();
     const headers = new Map();
     headers.set('Retry-After', '30');
     globalThis.fetch = vi.fn().mockResolvedValue(mockResponse(429, { headers }));
 
-    // Start the validation (it will hang on setTimeout)
-    const promise = validateOpenRouterKey(validKey());
-
-    // Fast-forward through all retry delays
-    for (let i = 0; i < 4; i++) {
-      await vi.advanceTimersByTimeAsync(30000);
-    }
-
-    const result = await promise;
+    const result = await validateOpenRouterKey(validKey(), FAST_BACKOFF);
     expect(result.valid).toBe(false);
     expect(result.code).toBe('rate_limited');
     expect(result.reason).toContain('30 seconds');
-
-    vi.useRealTimers();
   });
 
   it('retries on rate limit and succeeds on subsequent attempt', async () => {
-    vi.useFakeTimers();
     const headers = new Map();
     headers.set('Retry-After', '1');
     globalThis.fetch = vi.fn()
       .mockResolvedValueOnce(mockResponse(429, { headers }))
       .mockResolvedValueOnce(mockResponse(200));
 
-    const promise = validateOpenRouterKey(validKey());
-    // Fast-forward through the retry delay
-    await vi.advanceTimersByTimeAsync(30000);
-
-    const result = await promise;
+    const result = await validateOpenRouterKey(validKey(), FAST_BACKOFF);
     expect(result.valid).toBe(true);
     expect(result.code).toBe('valid');
     expect(globalThis.fetch).toHaveBeenCalledTimes(2);
-
-    vi.useRealTimers();
   });
 
   it('gives up on rate limit after max retries', async () => {
-    vi.useFakeTimers();
     const headers = new Map();
     headers.set('Retry-After', '1');
     globalThis.fetch = vi.fn().mockResolvedValue(mockResponse(429, { headers }));
 
-    const promise = validateOpenRouterKey(validKey());
-
-    // Fast-forward through all retry delays
-    for (let i = 0; i < 4; i++) {
-      await vi.advanceTimersByTimeAsync(30000);
-    }
-
-    const result = await promise;
+    const result = await validateOpenRouterKey(validKey(), FAST_BACKOFF);
     expect(result.valid).toBe(false);
     expect(result.code).toBe('rate_limited');
     // Initial attempt + MAX_RATE_LIMIT_RETRIES (3) retries = 4 calls
     expect(globalThis.fetch).toHaveBeenCalledTimes(4);
-
-    vi.useRealTimers();
   });
 
   // ── Server errors ───────────────────────────────────────────
@@ -405,30 +373,19 @@ describe('validateOpenRouterKey', () => {
   });
 
   it('does NOT cache transient errors (rate_limited, server_error, network_error)', async () => {
-    vi.useFakeTimers();
     globalThis.fetch = vi.fn().mockResolvedValue(mockResponse(429));
 
-    const promise1 = validateOpenRouterKey(validKey());
-    // Fast-forward through all retry delays
-    for (let i = 0; i < 4; i++) {
-      await vi.advanceTimersByTimeAsync(30000);
-    }
-    const result1 = await promise1;
+    // First call — should NOT be cached (transient error)
+    const result1 = await validateOpenRouterKey(validKey(), FAST_BACKOFF);
     expect(result1.code).toBe('rate_limited');
 
     // Second call — should NOT be cached, should hit API again
-    const promise2 = validateOpenRouterKey(validKey());
-    for (let i = 0; i < 4; i++) {
-      await vi.advanceTimersByTimeAsync(30000);
-    }
-    const result2 = await promise2;
+    const result2 = await validateOpenRouterKey(validKey(), FAST_BACKOFF);
     expect(result2.code).toBe('rate_limited');
 
     // fetch was called 4 times for first call (1 initial + 3 retries)
     // and should be called again for second call
     expect(globalThis.fetch).toHaveBeenCalledTimes(8); // 4 + 4
-
-    vi.useRealTimers();
   });
 
   it('bypasses cache when bypassCache option is true', async () => {

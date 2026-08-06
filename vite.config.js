@@ -48,6 +48,10 @@ export default defineConfig({
   base: './',
   test: {
     environment: 'jsdom',
+    // A few tests drive fake timers through multiple async retry cycles; under
+    // CI CPU contention they can exceed the default 5s real-time timeout.
+    // Bump the global default to 10s to absorb runner load.
+    testTimeout: 10000,
     // Never scan build output or dependencies for test files. dist/ contains a
     // copy of extensions/meridian/keyStorage.test.js (from `neu build`), and
     // running it from dist/ breaks its relative path assertions (ENOENT).
