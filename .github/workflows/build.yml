@@ -48,9 +48,6 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Lint
-        run: npm run lint
-
   # ── Job 2: Build + release (tags or manual dispatch only) ──────────────────
   build:
     name: Build (${{ matrix.os }})

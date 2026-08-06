@@ -48,5 +48,9 @@ export default defineConfig({
   base: './',
   test: {
     environment: 'jsdom',
+    // Never scan build output or dependencies for test files. dist/ contains a
+    // copy of extensions/meridian/keyStorage.test.js (from `neu build`), and
+    // running it from dist/ breaks its relative path assertions (ENOENT).
+    exclude: ['node_modules/**', 'dist/**', '.vite/**'],
   },
 })
